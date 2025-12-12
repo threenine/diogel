@@ -4,13 +4,12 @@
 
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { useDark } from 'src/composables/useDark';
-
-const { isDark, set } = useDark();
+import { useQuasar } from 'quasar';
+const $q = useQuasar();
 
 const checked = computed({
-  get: () => isDark.value,
-  set: (v: boolean) => set(v),
+  get: () => $q.dark.isActive,
+  set: (v: boolean) => $q.dark.set(v),
 });
 </script>
 
