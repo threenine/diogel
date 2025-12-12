@@ -44,11 +44,7 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
-
-export interface DropdownItem<T = string | number> {
-  label: string;
-  value: T;
-}
+import type { DropdownItem } from 'src/types';
 
 const props = withDefaults(
   defineProps<{
