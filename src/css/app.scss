@@ -34,4 +34,17 @@ body {
   border-right: 1px solid var(--border-color);
 }
 
+.settings-container {
+  margin-top: 100px;
+  display: flex;
+  justify-content: center;
+}
+
+.settings-form {
+
+  padding: 20px;
+  min-height: 50vh;
+  background-color: var(--settings-form-bg);
+  max-width: 1000px;
+}
 
