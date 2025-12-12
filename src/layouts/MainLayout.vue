@@ -10,6 +10,7 @@
           </q-avatar>
           Title
         </q-toolbar-title>
+        <account-dropdown />
       </q-toolbar>
     </q-header>
 
@@ -17,7 +18,7 @@
       <!-- drawer content -->
     </q-drawer>
 
-    <q-page-container>
+    <q-page-container class="bg-grey-900">
       <router-view />
     </q-page-container>
   </q-layout>
@@ -25,6 +26,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import AccountDropdown from 'components/AccountDropdown.vue';
 
 const leftDrawerOpen = ref(false);
 
