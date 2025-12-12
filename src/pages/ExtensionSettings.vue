@@ -5,16 +5,16 @@ import ThemeSwitch from 'components/ThemeSwitch.vue';
 <template>
   <q-page>
     <div class="settings-container">
-      <div class="settings-form shadow-0 rounded-borders">
-        <div class="q-pa-md">
+      <div class="shadow-0">
+        <q-toolbar>
+          <q-toolbar-title>General</q-toolbar-title>
+        </q-toolbar>
+        <div class="q-pa-lg-lg full-width settings-form rounded-borders">
           <q-list>
             <q-item v-ripple tag="label">
               <q-item-section>
-                <q-item-label>Enable Dark theme</q-item-label>
-                <q-item-label caption lines="2"
-                  >Secondary line text. Lorem ipsum dolor sit amet, consectetur adipiscit
-                  elit.</q-item-label
-                >
+                <q-item-label>Theme</q-item-label>
+                <q-item-label caption lines="2">Use light or dark mode</q-item-label>
               </q-item-section>
               <q-item-section side top>
                 <theme-switch />

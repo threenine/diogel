@@ -36,11 +36,14 @@ $dark-header: #353E43;
   --page-bg: #f6f8fb;
   --text-color: #0b1220;
   --border-color: rgba(0, 0, 0, 0.12);
-  --settings-form-bg: #efefef;
+
 
   // App chrome (header/toolbars)
   --header-bg: $light-header; // deep blue header background
-  --on-header: #ffffff // header foreground (icons/text)
+  --on-header: #ffffff; // header foreground (icons/text)
+
+  // Configuration forms
+  --settings-form-bg: #efefef;
 }
 
 .body--dark {
@@ -52,7 +55,9 @@ $dark-header: #353E43;
   // App chrome (header/toolbars)
   --header-bg: $dark-header;
   --on-header: #ffffff;
-  --settings-form-bg: rgb(36 36 36);
+
+  // Configuration forms
+  --settings-form-bg: #242424;
 
 }
 
