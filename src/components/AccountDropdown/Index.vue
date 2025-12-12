@@ -46,6 +46,7 @@
 import { computed, ref, watch } from 'vue';
 import type { DropdownItem } from 'src/types';
 
+defineOptions({name: 'AccountDropdown'})
 const props = withDefaults(
   defineProps<{
     /** External v-model */

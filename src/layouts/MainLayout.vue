@@ -15,7 +15,7 @@
           </q-menu>
         </q-btn>
         <q-space />
-        <index :items="items" />
+        <account-dropdown :items="items" />
       </q-toolbar>
     </q-header>
 
@@ -27,7 +27,7 @@
 
 <script setup lang="ts">
 import type { DropdownItem } from 'src/types';
-import Index from 'components/AccountDropdown/Index.vue';
+import AccountDropdown from 'components/AccountDropdown/Index.vue';
 
 const items: DropdownItem[] = [
   { label: 'Home', value: '/' },
