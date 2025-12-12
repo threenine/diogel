@@ -10,6 +10,7 @@
     :loading="loading"
     :options="computedOptions"
     :outlined="outlined"
+    :borderless="borderless"
     :use-chips="useChips"
     emit-value
     map-options
@@ -68,6 +69,7 @@ const props = withDefaults(
     clearable?: boolean;
     dense?: boolean;
     outlined?: boolean;
+    borderless?: boolean;
     loading?: boolean;
     disable?: boolean;
     hint?: string;
@@ -83,7 +85,8 @@ const props = withDefaults(
     useChips: false,
     clearable: false,
     dense: false,
-    outlined: true,
+    outlined: false,
+    borderless: true,
     loading: false,
     disable: false,
     hint: '',
