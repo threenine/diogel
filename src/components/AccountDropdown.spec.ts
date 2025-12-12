@@ -37,7 +37,7 @@ function mountDd(props: Record<string, unknown> = {}) {
 }
 
 describe('AccountDropdown', () => {
-  it('includes the "Create Account" option first by default', () => {
+  it('includes the "+ Create Account" option first by default', () => {
     const wrapper = mountDd({
       items: [
         { label: 'Personal', value: 'acc-1' },
@@ -48,7 +48,7 @@ describe('AccountDropdown', () => {
     const q = wrapper.findComponent(QSelectStub);
     const options = q.props('options') as Array<{ label: string; value: string | number }>;
     expect(options.length).toBe(3);
-    expect(options[0]).toEqual({ label: 'Create Account', value: 'create-account' });
+    expect(options[0]).toEqual({ label: '➕ Create Account', value: 'create-account' });
     expect(options[1]).toEqual({ label: 'Personal', value: 'acc-1' });
     expect(options[2]).toEqual({ label: 'Business', value: 'acc-2' });
   });

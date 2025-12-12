@@ -38,6 +38,19 @@ npm run format
 quasar build
 ```
 
+### Dark Mode
+
+This app supports a Dark Mode switch powered by Quasar’s Dark plugin.
+
+- Toggle: Use the sun/moon icon button in the top-right of the header to switch between light and dark themes.
+- Persistence: Your choice is saved to localStorage and restored on next visit.
+- Default: On first visit, the app follows your OS preference (prefers-color-scheme).
+
+Implementation notes:
+
+- Initialization happens in a boot file `src/boot/dark.ts` that calls `initDark()` from `src/composables/useDark.ts`.
+- The toggle button in `src/layouts/MainLayout.vue` uses `useDark()` to flip the theme.
+
 ### Run the unit tests (Vitest)
 
 This project uses Vitest with a JSDOM environment to test Vue 3 SFCs. Tests are colocated under `src/**` with filenames

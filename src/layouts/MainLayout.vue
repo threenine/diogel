@@ -1,16 +1,28 @@
 <template>
   <q-layout view="hHh lpR fFf">
-    <q-header class="bg-primary text-white" elevated>
+    <q-header elevated>
       <q-toolbar>
         <q-btn dense flat icon="menu" round @click="toggleLeftDrawer" />
 
         <q-toolbar-title>
           <q-avatar>
-            <img src="https://cdn.quasar.dev/logo-v2/svg/logo-mono-white.svg" />
+            <img alt="Profile Photo" src="../assets/privacy.svg" />
           </q-avatar>
           Title
         </q-toolbar-title>
-        <account-dropdown />
+
+        <q-space />
+        <div class="row items-center no-wrap q-gutter-sm">
+          <account-dropdown />
+          <q-btn
+            :icon="isDark ? 'light_mode' : 'dark_mode'"
+            aria-label="Toggle Dark Mode"
+            dense
+            flat
+            round
+            @click="toggleDark"
+          />
+        </div>
       </q-toolbar>
     </q-header>
 
@@ -18,7 +30,7 @@
       <!-- drawer content -->
     </q-drawer>
 
-    <q-page-container class="bg-grey-900">
+    <q-page-container>
       <router-view />
     </q-page-container>
   </q-layout>
@@ -27,8 +39,10 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import AccountDropdown from 'components/AccountDropdown.vue';
+import { useDark } from 'src/composables/useDark';
 
 const leftDrawerOpen = ref(false);
+const { isDark, toggle: toggleDark } = useDark();
 
 function toggleLeftDrawer() {
   leftDrawerOpen.value = !leftDrawerOpen.value;

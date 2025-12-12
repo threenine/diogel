@@ -16,11 +16,40 @@
     map-options
     option-label="label"
     option-value="value"
-  />
+  >
+    <!-- Custom option rendering to support themable icon for the Create option -->
+    <template #option="scope">
+      <q-item v-bind="scope.itemProps">
+        <q-item-section v-if="scope.opt.value === createValue" avatar>
+          <q-icon :color="isDark ? 'amber' : 'white'" name="add_circle" />
+        </q-item-section>
+        <q-item-section>
+          <q-item-label>
+            <!-- For the Create option, show the createLabel without the emoji; others show label as-is -->
+            {{ scope.opt.value === createValue ? createLabel : scope.opt.label }}
+          </q-item-label>
+        </q-item-section>
+      </q-item>
+    </template>
+
+    <!-- Selected item chip/input rendering -->
+    <template #selected-item="scope">
+      <div class="row items-center no-wrap q-gutter-xs">
+        <q-icon
+          v-if="scope.opt.value === createValue"
+          :color="isDark ? 'white' : 'white'"
+          name="add_circle"
+          size="18px"
+        />
+        <span>{{ scope.opt.value === createValue ? createLabel : scope.opt.label }}</span>
+      </div>
+    </template>
+  </q-select>
 </template>
 
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
+import { useDark } from 'src/composables/useDark';
 
 export interface DropdownItem<T = string | number> {
   label: string;
@@ -77,7 +106,7 @@ const emit = defineEmits<{
 }>();
 
 const CREATE_OPTION = computed<DropdownItem>(() => ({
-  label: props.createLabel,
+  label: `➕ ${props.createLabel}`,
   value: props.createValue,
 }));
 
@@ -117,6 +146,9 @@ watch(innerValue, (v) => {
   emit('update:modelValue', v);
   emit('change', v);
 });
+
+// Dark mode state for theming icon color
+const { isDark } = useDark();
 </script>
 
 <style scoped></style>
