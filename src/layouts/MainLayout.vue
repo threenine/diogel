@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh lpR fFf">
+  <q-layout>
     <q-header elevated>
       <q-toolbar>
         <q-btn dense flat icon="menu" round>
@@ -14,10 +14,8 @@
             </q-list>
           </q-menu>
         </q-btn>
-
         <q-space />
-
-        <account-dropdown :items="items" />
+        <index :items="items" />
       </q-toolbar>
     </q-header>
 
@@ -29,7 +27,7 @@
 
 <script setup lang="ts">
 import type { DropdownItem } from 'src/types';
-import AccountDropdown from 'components/AccountDropdown.vue';
+import Index from 'components/AccountDropdown/Index.vue';
 
 const items: DropdownItem[] = [
   { label: 'Home', value: '/' },

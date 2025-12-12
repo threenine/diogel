@@ -82,7 +82,7 @@ Run a specific test file or by pattern:
 
 ```bash
 # single file
-npx vitest run src/components/AccountDropdown.spec.ts
+npx vitest run src/components/Index.spec.ts
 
 # by name pattern
 npx vitest -t "Create Account"

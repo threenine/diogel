@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { shallowMount } from '@vue/test-utils';
 import { defineComponent } from 'vue';
-import AccountDropdown from './AccountDropdown.vue';
+import Index from './Index.vue';
 
 // Simple stub for Quasar's q-select that supports v-model and options prop
 const QSelectStub = defineComponent({
@@ -28,7 +28,7 @@ const QSelectStub = defineComponent({
 });
 
 function mountDd(props: Record<string, unknown> = {}) {
-  return shallowMount(AccountDropdown, {
+  return shallowMount(Index, {
     props,
     global: {
       stubs: { 'q-select': QSelectStub },
@@ -36,7 +36,7 @@ function mountDd(props: Record<string, unknown> = {}) {
   });
 }
 
-describe('AccountDropdown', () => {
+describe('Index', () => {
   it('includes the "+ Create Account" option first by default', () => {
     const wrapper = mountDd({
       items: [
@@ -106,7 +106,7 @@ describe('AccountDropdown', () => {
     q.vm.$emit('update:modelValue', 'acc-2');
     await wrapper.vm.$nextTick();
 
-    // Inner watch should re-emit both events from AccountDropdown
+    // Inner watch should re-emit both events from Index
 
     const update = wrapper.emitted('update:modelValue') as Array<[string]>;
     expect(update.length).toBeGreaterThan(0);

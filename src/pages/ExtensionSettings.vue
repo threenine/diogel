@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import ThemeSwitch from 'components/ThemeSwitch.vue';
+import Index from 'components/ThemeSwitch/Index.vue';
 </script>
 
 <template>
@@ -17,7 +17,7 @@ import ThemeSwitch from 'components/ThemeSwitch.vue';
                 <q-item-label caption lines="2">Use light or dark mode</q-item-label>
               </q-item-section>
               <q-item-section side top>
-                <theme-switch />
+                <index />
               </q-item-section>
             </q-item>
           </q-list>
