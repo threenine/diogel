@@ -7,7 +7,6 @@
     :disable="disable"
     :dropdown-icon="dropdownIcon"
     :hint="hint"
-    :label="label"
     :loading="loading"
     :options="computedOptions"
     :outlined="outlined"
@@ -21,7 +20,7 @@
     <template #option="scope">
       <q-item v-bind="scope.itemProps">
         <q-item-section v-if="scope.opt.value === createValue" avatar>
-          <q-icon :color="isDark ? 'amber' : 'white'" name="add_circle" />
+          <q-icon name="add_circle" />
         </q-item-section>
         <q-item-section>
           <q-item-label>
@@ -35,12 +34,7 @@
     <!-- Selected item chip/input rendering -->
     <template #selected-item="scope">
       <div class="row items-center no-wrap q-gutter-xs">
-        <q-icon
-          v-if="scope.opt.value === createValue"
-          :color="isDark ? 'white' : 'white'"
-          name="add_circle"
-          size="18px"
-        />
+        <q-icon v-if="scope.opt.value === createValue" name="add_circle" size="18px" />
         <span>{{ scope.opt.value === createValue ? createLabel : scope.opt.label }}</span>
       </div>
     </template>
@@ -49,7 +43,6 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
-import { useDark } from 'src/composables/useDark';
 
 export interface DropdownItem<T = string | number> {
   label: string;
@@ -84,7 +77,6 @@ const props = withDefaults(
   {
     modelValue: null,
     items: () => [],
-    label: 'Account',
     includeCreateOption: true,
     createLabel: 'Create Account',
     createValue: 'create-account',
@@ -146,9 +138,6 @@ watch(innerValue, (v) => {
   emit('update:modelValue', v);
   emit('change', v);
 });
-
-// Dark mode state for theming icon color
-const { isDark } = useDark();
 </script>
 
 <style scoped></style>

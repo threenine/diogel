@@ -4,12 +4,6 @@
       <q-toolbar>
         <q-btn dense flat icon="menu" round @click="toggleLeftDrawer" />
 
-        <q-toolbar-title>
-          <q-avatar>
-            <img alt="Profile Photo" src="../assets/privacy.svg" />
-          </q-avatar>
-          Title
-        </q-toolbar-title>
 
         <q-space />
         <div class="row items-center no-wrap q-gutter-sm">
