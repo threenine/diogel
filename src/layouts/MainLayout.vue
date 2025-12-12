@@ -2,7 +2,15 @@
   <q-layout view="hHh lpR fFf">
     <q-header elevated>
       <q-toolbar>
-        <q-btn dense flat icon="menu" round @click="toggleLeftDrawer" />
+        <q-btn dense flat icon="menu" round>
+          <q-menu anchor="bottom left" self="top left">
+            <q-list style="min-width: 160px">
+              <q-item v-ripple clickable to="/">
+                <q-item-section>Home</q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </q-btn>
 
 
         <q-space />
@@ -20,10 +28,6 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer v-model="leftDrawerOpen" elevated overlay side="left">
-      <!-- drawer content -->
-    </q-drawer>
-
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -31,14 +35,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import AccountDropdown from 'components/AccountDropdown.vue';
 import { useDark } from 'src/composables/useDark';
 
-const leftDrawerOpen = ref(false);
 const { isDark, toggle: toggleDark } = useDark();
-
-function toggleLeftDrawer() {
-  leftDrawerOpen.value = !leftDrawerOpen.value;
-}
 </script>
