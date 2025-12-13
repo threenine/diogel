@@ -1,12 +1,13 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
 import ThemeSwitch from './Index.vue';
 import type * as Quasar from 'quasar';
+
 type QuasarModule = typeof Quasar;
 
 // Local mock for Quasar's useQuasar dark API so we can control isActive deterministically
-let darkState = { isActive: false, set: (v: boolean) => void 0 } as {
+let darkState = { isActive: false, set: () => void 0 } as {
   isActive: boolean;
   set: (v: boolean) => void;
 };
@@ -36,7 +37,7 @@ const QToggleStub = defineComponent({
           'data-model-value': String(props.modelValue),
           onClick: () => emit('update:modelValue', !props.modelValue),
         },
-        props.modelValue ? 'on' : 'off'
+        props.modelValue ? 'on' : 'off',
       );
   },
 });
