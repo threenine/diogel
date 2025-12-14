@@ -51,13 +51,13 @@ const mountWithQuasar = (props?: Record<string, unknown>) =>
   });
 
 describe('ThemeSwitch', () => {
-  let setSpy: ReturnType<typeof vi.fn>;
+  let setSpy: ReturnType<typeof vi.fn<(v: boolean) => void>>;
 
   beforeEach(() => {
-    // Reset mock dark API for each test
-    setSpy = vi.fn((v: boolean) => {
+    setSpy = vi.fn<(v: boolean) => void>((v) => {
       darkState.isActive = v;
     });
+
     darkState = { isActive: false, set: setSpy };
   });
 

@@ -44,9 +44,10 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
 import type { DropdownItem } from 'src/types';
 
-defineOptions({name: 'AccountDropdown'})
+defineOptions({ name: 'AccountDropdown' });
 const props = withDefaults(
   defineProps<{
     /** External v-model */
@@ -97,6 +98,8 @@ const emit = defineEmits<{
   (e: 'change', value: string | number | null): void;
 }>();
 
+const router = useRouter();
+
 const CREATE_OPTION = computed<DropdownItem>(() => ({
   label: `➕ ${props.createLabel}`,
   value: props.createValue,
@@ -137,6 +140,12 @@ watch(
 watch(innerValue, (v) => {
   emit('update:modelValue', v);
   emit('change', v);
+  // Navigate based on selection
+  if (v === props.createValue) {
+    router.push({ name: 'create-account' }).catch(() => {});
+  } else if (v !== null && v !== undefined) {
+    router.push({ name: 'edit-account' }).catch(() => {});
+  }
 });
 </script>
 
