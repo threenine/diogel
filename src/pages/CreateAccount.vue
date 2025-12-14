@@ -23,45 +23,62 @@ async function copyToClipboard(text: string) {
 
 <template>
   <q-page>
-    <p>Create Account</p>
-    <q-btn label="Create Account" @click="generateKey" />
-    <div class="q-pa-md">
-      <div class="q-gutter-y-md column" style="max-width: 600px">
-        <q-input v-model="pubkey" color="orange-12" label="Public Key" readonly>
-          <template v-slot:prepend>
-            <q-icon name="keys" />
-          </template>
-          <template v-slot:append>
-            <q-icon class="cursor-pointer" name="content_copy" @click="copyToClipboard(pubkey)" />
-          </template>
-        </q-input>
-      </div>
-      <div class="q-gutter-y-md column" style="max-width: 600px">
-        <q-input
-          v-model="privKey"
-          :type="showPrivKey ? 'text' : 'password'"
-          color="orange-12"
-          label="Private Key"
-        >
-          <template v-slot:prepend>
-            <q-icon name="keys" />
-          </template>
-          <template v-slot:append>
-            <q-icon
-              :name="showPrivKey ? 'visibility_off' : 'visibility'"
-              class="cursor-pointer q-mr-sm"
-              @click="showPrivKey = !showPrivKey"
-            />
-            <q-icon
-              class="cursor-pointer q-ml-sm"
-              name="content_copy"
-              @click="copyToClipboard(privKey)"
-            />
-          </template>
-        </q-input>
+    <div class="settings-container">
+      <div class="shadow-0">
+        <q-toolbar>
+          <q-toolbar-title>General</q-toolbar-title>
+        </q-toolbar>
+        <div class="q-pa-lg-lg full-width settings-form rounded-borders">
+          <q-btn label="Generate Keys" @click="generateKey" />
+          <q-list>
+            <q-item v-ripple tag="label">
+              <q-item-section>
+                <q-input v-model="pubkey" class="text-input" label="Public Key" readonly>
+                  <template v-slot:prepend>
+                    <q-icon name="keys" />
+                  </template>
+                  <template v-slot:append>
+                    <q-icon
+                      class="cursor-pointer"
+                      name="content_copy"
+                      @click="copyToClipboard(pubkey)"
+                    />
+                  </template>
+                </q-input>
+                <q-input
+                  v-model="privKey"
+                  :type="showPrivKey ? 'text' : 'password'"
+                  class="text-input"
+                  label="Private Key"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="keys" />
+                  </template>
+                  <template v-slot:append>
+                    <q-icon
+                      :name="showPrivKey ? 'visibility_off' : 'visibility'"
+                      class="cursor-pointer q-mr-sm"
+                      @click="showPrivKey = !showPrivKey"
+                    />
+                    <q-icon
+                      class="cursor-pointer q-ml-sm"
+                      name="content_copy"
+                      @click="copyToClipboard(privKey)"
+                    />
+                  </template>
+                </q-input>
+              </q-item-section>
+            </q-item>
+          </q-list>
+
+        </div>
       </div>
     </div>
   </q-page>
 </template>
 
-<style scoped></style>
+<style scoped>
+.text-input {
+  font-size: 12px;
+}
+</style>
