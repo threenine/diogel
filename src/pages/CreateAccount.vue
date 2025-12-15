@@ -171,11 +171,7 @@ async function onExportConfirm(payload: ExportPayload) {
             </q-item>
           </q-list>
         </div>
-        <ExportDialog
-          v-model="showExportDialog"
-          :default-filename="defaultExportFilename"
-          @confirm="onExportConfirm"
-        />
+        <ExportDialog v-model="showExportDialog" :alias="trimmedAlias" @confirm="onExportConfirm" />
       </div>
     </div>
   </q-page>

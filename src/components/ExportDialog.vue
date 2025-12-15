@@ -31,6 +31,7 @@
           :rules="[(v) => !!v || 'File name is required']"
           dense
           label="File name"
+          @update:model-value="onFilenameEdited"
         />
       </q-card-section>
 
@@ -52,10 +53,10 @@ defineOptions({ name: 'ExportDialog' });
 const props = withDefaults(
   defineProps<{
     modelValue: boolean;
-    defaultFilename?: string;
+    alias: string;
   }>(),
   {
-    defaultFilename: 'export.zip',
+    alias: '',
   },
 );
 
@@ -70,16 +71,37 @@ const modelValue = computed({
 });
 
 const localPassword = ref('');
-const localFilename = ref(props.defaultFilename);
+const localFilename = ref('');
 const showPassword = ref(false);
+const filenameManuallyEdited = ref(false);
+
+function buildDefaultFilenameFromAlias(alias: string) {
+  const base = (alias ?? '').trim() || 'nostr-account';
+  return base.endsWith('.zip') ? base : `${base}.zip`;
+}
+watch(
+  () => props.alias,
+  (alias) => {
+    if (!filenameManuallyEdited.value) {
+      localFilename.value = buildDefaultFilenameFromAlias(alias);
+    }
+  },
+  { immediate: true },
+);
 
 watch(
-  () => props.defaultFilename,
-  (v) => {
-    if (v && !localFilename.value) localFilename.value = v;
+  () => props.modelValue,
+  (isOpen) => {
+    // When opening the dialog, refresh filename from alias (unless user already edited it)
+    if (isOpen && !filenameManuallyEdited.value) {
+      localFilename.value = buildDefaultFilenameFromAlias(props.alias);
+    }
   },
 );
 
+function onFilenameEdited() {
+  filenameManuallyEdited.value = true;
+}
 function onCancel() {
   modelValue.value = false;
 }
