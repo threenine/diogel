@@ -221,7 +221,16 @@ export default defineConfig((ctx) => {
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-browser-extensions/configuring-bex
     bex: {
       extendBexScriptsConf(esbuildConf) {},
-      extendBexManifestJson(json) {},
+      extendBexManifestJson(json) {
+        // Ensure the downloads permission is present so saving via the
+        // browser downloads API adds entries to the Downloads list/history.
+        // Do NOT edit src-bex/manifest.json directly; configure here instead.
+        type ManifestLike = { permissions?: string[] };
+        const m = json as ManifestLike;
+        const perms = new Set<string>([...((m.permissions ?? []) as string[])]);
+        perms.add('downloads');
+        m.permissions = Array.from(perms);
+      },
 
       /**
        * The list of extra scripts (js/ts) not in your bex manifest that you want to

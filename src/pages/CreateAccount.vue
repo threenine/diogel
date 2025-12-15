@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { generateSecretKey, getPublicKey } from 'nostr-tools';
 import * as nip19 from 'nostr-tools/nip19';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { exportEncryptedZip } from 'src/services/ExportZipService';
+import ExportDialog from 'src/components/ExportDialog.vue';
 
 const $q = useQuasar();
 const pubkey = ref('');
@@ -26,15 +27,29 @@ async function copyToClipboard(text: string) {
   $q.notify({ type: 'positive', message: 'Copied to clipboard' });
 }
 
-async function onExportClick() {
-  const password = window.prompt('Choose a password for the ZIP file:');
-  if (!password) return;
+const showExportDialog = ref(false);
+const defaultExportFilename = computed(() => {
+  const base = alias.value?.trim() || 'nostr-account';
+  return base.endsWith('.zip') ? base : `${base}.zip`;
+});
 
+function onExportClick() {
+  showExportDialog.value = true;
+}
+
+async function onExportConfirm(payload: { password: string; filename: string }) {
+  showExportDialog.value = false;
+  const { password, filename } = payload;
   await exportEncryptedZip({
     password,
     alias: alias.value,
     pubkey: pubkey.value,
     privKey: privKey.value,
+    filename,
+  });
+  $q.notify({
+    type: 'positive',
+    message: 'Export started. You will be prompted to save the file.',
   });
 }
 </script>
@@ -61,7 +76,7 @@ async function onExportClick() {
             <q-item v-ripple tag="label">
               <q-item-section>
                 <div class="q-gutter-lg">
-                  <q-input class="text-input" label="Alias" model-value="alias" />
+                  <q-input v-model="alias" class="text-input" label="Alias" />
                   <q-input v-model="pubkey" class="text-input" label="Public Key" readonly>
                     <template v-slot:prepend>
                       <q-icon name="keys" />
@@ -104,6 +119,11 @@ async function onExportClick() {
             </q-item>
           </q-list>
         </div>
+        <ExportDialog
+          v-model="showExportDialog"
+          :default-filename="defaultExportFilename"
+          @confirm="onExportConfirm"
+        />
       </div>
     </div>
   </q-page>
