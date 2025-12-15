@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@quasar/extras": "^1.16.4",
+    "@zip.js/zip.js": "^2.8.11",
     "axios": "^1.2.1",
     "nostr-tools": "^2.19.3",
     "pinia": "^3.0.1",
