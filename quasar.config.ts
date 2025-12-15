@@ -222,14 +222,11 @@ export default defineConfig((ctx) => {
     bex: {
       extendBexScriptsConf(esbuildConf) {},
       extendBexManifestJson(json) {
-        // Ensure the downloads permission is present so saving via the
-        // browser downloads API adds entries to the Downloads list/history.
-        // Do NOT edit src-bex/manifest.json directly; configure here instead.
-        type ManifestLike = { permissions?: string[] };
-        const m = json as ManifestLike;
-        const perms = new Set<string>([...((m.permissions ?? []) as string[])]);
-        perms.add('downloads');
-        m.permissions = Array.from(perms);
+        // Optional: only if you plan to *open* downloaded files via the API
+        // (most extensions don't need this)
+        // if (!json.permissions.includes('downloads.open')) {
+        //   json.permissions.push('downloads.open');
+        // }
       },
 
       /**

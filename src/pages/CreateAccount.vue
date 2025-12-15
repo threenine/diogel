@@ -2,9 +2,15 @@
 import { generateSecretKey, getPublicKey } from 'nostr-tools';
 import * as nip19 from 'nostr-tools/nip19';
 import { computed, ref } from 'vue';
-import { useQuasar } from 'quasar';
-import { exportEncryptedZip } from 'src/services/ExportZipService';
+import { exportFile, useQuasar } from 'quasar';
 import ExportDialog from 'src/components/ExportDialog.vue';
+import { BlobWriter, configure, TextReader, ZipWriter } from '@zip.js/zip.js';
+
+// This required here to disable web workers for @zip.js
+// couldn't figure out how to instantiate this in the quasar.config
+configure({
+  useWebWorkers: false,
+});
 
 const $q = useQuasar();
 const pubkey = ref('');
@@ -12,6 +18,7 @@ const privKey = ref('');
 const alias = ref('');
 const showPrivKey = ref(false);
 const showGenerateKeys = ref(false);
+const ZIP_MIME_TYPE = 'application/zip';
 
 function generateKey() {
   const sk = generateSecretKey();
@@ -33,24 +40,63 @@ const defaultExportFilename = computed(() => {
   return base.endsWith('.zip') ? base : `${base}.zip`;
 });
 
-function onExportClick() {
-  showExportDialog.value = true;
+type ExportPayload = { password: string; filename: string };
+
+const trimmedAlias = computed(() => alias.value.trim());
+
+function notifyMissingAlias() {
+  $q.notify({ type: 'negative', message: 'Please enter an alias before exporting.' });
 }
 
-async function onExportConfirm(payload: { password: string; filename: string }) {
-  showExportDialog.value = false;
-  const { password, filename } = payload;
-  await exportEncryptedZip({
-    password,
-    alias: alias.value,
-    pubkey: pubkey.value,
-    privKey: privKey.value,
-    filename,
-  });
+function notifyExportStarted() {
   $q.notify({
     type: 'positive',
     message: 'Export started. You will be prompted to save the file.',
   });
+}
+
+function onExportClick() {
+  if (!trimmedAlias.value) {
+    notifyMissingAlias();
+    return;
+  }
+  showExportDialog.value = true;
+}
+
+async function createEncryptedZipBytes(password: string, aliasText: string) {
+  const writer = new ZipWriter(new BlobWriter(ZIP_MIME_TYPE), {
+    password,
+    zipCrypto: true, // enables encryption
+  });
+
+  const lines = [
+    `Alias: ${aliasText}`,
+    `Exported at: ${new Date().toISOString()}`,
+    '',
+    '== Nostr Keys ==',
+    `Public:  ${pubkey.value}`,
+    `Private: ${privKey.value}`,
+    '',
+    'Notes:',
+    '- Keep this file secure.',
+  ];
+
+  const content = lines.join('\n') + '\n'; // trailing newline is nice for POSIX tools
+  await writer.add(`${aliasText}.txt`, new TextReader(content));
+
+  const zipBlob = await writer.close();
+  return await zipBlob.arrayBuffer();
+}
+
+async function onExportConfirm(payload: ExportPayload) {
+  showExportDialog.value = false;
+
+  const zipBytes = await createEncryptedZipBytes(payload.password, trimmedAlias.value);
+
+  const didStartExport = exportFile(payload.filename, zipBytes, ZIP_MIME_TYPE);
+  if (!didStartExport) return;
+
+  notifyExportStarted();
 }
 </script>
 
@@ -76,7 +122,13 @@ async function onExportConfirm(payload: { password: string; filename: string }) 
             <q-item v-ripple tag="label">
               <q-item-section>
                 <div class="q-gutter-lg">
-                  <q-input v-model="alias" class="text-input" label="Alias" />
+                  <q-input
+                    v-model="alias"
+                    :rules="[(v) => !!String(v ?? '').trim() || 'Alias is required']"
+                    class="text-input"
+                    label="Alias"
+                    lazy-rules
+                  />
                   <q-input v-model="pubkey" class="text-input" label="Public Key" readonly>
                     <template v-slot:prepend>
                       <q-icon name="keys" />
