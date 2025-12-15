@@ -35,10 +35,6 @@ async function copyToClipboard(text: string) {
 }
 
 const showExportDialog = ref(false);
-const defaultExportFilename = computed(() => {
-  const base = alias.value?.trim() || 'nostr-account';
-  return base.endsWith('.zip') ? base : `${base}.zip`;
-});
 
 type ExportPayload = { password: string; filename: string };
 
@@ -128,7 +124,11 @@ async function onExportConfirm(payload: ExportPayload) {
                     class="text-input"
                     label="Alias"
                     lazy-rules
-                  />
+                  >
+                    <template v-slot:prepend>
+                      <q-icon name="person" />
+                    </template>
+                  </q-input>
                   <q-input v-model="pubkey" class="text-input" label="Public Key" readonly>
                     <template v-slot:prepend>
                       <q-icon name="keys" />
