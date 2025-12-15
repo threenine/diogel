@@ -8,13 +8,17 @@ const $q = useQuasar();
 const pubkey = ref('');
 const privKey = ref('');
 const showPrivKey = ref(false);
+const showGenerateKeys = ref(false);
 
 function generateKey() {
   const sk = generateSecretKey();
   privKey.value = nip19.nsecEncode(sk);
   pubkey.value = nip19.npubEncode(getPublicKey(sk));
 }
-
+function onGenerateKeysClick() {
+  showGenerateKeys.value = true;
+  generateKey();
+}
 async function copyToClipboard(text: string) {
   await navigator.clipboard.writeText(text);
   $q.notify({ type: 'positive', message: 'Copied to clipboard' });
@@ -26,10 +30,16 @@ async function copyToClipboard(text: string) {
     <div class="settings-container">
       <div class="shadow-0">
         <q-toolbar>
-          <q-toolbar-title>General</q-toolbar-title>
+          <q-toolbar-title>Create Nostr Account</q-toolbar-title>
         </q-toolbar>
-        <div class="q-pa-lg-lg full-width settings-form rounded-borders">
-          <q-btn label="Generate Keys" @click="generateKey" />
+        <div class="flex justify-center q-pa-lg-lg full-width settings-form rounded-borders">
+          <q-btn label="Generate Keys" @click="onGenerateKeysClick" />
+        </div>
+        <div
+          v-if="showGenerateKeys"
+          id="generate-keys"
+          class="q-pa-lg-lg full-width settings-form rounded-borders"
+        >
           <q-list>
             <q-item v-ripple tag="label">
               <q-item-section>
@@ -70,7 +80,6 @@ async function copyToClipboard(text: string) {
               </q-item-section>
             </q-item>
           </q-list>
-
         </div>
       </div>
     </div>
