@@ -8,14 +8,11 @@
               <q-item v-ripple clickable to="/">
                 <q-item-section>Home</q-item-section>
               </q-item>
-              <q-item v-ripple :to="{ name: 'settings'}" clickable>
+              <q-item v-ripple :to="{ name: 'settings' }" clickable>
                 <q-item-section avatar>
-                  <q-icon name="settings" />
+                  <q-icon name="settings" size="sm" />
                 </q-item-section>
-
-                <q-item-section>
-                  Extension Settings
-                </q-item-section>
+                <q-item-section> Extension Settings </q-item-section>
               </q-item>
             </q-list>
           </q-menu>
