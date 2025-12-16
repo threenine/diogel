@@ -5,7 +5,7 @@ import { computed, ref } from 'vue';
 import { exportFile, useQuasar } from 'quasar';
 import ExportDialog from 'src/components/ExportDialog.vue';
 import { BlobWriter, configure, TextReader, ZipWriter } from '@zip.js/zip.js';
-import type { StoredKeys } from 'src/types';
+import type { StoredKey } from 'src/types';
 import { saveKeyChromeLocalStorage } from 'src/services/ChromeLocal';
 import { useRouter } from 'vue-router';
 
@@ -100,7 +100,7 @@ async function onExportConfirm(payload: ExportPayload) {
 }
 
 async function saveKey() {
-  const payload: StoredKeys = {
+  const payload: StoredKey = {
     alias: trimmedAlias.value,
     pubkey: pubkey.value,
     privKey: privKey.value,

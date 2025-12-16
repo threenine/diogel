@@ -3,13 +3,16 @@ import { ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { getStoredKeysChromeLocalStorage } from 'src/services/ChromeLocal';
 import { useRoute } from 'vue-router';
+import type { StoredKey } from 'src/types';
 
 const $q = useQuasar();
-const alias = ref('');
-const pubkey = ref('');
-const privKey = ref('');
-const savedAt = ref('');
 const showPrivKey = ref(false);
+const storedKey = ref<StoredKey>({
+  alias: '',
+  pubkey: '',
+  privKey: '',
+  savedAt: '',
+});
 const route = useRoute();
 watch(
   () => route.params.alias,
@@ -20,21 +23,13 @@ watch(
 );
 
 async function loadStoredKeys() {
-  const storedData = await getStoredKeysChromeLocalStorage();
+  const storedKeys = await getStoredKeysChromeLocalStorage();
+  const requestedAlias = String(route.params.alias ?? '');
 
-  // Add near the top of the script, after other composables
+  const account = Object.values(storedKeys).find((item) => item.alias === requestedAlias);
+  if (!account) return;
 
-  // Then in loadStoredKeys, change the line to:
-  const key = Object.keys(storedData).find((k) => storedData[k]!.alias === route.params.alias);
-  if (key !== undefined) {
-    const accountData = storedData[key];
-    if (accountData !== undefined) {
-      alias.value = accountData.alias;
-      pubkey.value = accountData.pubkey;
-      privKey.value = accountData.privKey;
-      savedAt.value = accountData.savedAt;
-    }
-  }
+  storedKey.value = { ...account };
 }
 
 async function copyToClipboard(text: string) {
@@ -55,12 +50,22 @@ async function copyToClipboard(text: string) {
             <q-item v-ripple tag="label">
               <q-item-section>
                 <div class="q-gutter-lg">
-                  <q-input v-model="alias" class="text-input" label="Profile Name" readonly>
+                  <q-input
+                    v-model="storedKey.alias"
+                    class="text-input"
+                    label="Profile Name"
+                    readonly
+                  >
                     <template v-slot:prepend>
                       <q-icon name="person" />
                     </template>
                   </q-input>
-                  <q-input v-model="pubkey" class="text-input" label="Public Key" readonly>
+                  <q-input
+                    v-model="storedKey.pubkey"
+                    class="text-input"
+                    label="Public Key"
+                    readonly
+                  >
                     <template v-slot:prepend>
                       <q-icon name="keys" />
                     </template>
@@ -68,12 +73,12 @@ async function copyToClipboard(text: string) {
                       <q-icon
                         class="cursor-pointer"
                         name="content_copy"
-                        @click="copyToClipboard(pubkey)"
+                        @click="copyToClipboard(storedKey.pubkey)"
                       />
                     </template>
                   </q-input>
                   <q-input
-                    v-model="privKey"
+                    v-model="storedKey.privKey"
                     :type="showPrivKey ? 'text' : 'password'"
                     class="text-input"
                     label="Private Key"
@@ -91,11 +96,11 @@ async function copyToClipboard(text: string) {
                       <q-icon
                         class="cursor-pointer q-ml-sm"
                         name="content_copy"
-                        @click="copyToClipboard(privKey)"
+                        @click="copyToClipboard(storedKey.privKey)"
                       />
                     </template>
                   </q-input>
-                  <q-input v-model="savedAt" class="text-input" label="Saved At" readonly>
+                  <q-input v-model="storedKey.savedAt" class="text-input" label="Saved At" readonly>
                     <template v-slot:prepend>
                       <q-icon name="schedule" />
                     </template>

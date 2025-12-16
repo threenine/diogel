@@ -3,7 +3,7 @@ export interface DropdownItem<T = string | number> {
   value: T;
 }
 
-export type StoredKeys = {
+export type StoredKey = {
   alias: string;
   pubkey: string;
   privKey: string; // nsec...

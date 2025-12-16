@@ -8,8 +8,14 @@
               <q-item v-ripple clickable to="/">
                 <q-item-section>Home</q-item-section>
               </q-item>
-              <q-item v-ripple clickable to="settings">
-                <q-item-section avatar>Extension Settings</q-item-section>
+              <q-item v-ripple :to="{ name: 'settings'}" clickable>
+                <q-item-section avatar>
+                  <q-icon name="settings" />
+                </q-item-section>
+
+                <q-item-section>
+                  Extension Settings
+                </q-item-section>
               </q-item>
             </q-list>
           </q-menu>
@@ -26,12 +32,12 @@
 </template>
 
 <script setup lang="ts">
-import type { DropdownItem, StoredKeys } from 'src/types';
+import type { DropdownItem, StoredKey } from 'src/types';
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
 import { getStoredKeysChromeLocalStorage } from 'src/services/ChromeLocal';
 import { computed, onMounted, ref } from 'vue';
 
-const storedKeys = ref<StoredKeys[]>([]);
+const storedKeys = ref<StoredKey[]>([]);
 
 onMounted(async () => {
   const storedKeysMap = await getStoredKeysChromeLocalStorage();
