@@ -29,18 +29,19 @@
 import type { DropdownItem, StoredKeys } from 'src/types';
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
 import { getStoredKeysChromeLocalStorage } from 'src/services/ChromeLocal';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 const storedKeys = ref<StoredKeys[]>([]);
 
 onMounted(async () => {
   const storedKeysMap = await getStoredKeysChromeLocalStorage();
   storedKeys.value = Object.values(storedKeysMap);
-  console.log(storedKeys.value);
 });
-const items: DropdownItem[] = [
-  { label: 'Home', value: '/' },
-  { label: 'Profile', value: 'profile' },
-  { label: 'Settings', value: 'settings' },
-];
+
+const items = computed<DropdownItem[]>(() => {
+  return storedKeys.value.map((key) => ({
+    label: key.alias,
+    value: key.pubkey,
+  }));
+});
 </script>

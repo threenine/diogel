@@ -110,16 +110,15 @@ const computedOptions = computed<DropdownItem[]>(() => {
   const seen = new Set<string | number>();
   const out: DropdownItem[] = [];
 
-  if (props.includeCreateOption) {
-    out.push(CREATE_OPTION.value);
-    seen.add(CREATE_OPTION.value.value);
-  }
-
   for (const it of props.items) {
     if (!seen.has(it.value)) {
       out.push(it);
       seen.add(it.value);
     }
+  }
+  if (props.includeCreateOption) {
+    out.push(CREATE_OPTION.value);
+    seen.add(CREATE_OPTION.value.value);
   }
   return out;
 });
