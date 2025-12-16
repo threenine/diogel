@@ -123,7 +123,7 @@ const computedOptions = computed<DropdownItem[]>(() => {
   return out;
 });
 
-// Local state to manage defaulting to Create option when not provided
+// Local state to manage defaulting to create option when not provided
 const innerValue = ref<string | number | null>(
   props.modelValue ?? (props.includeCreateOption ? props.createValue : null),
 );
@@ -143,7 +143,7 @@ watch(innerValue, (v) => {
   if (v === props.createValue) {
     router.push({ name: 'create-account' }).catch(() => {});
   } else if (v !== null && v !== undefined) {
-    router.push({ name: 'edit-account' }).catch(() => {});
+    router.push({ name: 'edit-account', params: { alias: v } }).catch(() => {});
   }
 });
 </script>

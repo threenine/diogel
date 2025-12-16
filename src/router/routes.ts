@@ -21,9 +21,10 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/CreateAccount.vue'),
       },
       {
-        path: 'edit-account',
+        path: 'edit-account/:alias?',
         name: 'edit-account',
         component: () => import('pages/EditAccount.vue'),
+        props: true,
       },
     ],
   },

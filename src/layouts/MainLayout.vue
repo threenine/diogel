@@ -41,7 +41,7 @@ onMounted(async () => {
 const items = computed<DropdownItem[]>(() => {
   return storedKeys.value.map((key) => ({
     label: key.alias,
-    value: key.pubkey,
+    value: key.alias,
   }));
 });
 </script>
