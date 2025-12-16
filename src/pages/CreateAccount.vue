@@ -5,6 +5,9 @@ import { computed, ref } from 'vue';
 import { exportFile, useQuasar } from 'quasar';
 import ExportDialog from 'src/components/ExportDialog.vue';
 import { BlobWriter, configure, TextReader, ZipWriter } from '@zip.js/zip.js';
+import type { StoredKeys } from 'src/types';
+import { saveKeyChromeLocalStorage } from 'src/services/ChromeLocal';
+import { useRouter } from 'vue-router';
 
 // This required here to disable web workers for @zip.js
 // couldn't figure out how to instantiate this in the quasar.config
@@ -13,6 +16,7 @@ configure({
 });
 
 const $q = useQuasar();
+const router = useRouter();
 const pubkey = ref('');
 const privKey = ref('');
 const alias = ref('');
@@ -20,14 +24,14 @@ const showPrivKey = ref(false);
 const showGenerateKeys = ref(false);
 const ZIP_MIME_TYPE = 'application/zip';
 
-function generateKey() {
+function generateKeys() {
   const sk = generateSecretKey();
   privKey.value = nip19.nsecEncode(sk);
   pubkey.value = nip19.npubEncode(getPublicKey(sk));
 }
 function onGenerateKeysClick() {
   showGenerateKeys.value = true;
-  generateKey();
+  generateKeys();
 }
 async function copyToClipboard(text: string) {
   await navigator.clipboard.writeText(text);
@@ -94,6 +98,17 @@ async function onExportConfirm(payload: ExportPayload) {
 
   notifyExportStarted();
 }
+
+async function saveKey() {
+  const payload: StoredKeys = {
+    alias: trimmedAlias.value,
+    pubkey: pubkey.value,
+    privKey: privKey.value,
+    savedAt: new Date().toISOString(),
+  };
+  const result = await saveKeyChromeLocalStorage(payload);
+  if (result) await router.push({ name: 'edit-account' });
+}
 </script>
 
 <template>
@@ -122,11 +137,26 @@ async function onExportConfirm(payload: ExportPayload) {
                     v-model="alias"
                     :rules="[(v) => !!String(v ?? '').trim() || 'Alias is required']"
                     class="text-input"
-                    label="Alias"
+                    label="Profile Name"
                     lazy-rules
                   >
                     <template v-slot:prepend>
                       <q-icon name="person" />
+                    </template>
+                    <template v-slot:append>
+                      <q-icon class="cursor-pointer q-ml-xs" name="help_outline">
+                        <q-tooltip
+                          :offset="[0, 10]"
+                          anchor="bottom end"
+                          class="text-body1 text-primary"
+                          self="top middle"
+                        >
+                          Enter a short account name you'll use to identify these keys with a later
+                          stage.<br />
+                          This will not be associated with the account publicly but is rather a name
+                          <br />used for your own purposes.
+                        </q-tooltip>
+                      </q-icon>
                     </template>
                   </q-input>
                   <q-input v-model="pubkey" class="text-input" label="Public Key" readonly>
@@ -166,6 +196,16 @@ async function onExportConfirm(payload: ExportPayload) {
                 </div>
                 <div class="row justify-end q-gutter-sm q-mt-lg">
                   <q-btn dense label="Export" @click="onExportClick" />
+                </div>
+                <div class="row q-gutter-lg items-center q-mt-lg">
+                  <q-btn
+                    class="full-width"
+                    color="primary"
+                    dense
+                    label="Save"
+                    size="lg"
+                    @click="saveKey"
+                  />
                 </div>
               </q-item-section>
             </q-item>
