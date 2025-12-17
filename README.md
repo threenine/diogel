@@ -1,19 +1,18 @@
-# Quasar App (nostr-ext)
+# Diogel 
 
-A Quasar Project
+A Nostr Account and Signer browser extension
 
 ## Install the dependencies
 
 ```bash
-yarn
-# or
+
 npm install
 ```
 
 ### Start the app in development mode (hot-code reloading, error reporting, etc.)
 
 ```bash
-quasar dev
+quasar dev -m bex -T chrome
 ```
 
 ### Lint the files

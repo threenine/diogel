@@ -6,7 +6,7 @@ import { exportFile, useQuasar } from 'quasar';
 import ExportDialog from 'src/components/ExportDialog.vue';
 import { BlobWriter, configure, TextReader, ZipWriter } from '@zip.js/zip.js';
 import type { StoredKey } from 'src/types';
-import { saveKeyChromeLocalStorage } from 'src/services/ChromeLocal';
+import { saveKeyChromeLocalStorage } from 'src/services/chrome-local';
 import { useRouter } from 'vue-router';
 
 // This required here to disable web workers for @zip.js

@@ -105,28 +105,29 @@ const CREATE_OPTION = computed<DropdownItem>(() => ({
   value: props.createValue,
 }));
 
-// Build options list ensuring the Create option is present and first
+// Build options list ensuring the Create option is present and listed first
 const computedOptions = computed<DropdownItem[]>(() => {
-  const seen = new Set<string | number>();
   const out: DropdownItem[] = [];
+  const seen = new Set<string | number>();
 
+  // Put the Create option first if requested
+  if (props.includeCreateOption) {
+    out.push(CREATE_OPTION.value);
+    seen.add(CREATE_OPTION.value.value);
+  }
+
+  // Then append the provided items, de-duped
   for (const it of props.items) {
     if (!seen.has(it.value)) {
       out.push(it);
       seen.add(it.value);
     }
   }
-  if (props.includeCreateOption) {
-    out.push(CREATE_OPTION.value);
-    seen.add(CREATE_OPTION.value.value);
-  }
   return out;
 });
 
-// Local state to manage defaulting to create option when not provided
-const innerValue = ref<string | number | null>(
-  props.modelValue ?? (props.includeCreateOption ? props.createValue : null),
-);
+// Local state: don't preselect Create by default so it remains clickable
+const innerValue = ref<string | number | null>(props.modelValue ?? null);
 
 watch(
   () => props.modelValue,

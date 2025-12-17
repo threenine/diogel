@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import { getStoredKeysChromeLocalStorage } from 'src/services/ChromeLocal';
+import { getStoredKeysChromeLocalStorage } from 'src/services/chrome-local';
 import { useRoute } from 'vue-router';
 import type { StoredKey } from 'src/types';
 

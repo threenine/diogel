@@ -31,7 +31,7 @@
 <script setup lang="ts">
 import type { DropdownItem, StoredKey } from 'src/types';
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
-import { getStoredKeysChromeLocalStorage } from 'src/services/ChromeLocal';
+import { getStoredKeysChromeLocalStorage } from 'src/services/chrome-local';
 import { computed, onMounted, ref } from 'vue';
 
 const storedKeys = ref<StoredKey[]>([]);
