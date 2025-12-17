@@ -105,23 +105,23 @@ const CREATE_OPTION = computed<DropdownItem>(() => ({
   value: props.createValue,
 }));
 
-// Build options list ensuring the Create option is present and listed first
+// Build options list ensuring the Create option is present and listed last
 const computedOptions = computed<DropdownItem[]>(() => {
   const out: DropdownItem[] = [];
   const seen = new Set<string | number>();
 
-  // Put the Create option first if requested
-  if (props.includeCreateOption) {
-    out.push(CREATE_OPTION.value);
-    seen.add(CREATE_OPTION.value.value);
-  }
-
-  // Then append the provided items, de-duped
+  // First, append provided items excluding any that match the create value
   for (const it of props.items) {
+    if (it.value === CREATE_OPTION.value.value) continue; // ensure Create isn't in the middle
     if (!seen.has(it.value)) {
       out.push(it);
       seen.add(it.value);
     }
+  }
+
+  // Finally, append the Create option if requested so it is always last
+  if (props.includeCreateOption) {
+    out.push(CREATE_OPTION.value);
   }
   return out;
 });

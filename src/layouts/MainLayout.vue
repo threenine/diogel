@@ -32,13 +32,35 @@
 import type { DropdownItem, StoredKey } from 'src/types';
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
 import { getStoredKeysChromeLocalStorage } from 'src/services/chrome-local';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
 
 const storedKeys = ref<StoredKey[]>([]);
 
-onMounted(async () => {
+async function loadStoredKeys() {
   const storedKeysMap = await getStoredKeysChromeLocalStorage();
   storedKeys.value = Object.values(storedKeysMap);
+}
+
+onMounted(async () => {
+  await loadStoredKeys();
+
+  // Refresh dropdown items whenever chrome local storage updates our keys
+  const handleStorageChange = (
+    changes: Record<string, chrome.storage.StorageChange>,
+    areaName: string,
+  ) => {
+    if (areaName !== 'local') return;
+    if ('nostr:keys' in changes) {
+      // Re-read full keys map so computed items update
+      void loadStoredKeys();
+    }
+  };
+
+  chrome.storage.onChanged.addListener(handleStorageChange);
+
+  onBeforeUnmount(() => {
+    chrome.storage.onChanged.removeListener(handleStorageChange);
+  });
 });
 
 const items = computed<DropdownItem[]>(() => {
