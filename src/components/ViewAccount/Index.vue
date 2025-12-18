@@ -22,7 +22,7 @@ async function copyToClipboard(text: string) {
         <q-input
           :model-value="storedKey.account.npub"
           class="text-input"
-          label="Public Key"
+          :label="$t('account.publicKey')"
           readonly
         >
           <template v-slot:prepend>
@@ -40,7 +40,7 @@ async function copyToClipboard(text: string) {
           :model-value="storedKey.account.nsec"
           :type="showPrivKey ? 'text' : 'password'"
           class="text-input"
-          label="Private Key"
+          :label="$t('account.privateKey')"
           readonly
         >
           <template v-slot:prepend>

@@ -29,42 +29,23 @@
 </template>
 
 <script setup lang="ts">
-import type { DropdownItem, StoredKey } from 'src/types';
+import type { DropdownItem } from 'src/types';
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
-import { get } from 'src/services/chrome-local';
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-const storedKeys = ref<StoredKey[]>([]);
+import { computed, onMounted } from 'vue';
+import { useAccountStore } from 'stores/account-store';
 
-async function loadStoredKeys() {
-  const storedKeysMap = await get();
-  storedKeys.value = Object.values(storedKeysMap);
-}
+const accountStore = useAccountStore();
 
 onMounted(async () => {
-  await loadStoredKeys();
-
-  // Refresh dropdown items whenever chrome local storage updates our keys
-  const handleStorageChange = (
-    changes: Record<string, chrome.storage.StorageChange>,
-    areaName: string,
-  ) => {
-    if (areaName !== 'local') return;
-    if ('nostr:keys' in changes) {
-      // Re-read full keys map so computed items update
-      void loadStoredKeys();
-    }
-  };
-
-  chrome.storage.onChanged.addListener(handleStorageChange);
-
-  onBeforeUnmount(() => {
-    chrome.storage.onChanged.removeListener(handleStorageChange);
-  });
+  // Ensure keys are loaded into the store state on boot
+  await accountStore.getKeys();
 });
 
 const items = computed<DropdownItem[]>(() => {
-  return storedKeys.value.map((key) => ({
+  // Directly map from the store's state.
+  // Since storedKeys is a Set, we use Array.from() or the spread operator.
+  return Array.from(accountStore.storedKeys).map((key) => ({
     label: key.alias,
     value: key.alias,
   }));

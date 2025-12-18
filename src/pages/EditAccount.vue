@@ -1,13 +1,14 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue';
 import { exportFile, useQuasar } from 'quasar';
-import { get } from 'src/services/chrome-local';
 import { useRoute } from 'vue-router';
 import type { StoredKey } from 'src/types';
 import ViewAccount from 'components/ViewAccount/Index.vue';
 import ExportDialog from 'components/ExportDialog.vue';
 import { createEncryptedZipBytes, ZIP_MIME_TYPE } from 'src/services/compressor';
+import { useAccountStore } from 'stores/account-store';
 
+const accountStore = useAccountStore();
 const $q = useQuasar();
 const storedKey = ref<StoredKey>({
   id: '',
@@ -25,17 +26,17 @@ const storedKey = ref<StoredKey>({
 const route = useRoute();
 watch(
   () => route.params.alias,
-  async () => {
-    await loadStoredKeys();
+  () => {
+    loadStoredKeys();
   },
   { immediate: true },
 );
 
-async function loadStoredKeys() {
-  const storedKeys = await get();
+function loadStoredKeys() {
+  const storedKeys = accountStore.storedKeys;
   const requestedAlias = String(route.params.alias ?? '');
 
-  const account = Object.values(storedKeys).find((item) => item.alias === requestedAlias);
+  const account = Array.from(storedKeys).find((item) => item.alias === requestedAlias);
   if (!account) return;
 
   storedKey.value = { ...account };

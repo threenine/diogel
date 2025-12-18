@@ -3,12 +3,13 @@ import { computed, ref } from 'vue';
 import { type QInput, useQuasar } from 'quasar';
 
 import type { StoredKey } from 'src/types';
-import { save } from 'src/services/chrome-local';
+import { useAccountStore } from 'src/stores/account-store';
 import { useRouter } from 'vue-router';
 import { generateKey } from 'src/services/generate-key';
 
 import ViewAccount from 'components/ViewAccount/Index.vue';
 
+const store = useAccountStore();
 const $q = useQuasar();
 const router = useRouter();
 const storedKey = ref<StoredKey>({
@@ -43,8 +44,9 @@ function notifyMissingAlias() {
 async function saveKey() {
   if (!validate()) return;
 
-  const result = await save(storedKey.value);
-  if (result) await router.push({ name: 'edit-account' });
+  const result = await store.saveKey(storedKey.value);
+
+  if (result) await router.push({ name: 'edit-account', params: { alias: storedKey.value.alias } });
 }
 
 function validate() {
@@ -84,7 +86,7 @@ function validate() {
                     v-model="storedKey.alias"
                     :rules="[(v) => !!String(v ?? '').trim() || 'Alias is required']"
                     class="text-input"
-                    label="Profile Name"
+                    :label="$t('account.profileName')"
                     lazy-rules
                   >
                     <template v-slot:prepend>
@@ -98,10 +100,7 @@ function validate() {
                           class="text-body1 text-primary"
                           self="top middle"
                         >
-                          Enter a short account name you'll use to identify these keys with a later
-                          stage.<br />
-                          This will not be associated with the account publicly but is rather a name
-                          <br />used for your own purposes.
+                          {{ $t('account.aliasToolTip') }}
                         </q-tooltip>
                       </q-icon>
                     </template>
