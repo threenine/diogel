@@ -12,7 +12,7 @@ export default {
     title: 'Create Nostr Account',
     tabs: {
       create: 'Create New Account',
-      import: 'Import Account',
+      import: 'Import Existing Account',
     },
     generateKeys: 'Generate Keys',
     importNsecLabel: 'NSEC Private Key',
