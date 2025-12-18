@@ -11,7 +11,7 @@ defineProps<{
 const showPrivKey = ref(false);
 async function copyToClipboard(text: string) {
   await navigator.clipboard.writeText(text);
-  $q.notify({ type: 'positive', message: 'Copied to clipboard' });
+  $q.notify({ type: 'positive', message: String($t('account.copySuccess')) });
 }
 </script>
 
