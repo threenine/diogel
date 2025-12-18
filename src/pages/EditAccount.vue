@@ -1,17 +1,26 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue';
-import { useQuasar } from 'quasar';
+import { exportFile, useQuasar } from 'quasar';
 import { get } from 'src/services/chrome-local';
 import { useRoute } from 'vue-router';
-import type { Account } from 'src/types';
+import type { StoredKey } from 'src/types';
+import ViewAccount from 'components/ViewAccount/Index.vue';
+import ExportDialog from 'components/ExportDialog.vue';
+import { createEncryptedZipBytes, ZIP_MIME_TYPE } from 'src/services/compressor';
 
 const $q = useQuasar();
-const showPrivKey = ref(false);
-const storedKey = ref<Account>({
+const storedKey = ref<StoredKey>({
+  id: '',
   alias: '',
-  pubkey: '',
-  privKey: '',
-  savedAt: '',
+  createdAt: '',
+  account: {
+    pubkey: '',
+    priKey: '',
+    npub: '',
+    nsec: '',
+    relays: [],
+    websites: [],
+  },
 });
 const route = useRoute();
 watch(
@@ -31,10 +40,32 @@ async function loadStoredKeys() {
 
   storedKey.value = { ...account };
 }
+function notifyExportStarted() {
+  $q.notify({
+    type: 'positive',
+    message: 'Export started. You will be prompted to save the file.',
+  });
+}
+const showExportDialog = ref(false);
 
-async function copyToClipboard(text: string) {
-  await navigator.clipboard.writeText(text);
-  $q.notify({ type: 'positive', message: 'Copied to clipboard' });
+type ExportPayload = { password: string; filename: string };
+function onExportClick() {
+  showExportDialog.value = true;
+}
+
+async function onExportConfirm(payload: ExportPayload) {
+  showExportDialog.value = false;
+
+  const zipBytes = await createEncryptedZipBytes(
+    payload.password,
+    payload.filename,
+    storedKey.value,
+  );
+
+  const didStartExport = exportFile(payload.filename, zipBytes, ZIP_MIME_TYPE);
+  if (!didStartExport) return;
+
+  notifyExportStarted();
 }
 </script>
 
@@ -60,51 +91,20 @@ async function copyToClipboard(text: string) {
                       <q-icon name="person" />
                     </template>
                   </q-input>
+                  <view-account :stored-key="storedKey" />
                   <q-input
-                    v-model="storedKey.pubkey"
+                    v-model="storedKey.createdAt"
                     class="text-input"
-                    label="Public Key"
+                    label="Saved At"
                     readonly
                   >
-                    <template v-slot:prepend>
-                      <q-icon name="keys" />
-                    </template>
-                    <template v-slot:append>
-                      <q-icon
-                        class="cursor-pointer"
-                        name="content_copy"
-                        @click="copyToClipboard(storedKey.pubkey)"
-                      />
-                    </template>
-                  </q-input>
-                  <q-input
-                    v-model="storedKey.privKey"
-                    :type="showPrivKey ? 'text' : 'password'"
-                    class="text-input"
-                    label="Private Key"
-                    readonly
-                  >
-                    <template v-slot:prepend>
-                      <q-icon name="keys" />
-                    </template>
-                    <template v-slot:append>
-                      <q-icon
-                        :name="showPrivKey ? 'visibility_off' : 'visibility'"
-                        class="cursor-pointer q-mr-sm"
-                        @click="showPrivKey = !showPrivKey"
-                      />
-                      <q-icon
-                        class="cursor-pointer q-ml-sm"
-                        name="content_copy"
-                        @click="copyToClipboard(storedKey.privKey)"
-                      />
-                    </template>
-                  </q-input>
-                  <q-input v-model="storedKey.savedAt" class="text-input" label="Saved At" readonly>
                     <template v-slot:prepend>
                       <q-icon name="schedule" />
                     </template>
                   </q-input>
+                </div>
+                <div class="row justify-end q-gutter-sm q-mt-lg">
+                  <q-btn dense label="Export" @click="onExportClick" />
                 </div>
               </q-item-section>
             </q-item>
@@ -112,6 +112,11 @@ async function copyToClipboard(text: string) {
         </div>
       </div>
     </div>
+    <ExportDialog
+      v-model="showExportDialog"
+      :alias="storedKey.alias.trim()"
+      @confirm="onExportConfirm"
+    />
   </q-page>
 </template>
 

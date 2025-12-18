@@ -1,8 +1,8 @@
 {
-  "name": "nostr-ext",
+  "name": "diogel",
   "version": "0.0.1",
   "description": "Privacy focused nostr extension",
-  "productName": "Privstr",
+  "productName": "Diogel",
   "author": "Gary Woodfine <annex-storage-slip@duck.com>",
   "type": "module",
   "private": true,

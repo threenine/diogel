@@ -1,4 +1,4 @@
-import type { Account, StoredKey } from 'src/types';
+import type { StoredKey } from 'src/types';
 
 const NOSTR_KEYS = 'nostr:keys' as const;
 const NOSTR_ACTIVE = 'nostr:active' as const;
@@ -29,8 +29,8 @@ function chromeSetLocal(items: Record<string, unknown>): Promise<void> {
   });
 }
 
-export async function get(): Promise<Record<string, Account>> {
-  const result = await chromeGetLocal<Record<string, Account>>([NOSTR_KEYS]);
+export async function get(): Promise<Record<string, StoredKey>> {
+  const result = await chromeGetLocal<Record<string, StoredKey>>([NOSTR_KEYS]);
   return result[NOSTR_KEYS] ?? {};
 }
 
