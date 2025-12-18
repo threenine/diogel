@@ -6,9 +6,25 @@
  *    If you don't need createBridge(), leave it as "import '#q-app/bex/background'".
  * 2. Do NOT import this file in multiple background scripts. Only in one!
  * 3. Import it in your background service worker (if available for your target browser).
- * You are a cunt
  */
 import { createBridge } from '#q-app/bex/background';
+import { finalizeEvent, nip04 } from 'nostr-tools';
+import type { StoredKey } from 'src/types';
+
+const NOSTR_KEYS = 'nostr:keys';
+const NOSTR_ACTIVE = 'nostr:active';
+
+async function getActiveAccount() {
+  const items = await chrome.storage.local.get([NOSTR_KEYS, NOSTR_ACTIVE]);
+  const activeAlias = items[NOSTR_ACTIVE];
+  const keys: Record<string, StoredKey> = items[NOSTR_KEYS] || {};
+
+  if (!activeAlias || !keys[activeAlias]) {
+    throw new Error('No active account found');
+  }
+
+  return keys[activeAlias].account;
+}
 
 function openExtension() {
   chrome.tabs.create(
@@ -53,6 +69,12 @@ declare module '@quasar/app-vite' {
     'storage.get': [string | undefined, any];
     'storage.set': [{ key: string; value: any }, void];
     'storage.remove': [string, void];
+    'nostr.getPublicKey': [{ origin: string }, any];
+    'nostr.signEvent': [{ event: any; origin: string }, any];
+    'nostr.getRelays': [{ origin: string }, any];
+    'nostr.nip04.encrypt': [{ pubkey: string; plaintext: string; origin: string }, any];
+    'nostr.nip04.decrypt': [{ pubkey: string; ciphertext: string; origin: string }, any];
+    'nostr.approval.respond': [{ approved: boolean }, void];
     /* eslint-enable @typescript-eslint/no-explicit-any */
   }
 }
@@ -106,6 +128,109 @@ bridge.on('storage.set', ({ payload: { key, value } }) => {
 bridge.on('storage.remove', ({ payload: key }) => {
   void chrome.storage.local.remove(key);
 });
+
+let approvalPromise: { resolve: (value: boolean) => void; reject: (reason?: any) => void } | null =
+  null;
+
+bridge.on('nostr.approval.respond', ({ payload: { approved } }) => {
+  if (approvalPromise) {
+    approvalPromise.resolve(approved);
+    approvalPromise = null;
+  }
+});
+
+async function requestApproval(origin: string): Promise<boolean> {
+  // If there's already a pending approval, we might want to queue it or reject it.
+  // For simplicity, let's reject it for now.
+  if (approvalPromise) {
+    throw new Error('Another approval request is already pending');
+  }
+
+  const url = chrome.runtime.getURL(`www/index.html#/approve?origin=${encodeURIComponent(origin)}`);
+
+  await chrome.windows.create({
+    url,
+    type: 'popup',
+    width: 400,
+    height: 600,
+  });
+
+  return new Promise((resolve, reject) => {
+    approvalPromise = { resolve, reject };
+
+    // Set a timeout to reject if no response
+    setTimeout(() => {
+      if (approvalPromise) {
+        approvalPromise.reject(new Error('Approval request timed out'));
+        approvalPromise = null;
+      }
+    }, 60000); // 1 minute timeout
+  });
+}
+
+bridge.on('nostr.getPublicKey', async ({ payload: { origin } }) => {
+  const approved = await requestApproval(origin);
+  if (!approved) {
+    throw new Error('User rejected the request');
+  }
+  const account = await getActiveAccount();
+  return account.pubkey;
+});
+
+bridge.on('nostr.signEvent', async ({ payload: { event, origin } }) => {
+  const approved = await requestApproval(origin);
+  if (!approved) {
+    throw new Error('User rejected the request');
+  }
+  const account = await getActiveAccount();
+  // Ensure the event has the correct pubkey
+  event.pubkey = account.pubkey;
+
+  // finalizeEvent from nostr-tools v2
+  const sk = hexToBytes(account.priKey);
+  return finalizeEvent(event, sk);
+});
+
+bridge.on('nostr.getRelays', async ({ payload: { origin } }) => {
+  const approved = await requestApproval(origin);
+  if (!approved) {
+    throw new Error('User rejected the request');
+  }
+  const account = await getActiveAccount();
+  const relays: Record<string, { read: boolean; write: boolean }> = {};
+  account.relays.forEach((r) => {
+    relays[r] = { read: true, write: true };
+  });
+  return relays;
+});
+
+bridge.on('nostr.nip04.encrypt', async ({ payload: { pubkey, plaintext, origin } }) => {
+  const approved = await requestApproval(origin);
+  if (!approved) {
+    throw new Error('User rejected the request');
+  }
+  const account = await getActiveAccount();
+  const sk = hexToBytes(account.priKey);
+  return await nip04.encrypt(sk, pubkey, plaintext);
+});
+
+bridge.on('nostr.nip04.decrypt', async ({ payload: { pubkey, ciphertext, origin } }) => {
+  const approved = await requestApproval(origin);
+  if (!approved) {
+    throw new Error('User rejected the request');
+  }
+  const account = await getActiveAccount();
+  const sk = hexToBytes(account.priKey);
+  return await nip04.decrypt(sk, pubkey, ciphertext);
+});
+
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+  }
+  return bytes;
+}
 // Usage:
 // bridge.send({
 //   event: 'storage.remove',

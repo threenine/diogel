@@ -28,4 +28,11 @@ export default {
     copySuccess: 'Copied to clipboard',
     created: 'Created',
   },
+  approval: {
+    title: 'Approval Request',
+    description: 'A website is requesting to access your public key.',
+    origin: 'Request from:',
+    approve: 'Approve',
+    reject: 'Reject',
+  },
 };

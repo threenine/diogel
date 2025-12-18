@@ -16,7 +16,7 @@
     },
     "web_accessible_resources": [
       {
-        "resources": ["*"],
+        "resources": ["assets/*", "nostr-provider.js"],
         "matches": ["*://*/*"]
       }
     ],
@@ -29,7 +29,8 @@
       {
         "matches": ["<all_urls>"],
         "css": ["assets/content.css"],
-        "js": ["my-content-script.ts"]
+        "js": ["content-script.ts", "nostr-provider.js"],
+        "run_at": "document_start"
       }
     ]
   },

@@ -19,11 +19,63 @@ const bridge = createBridge({ debug: false });
 
 declare module '@quasar/app-vite' {
   interface BexEventMap {
-
+    /* eslint-disable @typescript-eslint/no-explicit-any */
     'some.event': [{ someProp: string }, void];
-
+    'nostr.getPublicKey': [{ origin: string }, any];
+    'nostr.signEvent': [{ event: any; origin: string }, any];
+    'nostr.getRelays': [{ origin: string }, any];
+    'nostr.nip04.encrypt': [{ pubkey: string; plaintext: string; origin: string }, any];
+    'nostr.nip04.decrypt': [{ pubkey: string; ciphertext: string; origin: string }, any];
+    /* eslint-enable @typescript-eslint/no-explicit-any */
   }
 }
+
+// Inject the NIP-07 provider script
+const script = document.createElement('script');
+script.src = chrome.runtime.getURL('nostr-provider.js');
+script.dataset.name = 'Diogel';
+script.dataset.icon = chrome.runtime.getURL('icons/icon-128x128.png');
+(document.head || document.documentElement).appendChild(script);
+script.onload = () => {
+  script.remove();
+};
+
+// Listen for messages from the page and relay them to the background script
+window.addEventListener('message', (event) => {
+  if (event.source !== window || !event.data || event.data.type !== 'nostr-ext-request') {
+    return;
+  }
+
+  const { id, method, payload } = event.data;
+  const origin = window.location.origin;
+
+  bridge
+    .send({
+      event: `nostr.${method}`,
+      to: 'background',
+      payload: { ...payload, origin },
+    })
+    .then((result) => {
+      window.postMessage(
+        {
+          id,
+          response: true,
+          result,
+        },
+        '*',
+      );
+    })
+    .catch((error) => {
+      window.postMessage(
+        {
+          id,
+          response: true,
+          error: error.message || error,
+        },
+        '*',
+      );
+    });
+});
 
 // Hook into the bridge to listen for events sent from the other BEX parts.
 bridge.on('some.event', ({ payload }) => {
@@ -46,11 +98,12 @@ bridge.on('some.event', ({ payload }) => {
  *
  * To check connection status, access bridge.isConnected
  */
-bridge.connectToBackground()
+bridge
+  .connectToBackground()
   .then(() => {
     console.log('Connected to background');
   })
-  .catch(err => {
+  .catch((err) => {
     console.error('Failed to connect to background:', err);
   });
 
