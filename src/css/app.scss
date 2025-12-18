@@ -1,5 +1,47 @@
 // app global css in SCSS form
-html, body {
-  min-width: 400px; /* Adjust as needed (Max width ~800px) */
+html,
+body {
+  min-width: 600px; /* Adjust as needed (Max width ~800px) */
   min-height: 600px; /* Adjust as needed (Max height ~600px) */
+
+  // Apply page background & base text color from theme variables
+  background-color: var(--page-bg);
+  color: var(--text-color);
+}
+
+// Header & toolbar theming
+.q-header {
+  background-color: var(--header-bg);
+  color: var(--on-header);
+
+  .q-toolbar,
+  .q-toolbar__title,
+  .q-btn,
+  .q-btn__content,
+  .q-icon {
+    color: var(--on-header);
+  }
+}
+
+// Default surfaces
+.q-page-container {
+  background-color: var(--page-bg);
+}
+
+.q-drawer {
+  background-color: var(--surface);
+  color: var(--text-color);
+  border-right: 1px solid var(--border-color);
+}
+
+.settings-container {
+  margin-top: 50px;
+  display: flex;
+  justify-content: center;
+}
+
+.settings-form {
+  padding: 20px;
+  background-color: var(--settings-form-bg);
+  min-width: 580px;
 }

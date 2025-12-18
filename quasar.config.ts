@@ -20,7 +20,7 @@ export default defineConfig((ctx) => {
     // https://github.com/quasarframework/quasar/tree/dev/extras
     extras: [
       // 'ionicons-v4',
-      // 'mdi-v7',
+      'mdi-v7',
       // 'fontawesome-v6',
       // 'eva-icons',
       // 'themify',
@@ -103,9 +103,11 @@ export default defineConfig((ctx) => {
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#framework
     framework: {
-      config: {},
+      config: {
+        dark: 'auto',
+      },
 
-      // iconSet: 'material-icons', // Quasar icon set
+      iconSet: 'material-icons', // Quasar icon set
       // lang: 'en-US', // Quasar language pack
 
       // For special cases outside of where the auto-import strategy can have an impact
@@ -116,7 +118,7 @@ export default defineConfig((ctx) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: [],
+      plugins: ['Notify'],
     },
 
     // animations: 'all', // --- includes all animations
@@ -212,14 +214,28 @@ export default defineConfig((ctx) => {
       builder: {
         // https://www.electron.build/configuration/configuration
 
-        appId: 'nostr-ext',
+        appId: 'diogel',
       },
     },
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-browser-extensions/configuring-bex
     bex: {
       extendBexScriptsConf(esbuildConf) {},
-      extendBexManifestJson(json) {},
+      extendBexManifestJson(json) {
+        // @ts-expect-error: json is not typed correctly
+        json.permissions ||= [];
+        // @ts-expect-error: json is not typed correctly
+        if (!json.permissions.includes('storage')) {
+          // @ts-expect-error: json is not typed correctly
+          json.permissions.push('storage');
+        }
+
+        // Optional: only if you plan to *open* downloaded files via the API
+        // (most extensions don't need this)
+        // if (!json.permissions.includes('downloads.open')) {
+        //   json.permissions.push('downloads.open');
+        // }
+      },
 
       /**
        * The list of extra scripts (js/ts) not in your bex manifest that you want to
