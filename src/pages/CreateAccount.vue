@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { type QInput, useQuasar } from 'quasar';
 
 import type { StoredKey } from 'src/types';
-import { useAccountStore } from 'src/stores/account-store';
+import useAccountStore from 'src/stores/account-store';
 import { useRouter } from 'vue-router';
 import { generateKey } from 'src/services/generate-key';
 

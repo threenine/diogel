@@ -33,7 +33,7 @@ import type { DropdownItem } from 'src/types';
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
 
 import { computed, onMounted } from 'vue';
-import { useAccountStore } from 'stores/account-store';
+import useAccountStore from 'stores/account-store';
 
 const accountStore = useAccountStore();
 

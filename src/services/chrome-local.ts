@@ -33,6 +33,10 @@ export async function get(): Promise<Record<string, StoredKey>> {
   const result = await chromeGetLocal<Record<string, StoredKey>>([NOSTR_KEYS]);
   return result[NOSTR_KEYS] ?? {};
 }
+export async function getActive(): Promise<string | undefined> {
+  const result = await chromeGetLocal<string>([NOSTR_ACTIVE]);
+  return result[NOSTR_ACTIVE];
+}
 
 export async function save(storedKey: StoredKey): Promise<boolean> {
   const result = await chromeGetLocal<Record<string, StoredKey>>([NOSTR_KEYS]);

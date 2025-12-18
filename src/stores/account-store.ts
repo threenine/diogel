@@ -1,14 +1,20 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import type { StoredKey } from 'src/types';
-import { get, save } from 'src/services/chrome-local';
+import { get, getActive, save } from 'src/services/chrome-local';
 
-export const useAccountStore = defineStore('account', {
+const useAccountStore = defineStore('account', {
   state: () => ({
     storedKeys: new Set<StoredKey>(),
     isListening: false,
   }),
 
-  getters: {},
+  getters: {
+    activeKey: () => {
+      return async (): Promise<string | undefined> => {
+        return await getActive();
+      };
+    },
+  },
 
   actions: {
     async saveKey(key: StoredKey): Promise<boolean> {
@@ -32,6 +38,7 @@ export const useAccountStore = defineStore('account', {
     },
   },
 });
+export default useAccountStore;
 
 if (import.meta.hot) {
   import.meta.hot.accept(acceptHMRUpdate(useAccountStore, import.meta.hot));

@@ -6,7 +6,7 @@ import type { StoredKey } from 'src/types';
 import ViewAccount from 'components/ViewAccount/Index.vue';
 import ExportDialog from 'components/ExportDialog.vue';
 import { createEncryptedZipBytes, ZIP_MIME_TYPE } from 'src/services/compressor';
-import { useAccountStore } from 'stores/account-store';
+import useAccountStore from 'stores/account-store';
 
 const accountStore = useAccountStore();
 const $q = useQuasar();
