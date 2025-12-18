@@ -18,7 +18,7 @@
           </q-menu>
         </q-btn>
         <q-space />
-        <account-dropdown :items="items" :model="accountStore.activeKey"></account-dropdown>
+        <account-dropdown />
       </q-toolbar>
     </q-header>
 
@@ -29,25 +29,5 @@
 </template>
 
 <script setup lang="ts">
-import type { DropdownItem } from 'src/types';
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
-
-import { computed, onMounted } from 'vue';
-import useAccountStore from 'stores/account-store';
-
-const accountStore = useAccountStore();
-
-onMounted(async () => {
-  // Ensure keys are loaded into the store state on boot
-  await accountStore.getKeys();
-});
-
-const items = computed<DropdownItem[]>(() => {
-  // Directly map from the store's state.
-  // Since storedKeys is a Set, we use Array.from() or the spread operator.
-  return Array.from(accountStore.storedKeys).map((key) => ({
-    label: key.alias,
-    value: key.alias,
-  }));
-});
 </script>

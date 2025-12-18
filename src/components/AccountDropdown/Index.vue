@@ -43,7 +43,7 @@
 </template>
 
 <script lang="ts" setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import type { DropdownItem } from 'src/types';
 import useAccountStore from 'src/stores/account-store';
@@ -54,8 +54,6 @@ const props = withDefaults(
   defineProps<{
     /** External v-model */
     modelValue?: string | number | null;
-    /** Items to show in addition to the default Create option */
-    items?: DropdownItem[];
     /** Label for the q-select input */
     label?: string;
     /** Whether to include the always-available default option */
@@ -78,7 +76,6 @@ const props = withDefaults(
   }>(),
   {
     modelValue: null,
-    items: () => [],
     includeCreateOption: true,
     createLabel: 'Create Account',
     createValue: 'create-account',
@@ -107,29 +104,27 @@ const CREATE_OPTION = computed<DropdownItem>(() => ({
   value: props.createValue,
 }));
 
-// Build options list ensuring the Create option is present and listed last
+// Build options list from the account store ensuring the Create option is listed last
 const computedOptions = computed<DropdownItem[]>(() => {
-  const out: DropdownItem[] = [];
-  const seen = new Set<string | number>();
+  const fromStore: DropdownItem[] = Array.from(accountStore.storedKeys).map((key) => ({
+    label: key.alias,
+    value: key.alias,
+  }));
 
-  // First, append provided items excluding any that match the create value
-  for (const it of props.items) {
-    if (it.value === CREATE_OPTION.value.value) continue; // ensure Create isn't in the middle
-    if (!seen.has(it.value)) {
-      out.push(it);
-      seen.add(it.value);
-    }
-  }
-
-  // Finally, append the Create option if requested so it is always last
-  if (props.includeCreateOption) {
-    out.push(CREATE_OPTION.value);
-  }
-  return out;
+  // Ensure Create option is last
+  return props.includeCreateOption ? [...fromStore, CREATE_OPTION.value] : fromStore;
 });
 
-// Local state: don't preselect Create by default so it remains clickable
+// Local state: select activeKey if present; otherwise empty
 const innerValue = ref<string | number | null>(props.modelValue ?? accountStore.activeKey ?? null);
+
+// Load keys initially and start listening for changes (chrome.storage listener)
+onMounted(async () => {
+  await accountStore.getKeys();
+  accountStore.listenToStorageChanges();
+  // After loading, ensure selection reflects activeKey (or empty if none)
+  innerValue.value = props.modelValue ?? accountStore.activeKey ?? null;
+});
 
 watch(
   () => props.modelValue,
@@ -150,6 +145,17 @@ watch(innerValue, (v) => {
     router.push({ name: 'edit-account', params: { alias: v } }).catch(() => {});
   }
 });
+
+// Keep selection in sync with store.activeKey if it changes elsewhere
+watch(
+  () => accountStore.activeKey,
+  (alias) => {
+    // Only update if external model isn't explicitly controlling it
+    if (props.modelValue === null || props.modelValue === undefined) {
+      innerValue.value = alias ?? null;
+    }
+  },
+);
 </script>
 
 <style scoped></style>
