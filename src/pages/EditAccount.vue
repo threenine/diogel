@@ -3,11 +3,11 @@ import { ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { getStoredKeysChromeLocalStorage } from 'src/services/chrome-local';
 import { useRoute } from 'vue-router';
-import type { StoredKey } from 'src/types';
+import type { Account } from 'src/types';
 
 const $q = useQuasar();
 const showPrivKey = ref(false);
-const storedKey = ref<StoredKey>({
+const storedKey = ref<Account>({
   alias: '',
   pubkey: '',
   privKey: '',

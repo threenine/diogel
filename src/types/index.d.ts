@@ -3,9 +3,19 @@ export interface DropdownItem<T = string | number> {
   value: T;
 }
 
-export type StoredKey = {
+export type Account = {
   alias: string;
   pubkey: string;
-  privKey: string; // nsec...
-  savedAt: string;
+  privKey: string;
+  noub: string;
+  nsec: string;
+  relays: string[];
+  websites: string[];
 };
+
+export type StoredKey = {
+  id: string;
+  alias: string;
+  account: Account;
+  createdAt: string;
+}

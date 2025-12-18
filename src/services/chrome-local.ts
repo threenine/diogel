@@ -1,4 +1,4 @@
-import type { StoredKey } from 'src/types';
+import type { Account } from 'src/types';
 
 const NOSTR_KEYS = 'nostr:keys' as const;
 const NOSTR_ACTIVE_ALIAS = 'nostr:activeAlias' as const;
@@ -29,16 +29,16 @@ function chromeSetLocal(items: Record<string, unknown>): Promise<void> {
   });
 }
 
-export async function getStoredKeysChromeLocalStorage(): Promise<Record<string, StoredKey>> {
-  const result = await chromeGetLocal<Record<string, StoredKey>>([NOSTR_KEYS]);
+export async function getStoredKeysChromeLocalStorage(): Promise<Record<string, Account>> {
+  const result = await chromeGetLocal<Record<string, Account>>([NOSTR_KEYS]);
   return result[NOSTR_KEYS] ?? {};
 }
 
-export async function saveKeyChromeLocalStorage(payload: StoredKey): Promise<boolean> {
-  const result = await chromeGetLocal<Record<string, StoredKey>>([NOSTR_KEYS]);
+export async function saveKeyChromeLocalStorage(payload: Account): Promise<boolean> {
+  const result = await chromeGetLocal<Record<string, Account>>([NOSTR_KEYS]);
 
   const existing = result[NOSTR_KEYS];
-  const all: Record<string, StoredKey> = existing ?? {};
+  const all: Record<string, Account> = existing ?? {};
 
   all[payload.alias] = payload;
 

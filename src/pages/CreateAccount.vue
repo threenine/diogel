@@ -2,10 +2,10 @@
 import { generateSecretKey, getPublicKey } from 'nostr-tools';
 import * as nip19 from 'nostr-tools/nip19';
 import { computed, ref } from 'vue';
-import { exportFile, useQuasar } from 'quasar';
+import { exportFile, useQuasar, type QInput } from 'quasar';
 import ExportDialog from 'src/components/ExportDialog.vue';
 import { BlobWriter, configure, TextReader, ZipWriter } from '@zip.js/zip.js';
-import type { StoredKey } from 'src/types';
+import type { Account } from 'src/types';
 import { saveKeyChromeLocalStorage } from 'src/services/chrome-local';
 import { useRouter } from 'vue-router';
 
@@ -20,6 +20,7 @@ const router = useRouter();
 const pubkey = ref('');
 const privKey = ref('');
 const alias = ref('');
+const aliasInputRef = ref<QInput | null>(null);
 const showPrivKey = ref(false);
 const showGenerateKeys = ref(false);
 const ZIP_MIME_TYPE = 'application/zip';
@@ -45,7 +46,7 @@ type ExportPayload = { password: string; filename: string };
 const trimmedAlias = computed(() => alias.value.trim());
 
 function notifyMissingAlias() {
-  $q.notify({ type: 'negative', message: 'Please enter an alias before exporting.' });
+  $q.notify({ type: 'negative', message: 'Profile Name is required' });
 }
 
 function notifyExportStarted() {
@@ -56,10 +57,7 @@ function notifyExportStarted() {
 }
 
 function onExportClick() {
-  if (!trimmedAlias.value) {
-    notifyMissingAlias();
-    return;
-  }
+  if (!validate()) return;
   showExportDialog.value = true;
 }
 
@@ -100,7 +98,8 @@ async function onExportConfirm(payload: ExportPayload) {
 }
 
 async function saveKey() {
-  const payload: StoredKey = {
+  if (!validate()) return;
+  const payload: Account = {
     alias: trimmedAlias.value,
     pubkey: pubkey.value,
     privKey: privKey.value,
@@ -108,6 +107,15 @@ async function saveKey() {
   };
   const result = await saveKeyChromeLocalStorage(payload);
   if (result) await router.push({ name: 'edit-account' });
+}
+
+function validate() {
+  if (!trimmedAlias.value) {
+    notifyMissingAlias();
+    aliasInputRef.value?.focus();
+    return false;
+  }
+  return true;
 }
 </script>
 
@@ -134,6 +142,7 @@ async function saveKey() {
               <q-item-section>
                 <div class="q-gutter-lg">
                   <q-input
+                    ref="aliasInputRef"
                     v-model="alias"
                     :rules="[(v) => !!String(v ?? '').trim() || 'Alias is required']"
                     class="text-input"
