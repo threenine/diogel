@@ -13,7 +13,8 @@
     "test:run": "vitest run",
     "dev": "quasar dev",
     "build": "quasar build",
-    "postinstall": "quasar prepare"
+    "postinstall": "quasar prepare",
+    "build:chrome": "quasar build -m bex -T chrome"
   },
   "dependencies": {
     "@quasar/extras": "^1.16.4",

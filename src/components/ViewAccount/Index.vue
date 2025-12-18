@@ -2,8 +2,10 @@
 import type { StoredKey } from 'src/types';
 import { type QInput, useQuasar } from 'quasar';
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 const $q = useQuasar();
+const $t = useI18n().t;
 defineOptions({ name: 'ViewAccount' });
 defineProps<{
   storedKey: StoredKey;

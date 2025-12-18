@@ -10,9 +10,11 @@ import * as nip19 from 'nostr-tools/nip19';
 import { getPublicKey } from 'nostr-tools';
 
 import ViewAccount from 'components/ViewAccount/Index.vue';
+import { useI18n } from 'vue-i18n';
 
 const store = useAccountStore();
 const $q = useQuasar();
+const $t = useI18n().t;
 const router = useRouter();
 const storedKey = ref<StoredKey>({
   id: '',
@@ -96,10 +98,13 @@ async function saveKey() {
   try {
     await store.saveKey(storedKey.value);
     await router.push({ name: 'edit-account', params: { alias: storedKey.value.alias } });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : String($t('validation.keyPairExists'));
+
     $q.notify({
       type: 'negative',
-      message: error.message || String($t('validation.keyPairExists')),
+      message: errorMessage,
     });
   }
 }
