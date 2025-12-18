@@ -19,12 +19,12 @@
   >
     <!-- Custom option rendering to support themable icon for the Create option -->
     <template #option="scope">
-      <q-item v-bind="scope.itemProps">
+      <q-item class="no-wrap" v-bind="scope.itemProps">
         <q-item-section v-if="scope.opt.value === createValue" avatar>
           <q-icon name="add_circle" />
         </q-item-section>
         <q-item-section>
-          <q-item-label>
+          <q-item-label class="text-no-wrap">
             <!-- For the Create option, show the createLabel without the emoji; others show label as-is -->
             {{ scope.opt.value === createValue ? createLabel : scope.opt.label }}
           </q-item-label>
