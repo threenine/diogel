@@ -37,7 +37,9 @@ export async function getActive(): Promise<string | undefined> {
   const result = await chromeGetLocal<string>([NOSTR_ACTIVE]);
   return result[NOSTR_ACTIVE];
 }
-
+export async function setActive(alias: string): Promise<void> {
+  await chromeSetLocal({ [NOSTR_ACTIVE]: alias });
+}
 export async function save(storedKey: StoredKey): Promise<boolean> {
   const result = await chromeGetLocal<Record<string, StoredKey>>([NOSTR_KEYS]);
 

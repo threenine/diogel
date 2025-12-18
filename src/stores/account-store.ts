@@ -1,29 +1,29 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import type { StoredKey } from 'src/types';
-import { get, getActive, save } from 'src/services/chrome-local';
+import { get, getActive, save, setActive } from 'src/services/chrome-local';
 
 const useAccountStore = defineStore('account', {
   state: () => ({
     storedKeys: new Set<StoredKey>(),
     isListening: false,
+    activeKey: undefined as string | undefined,
   }),
 
-  getters: {
-    activeKey: () => {
-      return async (): Promise<string | undefined> => {
-        return await getActive();
-      };
-    },
-  },
+  getters: {},
 
   actions: {
-    async saveKey(key: StoredKey): Promise<boolean> {
-      const result = await save(key);
-      if (result) this.storedKeys.add(key);
+    async saveKey(storedKey: StoredKey): Promise<boolean> {
+      const result = await save(storedKey);
+      if (result) this.storedKeys.add(storedKey);
       return result;
     },
     async getKeys(): Promise<void> {
       this.storedKeys = new Set(Object.values(await get()));
+      this.activeKey = await getActive();
+    },
+    async setActiveKey(alias: string) {
+      this.activeKey = alias;
+      await setActive(alias);
     },
     listenToStorageChanges() {
       if (this.isListening) return;

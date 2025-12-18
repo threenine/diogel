@@ -18,7 +18,7 @@
           </q-menu>
         </q-btn>
         <q-space />
-        <account-dropdown :items="items" />
+        <account-dropdown :items="items" :model="accountStore.activeKey"></account-dropdown>
       </q-toolbar>
     </q-header>
 

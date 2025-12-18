@@ -46,7 +46,9 @@
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import type { DropdownItem } from 'src/types';
+import useAccountStore from 'src/stores/account-store';
 
+const accountStore = useAccountStore();
 defineOptions({ name: 'AccountDropdown' });
 const props = withDefaults(
   defineProps<{
@@ -127,7 +129,7 @@ const computedOptions = computed<DropdownItem[]>(() => {
 });
 
 // Local state: don't preselect Create by default so it remains clickable
-const innerValue = ref<string | number | null>(props.modelValue ?? null);
+const innerValue = ref<string | number | null>(props.modelValue ?? accountStore.activeKey ?? null);
 
 watch(
   () => props.modelValue,
@@ -144,6 +146,7 @@ watch(innerValue, (v) => {
   if (v === props.createValue) {
     router.push({ name: 'create-account' }).catch(() => {});
   } else if (v !== null && v !== undefined) {
+    accountStore.setActiveKey(v as string).catch(() => {});
     router.push({ name: 'edit-account', params: { alias: v } }).catch(() => {});
   }
 });
