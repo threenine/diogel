@@ -1,4 +1,4 @@
-# Diogel 
+# Diogel
 
 A Nostr Account and Signer browser extension
 

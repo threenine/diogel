@@ -12,7 +12,6 @@
 // to match your app's branding.
 // Tip: Use the "Theme Builder" on Quasar's documentation website.
 
-
 // Brand tokens (shared across light/dark)
 $primary: #ffa500; // Orange
 $secondary: #26a69a; // Teal
@@ -28,7 +27,7 @@ $info: #31ccec;
 $warning: #f2c037;
 
 $light-header: #898989;
-$dark-header: #353E43;
+$dark-header: #353e43;
 
 // Surface variables for both themes. These are consumed in app.scss
 .body--light {
@@ -36,7 +35,6 @@ $dark-header: #353E43;
   --page-bg: #f6f8fb;
   --text-color: #0b1220;
   --border-color: rgba(0, 0, 0, 0.12);
-
 
   // App chrome (header/toolbars)
   --header-bg: $light-header; // deep blue header background
@@ -58,8 +56,4 @@ $dark-header: #353E43;
 
   // Configuration forms
   --settings-form-bg: #242424;
-
 }
-
-
-

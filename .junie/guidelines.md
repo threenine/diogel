@@ -50,14 +50,16 @@ framework wired up. You can still write and run lightweight tests immediately us
 
 - One-off test execution (demonstrated and verified):
     1. Create a temporary file at the project root, for example `tmp-sample.test.mjs` with:
+
        ```js
-       import test from 'node:test'
-       import assert from 'node:assert/strict'
+       import test from 'node:test';
+       import assert from 'node:assert/strict';
   
        test('math sanity', () => {
-         assert.equal(1 + 1, 2)
-       })
+         assert.equal(1 + 1, 2);
+       });
        ```
+
     2. Run it: `node --test tmp-sample.test.mjs`
         - Verified output (example):
             - tests 1, pass 1, fail 0

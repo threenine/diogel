@@ -5,17 +5,19 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useQuasar } from 'quasar';
+
 const $q = useQuasar();
 
-defineOptions({name: 'ThemeSwitch'})
+defineOptions({ name: 'ThemeSwitch' });
 
- withDefaults(
+withDefaults(
   defineProps<{
     size?: string;
-  }>(), {
-    size: 'xl'
-  }
-)
+  }>(),
+  {
+    size: 'xl',
+  },
+);
 const checked = computed({
   get: () => $q.dark.isActive,
   set: (v: boolean) => $q.dark.set(v),

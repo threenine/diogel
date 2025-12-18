@@ -17,4 +17,4 @@ export type StoredKey = {
   alias: string;
   account: Account;
   createdAt: string;
-}
+};
