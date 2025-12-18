@@ -12,10 +12,14 @@ const useAccountStore = defineStore('account', {
   getters: {},
 
   actions: {
-    async saveKey(storedKey: StoredKey): Promise<boolean> {
-      const result = await save(storedKey);
-      if (result) this.storedKeys.add(storedKey);
-      return result;
+    async saveKey(storedKey: StoredKey): Promise<void> {
+      try {
+        await save(storedKey);
+        this.storedKeys.add(storedKey);
+      } catch (error) {
+        console.error('Failed to save key:', error);
+        throw error;
+      }
     },
     async getKeys(): Promise<void> {
       this.storedKeys = new Set(Object.values(await get()));

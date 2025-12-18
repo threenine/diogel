@@ -40,11 +40,17 @@ export async function getActive(): Promise<string | undefined> {
 export async function setActive(alias: string): Promise<void> {
   await chromeSetLocal({ [NOSTR_ACTIVE]: alias });
 }
-export async function save(storedKey: StoredKey): Promise<boolean> {
+export async function save(storedKey: StoredKey): Promise<void> {
   const result = await chromeGetLocal<Record<string, StoredKey>>([NOSTR_KEYS]);
+  const all: Record<string, StoredKey> = result[NOSTR_KEYS] ?? {};
 
-  const existing = result[NOSTR_KEYS];
-  const all: Record<string, StoredKey> = existing ?? {};
+  // Check if a key with the same alias or id already exists
+  for (const key in all) {
+    const existingKey = all[key];
+    if (existingKey?.alias === storedKey.alias || existingKey?.id === storedKey.id) {
+      throw new Error('Key with the same alias or npub already exists.');
+    }
+  }
 
   all[storedKey.alias] = storedKey;
 
@@ -52,5 +58,4 @@ export async function save(storedKey: StoredKey): Promise<boolean> {
     [NOSTR_KEYS]: all,
     [NOSTR_ACTIVE]: storedKey.alias,
   });
-  return true;
 }

@@ -7,6 +7,7 @@ export default {
   validation: {
     profileNameRequired: 'Profile Name is required',
     invalidNsec: 'Please enter a valid nsec private key',
+    keyPairExists: 'A key pair with this public key or alias already exists',
   },
   createAccount: {
     title: 'Create Nostr Account',
@@ -25,5 +26,6 @@ export default {
     publicKey: 'Public Key',
     privateKey: 'Private Key',
     copySuccess: 'Copied to clipboard',
+    created: 'Created',
   },
 };

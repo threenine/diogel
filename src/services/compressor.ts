@@ -28,7 +28,6 @@ export async function createEncryptedZipBytes(
 function createText(key: StoredKey): string {
   const lines = [
     `Alias: ${key.alias}`,
-    `Exported at: ${new Date().toISOString()}`,
     '',
     '== Nostr Keys ==',
     `npub:  ${key.account.npub}`,

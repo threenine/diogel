@@ -93,9 +93,15 @@ function notifyMissingAlias() {
 async function saveKey() {
   if (!validate()) return;
 
-  const result = await store.saveKey(storedKey.value);
-
-  if (result) await router.push({ name: 'edit-account', params: { alias: storedKey.value.alias } });
+  try {
+    await store.saveKey(storedKey.value);
+    await router.push({ name: 'edit-account', params: { alias: storedKey.value.alias } });
+  } catch (error: any) {
+    $q.notify({
+      type: 'negative',
+      message: error.message || String($t('validation.keyPairExists')),
+    });
+  }
 }
 
 function validate() {

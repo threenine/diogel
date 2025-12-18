@@ -93,16 +93,6 @@ async function onExportConfirm(payload: ExportPayload) {
                     </template>
                   </q-input>
                   <view-account :stored-key="storedKey" />
-                  <q-input
-                    v-model="storedKey.createdAt"
-                    class="text-input"
-                    label="Saved At"
-                    readonly
-                  >
-                    <template v-slot:prepend>
-                      <q-icon name="schedule" />
-                    </template>
-                  </q-input>
                 </div>
                 <div class="row justify-end q-gutter-sm q-mt-lg">
                   <q-btn dense label="Export" @click="onExportClick" />
