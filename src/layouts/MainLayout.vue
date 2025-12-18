@@ -29,15 +29,15 @@
 </template>
 
 <script setup lang="ts">
-import type { DropdownItem, Account } from 'src/types';
+import type { Account, DropdownItem } from 'src/types';
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
-import { getStoredKeysChromeLocalStorage } from 'src/services/chrome-local';
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue';
+import { get } from 'src/services/chrome-local';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 const storedKeys = ref<Account[]>([]);
 
 async function loadStoredKeys() {
-  const storedKeysMap = await getStoredKeysChromeLocalStorage();
+  const storedKeysMap = await get();
   storedKeys.value = Object.values(storedKeysMap);
 }
 

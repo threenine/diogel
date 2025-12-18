@@ -4,10 +4,9 @@ export interface DropdownItem<T = string | number> {
 }
 
 export type Account = {
-  alias: string;
   pubkey: string;
-  privKey: string;
-  noub: string;
+  priKey: string;
+  npub: string;
   nsec: string;
   relays: string[];
   websites: string[];

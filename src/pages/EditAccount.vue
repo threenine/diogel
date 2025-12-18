@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
-import { getStoredKeysChromeLocalStorage } from 'src/services/chrome-local';
+import { get } from 'src/services/chrome-local';
 import { useRoute } from 'vue-router';
 import type { Account } from 'src/types';
 
@@ -23,7 +23,7 @@ watch(
 );
 
 async function loadStoredKeys() {
-  const storedKeys = await getStoredKeysChromeLocalStorage();
+  const storedKeys = await get();
   const requestedAlias = String(route.params.alias ?? '');
 
   const account = Object.values(storedKeys).find((item) => item.alias === requestedAlias);

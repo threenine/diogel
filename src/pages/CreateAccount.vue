@@ -1,13 +1,12 @@
 <script lang="ts" setup>
-import { generateSecretKey, getPublicKey } from 'nostr-tools';
-import * as nip19 from 'nostr-tools/nip19';
 import { computed, ref } from 'vue';
-import { exportFile, useQuasar, type QInput } from 'quasar';
+import { exportFile, type QInput, useQuasar } from 'quasar';
 import ExportDialog from 'src/components/ExportDialog.vue';
 import { BlobWriter, configure, TextReader, ZipWriter } from '@zip.js/zip.js';
-import type { Account } from 'src/types';
-import { saveKeyChromeLocalStorage } from 'src/services/chrome-local';
+import type { StoredKey } from 'src/types';
+import { save } from 'src/services/chrome-local';
 import { useRouter } from 'vue-router';
+import { generateKey } from 'src/services/generate-key';
 
 // This required here to disable web workers for @zip.js
 // couldn't figure out how to instantiate this in the quasar.config
@@ -17,22 +16,30 @@ configure({
 
 const $q = useQuasar();
 const router = useRouter();
-const pubkey = ref('');
+const key = ref<StoredKey>({
+  id: '',
+  alias: '',
+  createdAt: '',
+  account: {
+    pubkey: '',
+    priKey: '',
+    npub: '',
+    nsec: '',
+    relays: [],
+    websites: [],
+  },
+});
+/*const pubkey = ref('');
 const privKey = ref('');
-const alias = ref('');
+const alias = ref('');*/
 const aliasInputRef = ref<QInput | null>(null);
 const showPrivKey = ref(false);
 const showGenerateKeys = ref(false);
 const ZIP_MIME_TYPE = 'application/zip';
 
-function generateKeys() {
-  const sk = generateSecretKey();
-  privKey.value = nip19.nsecEncode(sk);
-  pubkey.value = nip19.npubEncode(getPublicKey(sk));
-}
-function onGenerateKeysClick() {
+function onGenerateKeysClick(): StoredKey {
   showGenerateKeys.value = true;
-  generateKeys();
+  return generateKey();
 }
 async function copyToClipboard(text: string) {
   await navigator.clipboard.writeText(text);
@@ -43,7 +50,7 @@ const showExportDialog = ref(false);
 
 type ExportPayload = { password: string; filename: string };
 
-const trimmedAlias = computed(() => alias.value.trim());
+const trimmedAlias = computed(() => key.value.alias.trim());
 
 function notifyMissingAlias() {
   $q.notify({ type: 'negative', message: 'Profile Name is required' });
@@ -72,8 +79,8 @@ async function createEncryptedZipBytes(password: string, aliasText: string) {
     `Exported at: ${new Date().toISOString()}`,
     '',
     '== Nostr Keys ==',
-    `Public:  ${pubkey.value}`,
-    `Private: ${privKey.value}`,
+    `Public:  ${key.value.account.npub}`,
+    `Private: ${key.value.account.nsec}`,
     '',
     'Notes:',
     '- Keep this file secure.',
@@ -99,13 +106,8 @@ async function onExportConfirm(payload: ExportPayload) {
 
 async function saveKey() {
   if (!validate()) return;
-  const payload: Account = {
-    alias: trimmedAlias.value,
-    pubkey: pubkey.value,
-    privKey: privKey.value,
-    savedAt: new Date().toISOString(),
-  };
-  const result = await saveKeyChromeLocalStorage(payload);
+
+  const result = await save(key.value);
   if (result) await router.push({ name: 'edit-account' });
 }
 
@@ -143,7 +145,7 @@ function validate() {
                 <div class="q-gutter-lg">
                   <q-input
                     ref="aliasInputRef"
-                    v-model="alias"
+                    v-model="key.alias"
                     :rules="[(v) => !!String(v ?? '').trim() || 'Alias is required']"
                     class="text-input"
                     label="Profile Name"
@@ -168,7 +170,12 @@ function validate() {
                       </q-icon>
                     </template>
                   </q-input>
-                  <q-input v-model="pubkey" class="text-input" label="Public Key" readonly>
+                  <q-input
+                    v-model="key.account.npub"
+                    class="text-input"
+                    label="Public Key"
+                    readonly
+                  >
                     <template v-slot:prepend>
                       <q-icon name="keys" />
                     </template>
@@ -176,12 +183,12 @@ function validate() {
                       <q-icon
                         class="cursor-pointer"
                         name="content_copy"
-                        @click="copyToClipboard(pubkey)"
+                        @click="copyToClipboard(key.account.npub)"
                       />
                     </template>
                   </q-input>
                   <q-input
-                    v-model="privKey"
+                    v-model="key.account.nsec"
                     :type="showPrivKey ? 'text' : 'password'"
                     class="text-input"
                     label="Private Key"
@@ -198,7 +205,7 @@ function validate() {
                       <q-icon
                         class="cursor-pointer q-ml-sm"
                         name="content_copy"
-                        @click="copyToClipboard(privKey)"
+                        @click="copyToClipboard(key.account.nsec)"
                       />
                     </template>
                   </q-input>
