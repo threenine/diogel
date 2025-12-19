@@ -168,14 +168,20 @@ bridge.on('nostr.getRelays', async ({ payload: { origin } }) => {
   return relays;
 });
 
+async function getActiveSecretKey(): Promise<Uint8Array> {
+  const account = await getActiveAccount();
+  return hexToBytes(account.priKey);
+}
+
+
 bridge.on('nostr.nip04.encrypt', async ({ payload: { pubkey, plaintext, origin } }) => {
   const approved = await requestApproval(origin);
   if (!approved) {
     throw new Error('User rejected the request');
   }
-  const account = await getActiveAccount();
-  const sk = hexToBytes(account.priKey);
-  return await nip04.encrypt(sk, pubkey, plaintext);
+
+  const secretKey = await getActiveSecretKey();
+  return nip04.encrypt(secretKey, pubkey, plaintext);
 });
 
 bridge.on('nostr.nip04.decrypt', async ({ payload: { pubkey, ciphertext, origin } }) => {
@@ -183,9 +189,8 @@ bridge.on('nostr.nip04.decrypt', async ({ payload: { pubkey, ciphertext, origin 
   if (!approved) {
     throw new Error('User rejected the request');
   }
-  const account = await getActiveAccount();
-  const sk = hexToBytes(account.priKey);
-  return await nip04.decrypt(sk, pubkey, ciphertext);
+  const secretKey = await getActiveSecretKey();
+  return  nip04.decrypt(secretKey, pubkey, ciphertext);
 });
 
 function hexToBytes(hex: string): Uint8Array {
