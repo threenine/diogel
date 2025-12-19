@@ -15,14 +15,17 @@ const NOSTR_KEYS = 'nostr:keys';
 const NOSTR_ACTIVE = 'nostr:active';
 
 async function getActiveAccount() {
+  console.log('[BEX] Getting active account...');
   const items = await chrome.storage.local.get([NOSTR_KEYS, NOSTR_ACTIVE]);
   const activeAlias = items[NOSTR_ACTIVE];
   const keys: Record<string, StoredKey> = items[NOSTR_KEYS] || {};
 
   if (!activeAlias || !keys[activeAlias]) {
+    console.error('[BEX] No active account found. Active:', activeAlias, 'Keys:', Object.keys(keys));
     throw new Error('No active account found');
   }
 
+  console.log('[BEX] Active account found:', activeAlias);
   return keys[activeAlias].account;
 }
 
@@ -133,13 +136,18 @@ let approvalPromise: { resolve: (value: boolean) => void; reject: (reason?: any)
   null;
 
 bridge.on('nostr.approval.respond', ({ payload: { approved } }) => {
+  console.log('[BEX] Received nostr.approval.respond:', approved);
   if (approvalPromise) {
     approvalPromise.resolve(approved);
     approvalPromise = null;
+  } else {
+    console.warn('[BEX] Received approval response but no approvalPromise was found');
   }
+  return true;
 });
 
 async function requestApproval(origin: string): Promise<boolean> {
+  console.log('[BEX] Requesting approval for:', origin);
   // If there's already a pending approval, we might want to queue it or reject it.
   // For simplicity, let's reject it for now.
   if (approvalPromise) {
@@ -148,28 +156,65 @@ async function requestApproval(origin: string): Promise<boolean> {
 
   const url = chrome.runtime.getURL(`www/index.html#/approve?origin=${encodeURIComponent(origin)}`);
 
-  await chrome.windows.create({
-    url,
-    type: 'popup',
-    width: 400,
-    height: 600,
-  });
+  let windowId: number | undefined;
 
-  return new Promise((resolve, reject) => {
+  const promise = new Promise<boolean>((resolve, reject) => {
     approvalPromise = { resolve, reject };
 
     // Set a timeout to reject if no response
-    setTimeout(() => {
+    const timeout = setTimeout(() => {
       if (approvalPromise) {
         approvalPromise.reject(new Error('Approval request timed out'));
         approvalPromise = null;
+        if (windowId !== undefined) {
+          void chrome.windows.remove(windowId);
+        }
       }
     }, 60000); // 1 minute timeout
+
+    // Wrap resolve/reject to clear timeout and listener
+    const originalResolve = approvalPromise.resolve;
+    const originalReject = approvalPromise.reject;
+
+    // Handle manual window closure
+    const onRemovedHandler = (closedWindowId: number) => {
+      if (closedWindowId === windowId) {
+        if (approvalPromise) {
+          console.log('[BEX] Approval window closed manually');
+          approvalPromise.resolve(false);
+          approvalPromise = null;
+        }
+      }
+    };
+    chrome.windows.onRemoved.addListener(onRemovedHandler);
+
+    approvalPromise.resolve = (val) => {
+      clearTimeout(timeout);
+      chrome.windows.onRemoved.removeListener(onRemovedHandler);
+      originalResolve(val);
+    };
+    approvalPromise.reject = (err) => {
+      clearTimeout(timeout);
+      chrome.windows.onRemoved.removeListener(onRemovedHandler);
+      originalReject(err);
+    };
   });
+
+  const win = await chrome.windows.create({
+    url,
+    type: 'popup',
+    width: 600,
+    height: 600,
+  });
+  windowId = win.id;
+
+  return promise;
 }
 
 bridge.on('nostr.getPublicKey', async ({ payload: { origin } }) => {
+  console.log('[BEX] Handling nostr.getPublicKey for:', origin);
   const approved = await requestApproval(origin);
+  console.log('[BEX] Approval result for getPublicKey:', approved);
   if (!approved) {
     throw new Error('User rejected the request');
   }
@@ -178,7 +223,9 @@ bridge.on('nostr.getPublicKey', async ({ payload: { origin } }) => {
 });
 
 bridge.on('nostr.signEvent', async ({ payload: { event, origin } }) => {
+  console.log('[BEX] Handling nostr.signEvent for:', origin);
   const approved = await requestApproval(origin);
+  console.log('[BEX] Approval result for signEvent:', approved);
   if (!approved) {
     throw new Error('User rejected the request');
   }

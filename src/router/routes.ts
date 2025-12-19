@@ -26,12 +26,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/EditAccount.vue'),
         props: true,
       },
-      {
-        path: 'approve',
-        name: 'approve',
-        component: () => import('pages/SignerApproval.vue'),
-      },
     ],
+  },
+  {
+    path: '/approve',
+    component: () => import('pages/SignerApproval.vue'),
+    name: 'approve',
   },
 
   // Always leave this as last one,
