@@ -10,6 +10,7 @@
 import { createBridge } from '#q-app/bex/background';
 import { finalizeEvent, nip04 } from 'nostr-tools';
 import type { StoredKey } from 'src/types';
+import { hexToBytes } from '@noble/hashes/utils';
 
 const NOSTR_KEYS = 'nostr:keys';
 const NOSTR_ACTIVE = 'nostr:active';
@@ -17,7 +18,9 @@ const NOSTR_ACTIVE = 'nostr:active';
 async function getActiveAccount() {
   console.log('[BEX] Getting active account...');
   const items = await chrome.storage.local.get([NOSTR_KEYS, NOSTR_ACTIVE]);
+  console.log('[BEX] Active account items:', items);
   const activeAlias = items[NOSTR_ACTIVE];
+  console.log('[BEX] Active account alias:', activeAlias);
   const keys: Record<string, StoredKey> = items[NOSTR_KEYS] || {};
 
   if (!activeAlias || !keys[activeAlias]) {
@@ -193,10 +196,4 @@ bridge.on('nostr.nip04.decrypt', async ({ payload: { pubkey, ciphertext, origin 
   return  nip04.decrypt(secretKey, pubkey, ciphertext);
 });
 
-function hexToBytes(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hex.substring(i * 2, 2), 16);
-  }
-  return bytes;
-}
+
