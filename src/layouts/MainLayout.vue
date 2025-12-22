@@ -4,7 +4,7 @@
       <q-toolbar>
         <q-btn dense flat icon="menu" round>
           <q-menu anchor="bottom left" self="top left">
-            <q-list style="min-width: 160px">
+            <q-list style="max-width: 300px">
               <q-item v-ripple clickable to="/">
                 <q-item-section>Home</q-item-section>
               </q-item>
