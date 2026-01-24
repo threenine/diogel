@@ -7,6 +7,17 @@ export type Account = {
   privkey: string;
 };
 
+export interface NostrProfile {
+  name?: string;
+  display_name?: string;
+  about?: string;
+  picture?: string;
+  banner?: string;
+  website?: string;
+  nip05?: string;
+  lud16?: string;
+}
+
 export type StoredKey = {
   id: string;
   alias: string;

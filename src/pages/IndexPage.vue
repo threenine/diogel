@@ -21,8 +21,10 @@
 
         <q-tab-panels v-model="tab" animated>
           <q-tab-panel name="profile">
-            <div class="text-h6">Cunt</div>
-            Lorem ipsum dolor sit amet consectetur adipisicing elit.
+            <div v-if="activeStoredKey">
+              <ProfileEditor :stored-key="activeStoredKey" />
+            </div>
+            <div v-else class="text-center q-pa-md">No active account selected.</div>
           </q-tab-panel>
 
           <q-tab-panel name="images">
@@ -55,6 +57,7 @@ import { computed, onMounted, ref } from 'vue';
 import useAccountStore from 'src/stores/account-store';
 import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
 import ExportButton from 'components/ExportButton.vue';
+import ProfileEditor from 'components/ProfileEditor.vue';
 
 const accountStore = useAccountStore();
 const tab = ref('profile');
