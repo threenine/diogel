@@ -25,7 +25,7 @@ async function migrateIfNeeded(): Promise<void> {
         const migrationPromises = Object.values(oldKeys).map(async (key) => {
           if (key) {
             try {
-              await db.storedKeys.put(key);
+              await db.storedKeys.put(JSON.parse(JSON.stringify(key)));
             } catch (e) {
               console.error(`Failed to migrate key:`, e);
             }
@@ -81,7 +81,7 @@ export async function save(storedKey: StoredKey): Promise<void> {
     throw new Error('Key with the same npub already exists.');
   }
 
-  await db.storedKeys.add(storedKey);
+  await db.storedKeys.add(JSON.parse(JSON.stringify(storedKey)));
   await setActive(storedKey.alias);
 }
 
