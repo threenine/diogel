@@ -4,10 +4,7 @@ export interface DropdownItem<T = string | number> {
 }
 
 export type Account = {
-  pubkey: string;
-  priKey: string;
-  npub: string;
-  nsec: string;
+  privkey: string;
 };
 
 export type StoredKey = {

@@ -20,23 +20,23 @@
         <q-separator />
 
         <q-tab-panels v-model="tab" animated>
-          <q-tab-panel name="Profile">
+          <q-tab-panel name="profile">
             <div class="text-h6">Cunt</div>
             Lorem ipsum dolor sit amet consectetur adipisicing elit.
           </q-tab-panel>
 
-          <q-tab-panel name="Images">
+          <q-tab-panel name="images">
             <div class="text-h6">Alarms</div>
             Lorem ipsum dolor sit amet consectetur adipisicing elit.
           </q-tab-panel>
 
-          <q-tab-panel name="Relays">
+          <q-tab-panel name="relays">
             <div class="text-h6">Movies</div>
             Lorem ipsum dolor sit amet consectetur adipisicing elit.
           </q-tab-panel>
 
-          <q-tab-panel name="Lists">
-            <div class="text-h6">Photos</div>
+          <q-tab-panel name="key">
+            <div class="text-h6">GARY</div>
           </q-tab-panel>
         </q-tab-panels>
       </q-card>

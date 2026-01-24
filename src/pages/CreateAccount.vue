@@ -12,6 +12,8 @@ import { getPublicKey } from 'nostr-tools';
 import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
 import { useI18n } from 'vue-i18n';
 
+import { bytesToHex } from '@noble/hashes/utils';
+
 const store = useAccountStore();
 const $q = useQuasar();
 const $t = useI18n().t;
@@ -21,10 +23,7 @@ const storedKey = ref<StoredKey>({
   alias: '',
   createdAt: '',
   account: {
-    pubkey: '',
-    priKey: '',
-    npub: '',
-    nsec: '',
+    privkey: '',
   },
 });
 
@@ -62,10 +61,7 @@ function onImportClick(): void {
     const sk = decoded.data;
     const pk = getPublicKey(sk);
     const account: Account = {
-      pubkey: pk,
-      priKey: nip19.nsecEncode(sk),
-      npub: nip19.npubEncode(pk),
-      nsec: nip19.nsecEncode(sk),
+      privkey: bytesToHex(sk),
     };
     storedKey.value = {
       id: pk,

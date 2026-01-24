@@ -14,7 +14,7 @@ import { db } from 'src/services/database';
 
 const NOSTR_ACTIVE = 'nostr:active';
 
-async function getActiveAccount() {
+async function getActiveStoredKey() {
   console.log('[BEX] Getting active account...');
   const items = await chrome.storage.local.get([NOSTR_ACTIVE]);
   console.log('[BEX] Active account items:', items);
@@ -34,7 +34,7 @@ async function getActiveAccount() {
   }
 
   console.log('[BEX] Active account found:', activeAlias);
-  return storedKey.account;
+  return storedKey;
 }
 
 declare module '@quasar/app-vite' {
@@ -143,8 +143,8 @@ bridge.on('nostr.getPublicKey', async ({ payload: { origin } }) => {
   if (!approved) {
     throw new Error('User rejected the request');
   }
-  const account = await getActiveAccount();
-  return account.pubkey;
+  const storedKey = await getActiveStoredKey();
+  return storedKey.id;
 });
 
 bridge.on('nostr.signEvent', async ({ payload: { event, origin } }) => {
@@ -154,12 +154,12 @@ bridge.on('nostr.signEvent', async ({ payload: { event, origin } }) => {
   if (!approved) {
     throw new Error('User rejected the request');
   }
-  const account = await getActiveAccount();
+  const storedKey = await getActiveStoredKey();
   // Ensure the event has the correct pubkey
-  event.pubkey = account.pubkey;
+  event.pubkey = storedKey.id;
 
   // finalizeEvent from nostr-tools v2
-  const sk = hexToBytes(account.priKey);
+  const sk = hexToBytes(storedKey.account.privkey);
   return finalizeEvent(event, sk);
 });
 
@@ -172,8 +172,8 @@ bridge.on('nostr.getRelays', async ({ payload: { origin } }) => {
 });
 
 async function getActiveSecretKey(): Promise<Uint8Array> {
-  const account = await getActiveAccount();
-  return hexToBytes(account.priKey);
+  const storedKey = await getActiveStoredKey();
+  return hexToBytes(storedKey.account.privkey);
 }
 
 

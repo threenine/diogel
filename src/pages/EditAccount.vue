@@ -12,10 +12,7 @@ const storedKey = ref<StoredKey>({
   alias: '',
   createdAt: '',
   account: {
-    pubkey: '',
-    priKey: '',
-    npub: '',
-    nsec: '',
+    privkey: '',
   },
 });
 const route = useRoute();
