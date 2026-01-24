@@ -9,27 +9,32 @@
  */
 import { createBridge } from '#q-app/bex/background';
 import { finalizeEvent, nip04 } from 'nostr-tools';
-import type { StoredKey } from 'src/types';
 import { hexToBytes } from '@noble/hashes/utils';
+import { db } from 'src/services/database';
 
-const NOSTR_KEYS = 'nostr:keys';
 const NOSTR_ACTIVE = 'nostr:active';
 
 async function getActiveAccount() {
   console.log('[BEX] Getting active account...');
-  const items = await chrome.storage.local.get([NOSTR_KEYS, NOSTR_ACTIVE]);
+  const items = await chrome.storage.local.get([NOSTR_ACTIVE]);
   console.log('[BEX] Active account items:', items);
   const activeAlias = items[NOSTR_ACTIVE];
   console.log('[BEX] Active account alias:', activeAlias);
-  const keys: Record<string, StoredKey> = items[NOSTR_KEYS] || {};
 
-  if (!activeAlias || !keys[activeAlias]) {
-    console.error('[BEX] No active account found. Active:', activeAlias, 'Keys:', Object.keys(keys));
+  if (!activeAlias) {
+    console.error('[BEX] No active account alias found in storage');
+    throw new Error('No active account found');
+  }
+
+  const storedKey = await db.storedKeys.where('alias').equals(activeAlias).first();
+
+  if (!storedKey) {
+    console.error('[BEX] No account found in database for alias:', activeAlias);
     throw new Error('No active account found');
   }
 
   console.log('[BEX] Active account found:', activeAlias);
-  return keys[activeAlias].account;
+  return storedKey.account;
 }
 
 declare module '@quasar/app-vite' {
