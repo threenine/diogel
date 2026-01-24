@@ -8,8 +8,6 @@ export type Account = {
   priKey: string;
   npub: string;
   nsec: string;
-  relays: string[];
-  websites: string[];
 };
 
 export type StoredKey = {

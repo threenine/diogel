@@ -11,8 +11,6 @@ export function generateKey(): StoredKey {
     priKey: nip19.nsecEncode(sk),
     npub: nip19.npubEncode(pk),
     nsec: nip19.nsecEncode(sk),
-    relays: [],
-    websites: [],
   };
   return {
     id: pk,

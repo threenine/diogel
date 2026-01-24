@@ -163,12 +163,7 @@ bridge.on('nostr.getRelays', async ({ payload: { origin } }) => {
   if (!approved) {
     throw new Error('User rejected the request');
   }
-  const account = await getActiveAccount();
-  const relays: Record<string, { read: boolean; write: boolean }> = {};
-  account.relays.forEach((r) => {
-    relays[r] = { read: true, write: true };
-  });
-  return relays;
+  return {};
 });
 
 async function getActiveSecretKey(): Promise<Uint8Array> {

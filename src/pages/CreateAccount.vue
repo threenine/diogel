@@ -25,8 +25,6 @@ const storedKey = ref<StoredKey>({
     priKey: '',
     npub: '',
     nsec: '',
-    relays: [],
-    websites: [],
   },
 });
 
@@ -68,8 +66,6 @@ function onImportClick(): void {
       priKey: nip19.nsecEncode(sk),
       npub: nip19.npubEncode(pk),
       nsec: nip19.nsecEncode(sk),
-      relays: [],
-      websites: [],
     };
     storedKey.value = {
       id: pk,

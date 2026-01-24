@@ -16,8 +16,6 @@ const storedKey = ref<StoredKey>({
     priKey: '',
     npub: '',
     nsec: '',
-    relays: [],
-    websites: [],
   },
 });
 const route = useRoute();
