@@ -1,15 +1,12 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue';
-import { exportFile, useQuasar } from 'quasar';
 import { useRoute } from 'vue-router';
 import type { StoredKey } from 'src/types';
-import ViewAccount from 'components/ViewAccount/Index.vue';
-import ExportDialog from 'components/ExportDialog.vue';
-import { createEncryptedZipBytes, ZIP_MIME_TYPE } from 'src/services/compressor';
+import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
+import ExportButton from 'components/ExportButton.vue';
 import useAccountStore from 'stores/account-store';
 
 const accountStore = useAccountStore();
-const $q = useQuasar();
 const storedKey = ref<StoredKey>({
   id: '',
   alias: '',
@@ -41,33 +38,6 @@ function loadStoredKeys() {
 
   storedKey.value = { ...account };
 }
-function notifyExportStarted() {
-  $q.notify({
-    type: 'positive',
-    message: 'Export started. You will be prompted to save the file.',
-  });
-}
-const showExportDialog = ref(false);
-
-type ExportPayload = { password: string; filename: string };
-function onExportClick() {
-  showExportDialog.value = true;
-}
-
-async function onExportConfirm(payload: ExportPayload) {
-  showExportDialog.value = false;
-
-  const zipBytes = await createEncryptedZipBytes(
-    payload.password,
-    payload.filename,
-    storedKey.value,
-  );
-
-  const didStartExport = exportFile(payload.filename, zipBytes, ZIP_MIME_TYPE);
-  if (!didStartExport) return;
-
-  notifyExportStarted();
-}
 </script>
 
 <template>
@@ -92,10 +62,10 @@ async function onExportConfirm(payload: ExportPayload) {
                       <q-icon name="person" />
                     </template>
                   </q-input>
-                  <view-account :stored-key="storedKey" />
+                  <view-stored-key :stored-key="storedKey" />
                 </div>
                 <div class="row justify-end q-gutter-sm q-mt-lg">
-                  <q-btn dense label="Export" @click="onExportClick" />
+                  <ExportButton :stored-key="storedKey" />
                 </div>
               </q-item-section>
             </q-item>
@@ -103,11 +73,6 @@ async function onExportConfirm(payload: ExportPayload) {
         </div>
       </div>
     </div>
-    <ExportDialog
-      v-model="showExportDialog"
-      :alias="storedKey.alias.trim()"
-      @confirm="onExportConfirm"
-    />
   </q-page>
 </template>
 

@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n';
 
 const $q = useQuasar();
 const $t = useI18n().t;
-defineOptions({ name: 'ViewAccount' });
+defineOptions({ name: 'ViewStoredKey' });
 defineProps<{
   storedKey: StoredKey;
 }>();

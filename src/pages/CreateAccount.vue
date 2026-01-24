@@ -9,7 +9,7 @@ import { generateKey } from 'src/services/generate-key';
 import * as nip19 from 'nostr-tools/nip19';
 import { getPublicKey } from 'nostr-tools';
 
-import ViewAccount from 'components/ViewAccount/Index.vue';
+import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
 import { useI18n } from 'vue-i18n';
 
 const store = useAccountStore();
@@ -183,7 +183,7 @@ function validate() {
                           </q-icon>
                         </template>
                       </q-input>
-                      <view-account :stored-key="storedKey" />
+                      <view-stored-key :stored-key="storedKey" />
                     </div>
 
                     <div class="row q-gutter-lg items-center q-mt-lg">
@@ -254,7 +254,7 @@ function validate() {
                             </q-icon>
                           </template>
                         </q-input>
-                        <view-account :stored-key="storedKey" />
+                        <view-stored-key :stored-key="storedKey" />
                       </div>
 
                       <div class="row q-gutter-lg items-center q-mt-lg">
