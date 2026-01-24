@@ -28,8 +28,10 @@
           </q-tab-panel>
 
           <q-tab-panel name="images">
-            <div class="text-h6">Alarms</div>
-            Lorem ipsum dolor sit amet consectetur adipisicing elit.
+            <div v-if="activeStoredKey">
+              <ProfileImage :stored-key="activeStoredKey" />
+            </div>
+            <div v-else class="text-center q-pa-md">No active account selected.</div>
           </q-tab-panel>
 
           <q-tab-panel name="relays">
@@ -58,6 +60,7 @@ import useAccountStore from 'src/stores/account-store';
 import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
 import ExportButton from 'components/ExportButton.vue';
 import ProfileEditor from 'components/ProfileEditor.vue';
+import ProfileImage from 'components/ProfileImage.vue';
 
 const accountStore = useAccountStore();
 const tab = ref('profile');

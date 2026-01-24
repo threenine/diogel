@@ -55,8 +55,6 @@ async function fetchProfile() {
         name: content.name || '',
         display_name: content.display_name || '',
         about: content.about || '',
-        picture: content.picture || '',
-        banner: content.banner || '',
         website: content.website || '',
         nip05: content.nip05 || '',
         lud16: content.lud16 || '',
@@ -79,11 +77,27 @@ async function saveProfile() {
     const sk = hexToBytes(props.storedKey.account.privkey);
     const pk = getPublicKey(sk);
 
+    // Fetch latest profile to avoid overwriting other fields (like picture/banner)
+    const latestEvent = await pool.get(DEFAULT_RELAYS, {
+      authors: [pk],
+      kinds: [0],
+    });
+
+    let currentProfile: NostrProfile = {};
+    if (latestEvent && latestEvent.content) {
+      currentProfile = JSON.parse(latestEvent.content) as NostrProfile;
+    }
+
+    const updatedProfile = {
+      ...currentProfile,
+      ...profile.value,
+    };
+
     const eventTemplate = {
       kind: 0,
       created_at: Math.floor(Date.now() / 1000),
       tags: [],
-      content: JSON.stringify(profile.value),
+      content: JSON.stringify(updatedProfile),
       pubkey: pk,
     };
 
@@ -127,14 +141,6 @@ watch(
       <q-input v-model="profile.name" :label="t('profile.name')" dense outlined />
       <q-input v-model="profile.display_name" :label="t('profile.displayName')" dense outlined />
       <q-input v-model="profile.about" :label="t('profile.about')" dense outlined type="textarea" />
-      <q-input v-model="profile.picture" :label="t('profile.picture')" dense outlined>
-        <template v-slot:append>
-          <q-avatar v-if="profile.picture" size="40px">
-            <img :alt="profile.name || 'Profile picture'" :src="profile.picture" />
-          </q-avatar>
-        </template>
-      </q-input>
-      <q-input v-model="profile.banner" :label="t('profile.banner')" dense outlined />
       <q-input v-model="profile.website" :label="t('profile.website')" dense outlined />
       <q-input v-model="profile.nip05" :label="t('profile.nip05')" dense outlined />
       <q-input v-model="profile.lud16" :label="t('profile.lud16')" dense outlined />
