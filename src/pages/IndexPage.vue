@@ -36,7 +36,13 @@
           </q-tab-panel>
 
           <q-tab-panel name="key">
-            <div class="text-h6">GARY</div>
+            <div v-if="activeStoredKey">
+              <view-stored-key :stored-key="activeStoredKey" />
+              <div class="row justify-end q-mt-md">
+                <ExportButton :stored-key="activeStoredKey" />
+              </div>
+            </div>
+            <div v-else class="text-center q-pa-md">No active account selected.</div>
           </q-tab-panel>
         </q-tab-panels>
       </q-card>
@@ -45,7 +51,21 @@
 </template>
 
 <script lang="ts" setup>
-import { ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
+import useAccountStore from 'src/stores/account-store';
+import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
+import ExportButton from 'components/ExportButton.vue';
 
-const tab = ref('mails');
+const accountStore = useAccountStore();
+const tab = ref('profile');
+
+const activeStoredKey = computed(() => {
+  const activeAlias = accountStore.activeKey;
+  if (!activeAlias) return undefined;
+  return Array.from(accountStore.storedKeys).find((k) => k.alias === activeAlias);
+});
+
+onMounted(async () => {
+  await accountStore.getKeys();
+});
 </script>

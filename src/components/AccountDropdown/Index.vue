@@ -142,7 +142,7 @@ watch(innerValue, (v) => {
     router.push({ name: 'create-account' }).catch(() => {});
   } else if (v !== null && v !== undefined) {
     accountStore.setActiveKey(v as string).catch(() => {});
-    router.push({ name: 'edit-account', params: { alias: v } }).catch(() => {});
+    router.push({ path: '/' }).catch(() => {});
   }
 });
 
