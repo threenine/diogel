@@ -11,33 +11,32 @@
           indicator-color="primary"
           narrow-indicator
         >
-          <q-tab icon="mail" label="Mails" name="mails" />
-          <q-tab icon="alarm" label="Alarms" name="alarms" />
-          <q-tab icon="movie" label="Movies" name="movies" />
-          <q-tab icon="photo" label="Photos" name="photos" />
+          <q-tab icon="account_circle" label="Profile" name="profile" />
+          <q-tab icon="image" label="Images" name="images" />
+          <q-tab icon="mediation" label="Relays" name="relays" />
+          <q-tab icon="key" label="Key" name="key" />
         </q-tabs>
 
         <q-separator />
 
         <q-tab-panels v-model="tab" animated>
-          <q-tab-panel name="mails">
-            <div class="text-h6">Mails</div>
+          <q-tab-panel name="Profile">
+            <div class="text-h6">Cunt</div>
             Lorem ipsum dolor sit amet consectetur adipisicing elit.
           </q-tab-panel>
 
-          <q-tab-panel name="alarms">
+          <q-tab-panel name="Images">
             <div class="text-h6">Alarms</div>
             Lorem ipsum dolor sit amet consectetur adipisicing elit.
           </q-tab-panel>
 
-          <q-tab-panel name="movies">
+          <q-tab-panel name="Relays">
             <div class="text-h6">Movies</div>
             Lorem ipsum dolor sit amet consectetur adipisicing elit.
           </q-tab-panel>
 
-          <q-tab-panel name="Keys">
+          <q-tab-panel name="Lists">
             <div class="text-h6">Photos</div>
-
           </q-tab-panel>
         </q-tab-panels>
       </q-card>
@@ -47,7 +46,6 @@
 
 <script lang="ts" setup>
 import { ref } from 'vue';
-
 
 const tab = ref('mails');
 </script>
