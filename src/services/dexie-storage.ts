@@ -4,7 +4,6 @@ import { db } from './database';
 const NOSTR_ACTIVE = 'nostr:active' as const;
 
 export async function get(): Promise<Record<string, StoredKey>> {
-  await migrateIfNeeded();
   const keys = await db.storedKeys.toArray();
   return keys.reduce(
     (acc, key) => {
@@ -13,41 +12,6 @@ export async function get(): Promise<Record<string, StoredKey>> {
     },
     {} as Record<string, StoredKey>,
   );
-}
-
-async function migrateIfNeeded(): Promise<void> {
-  const NOSTR_KEYS = 'nostr:keys';
-  return new Promise((resolve) => {
-    chrome.storage.local.get([NOSTR_KEYS], (result) => {
-      const oldKeys = result[NOSTR_KEYS] as Record<string, StoredKey> | undefined;
-      if (oldKeys && Object.keys(oldKeys).length > 0) {
-        console.log('Migrating keys from chrome.storage.local to Dexie...');
-        const migrationPromises = Object.values(oldKeys).map(async (key) => {
-          if (key) {
-            try {
-              await db.storedKeys.put(JSON.parse(JSON.stringify(key)));
-            } catch (e) {
-              console.error(`Failed to migrate key:`, e);
-            }
-          }
-        });
-
-        Promise.all(migrationPromises)
-          .then(() => {
-            chrome.storage.local.remove([NOSTR_KEYS], () => {
-              console.log('Migration complete and old keys removed.');
-              resolve();
-            });
-          })
-          .catch((err) => {
-            console.error('Migration failed:', err);
-            resolve(); // Resolve anyway to not block the app
-          });
-      } else {
-        resolve();
-      }
-    });
-  });
 }
 
 export async function getActive(): Promise<string | undefined> {

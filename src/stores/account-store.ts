@@ -33,7 +33,7 @@ const useAccountStore = defineStore('account', {
       if (this.isListening) return;
 
       chrome.storage.onChanged.addListener((changes, areaName) => {
-        if (areaName === 'local' && ('nostr:keys' in changes || 'nostr:active' in changes)) {
+        if (areaName === 'local' && 'nostr:active' in changes) {
           void this.getKeys();
         }
       });
