@@ -18,6 +18,12 @@ export interface NostrProfile {
   lud16?: string;
 }
 
+export interface NostrRelay {
+  url: string;
+  read: boolean;
+  write: boolean;
+}
+
 export type StoredKey = {
   id: string;
   alias: string;

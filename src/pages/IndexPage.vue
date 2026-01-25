@@ -35,8 +35,10 @@
           </q-tab-panel>
 
           <q-tab-panel name="relays">
-            <div class="text-h6">Movies</div>
-            Lorem ipsum dolor sit amet consectetur adipisicing elit.
+            <div v-if="activeStoredKey">
+              <RelayEditor :stored-key="activeStoredKey" />
+            </div>
+            <div v-else class="text-center q-pa-md">No active account selected.</div>
           </q-tab-panel>
 
           <q-tab-panel name="key">
@@ -61,6 +63,7 @@ import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
 import ExportButton from 'components/ExportButton.vue';
 import ProfileEditor from 'components/ProfileEditor.vue';
 import ProfileImage from 'components/ProfileImage.vue';
+import RelayEditor from 'components/RelayEditor.vue';
 
 const accountStore = useAccountStore();
 const tab = ref('profile');
