@@ -129,7 +129,7 @@ async function requestApproval(origin: string): Promise<boolean> {
     url,
     type: 'popup',
     width: 600,
-    height: 800,
+    height: 1200,
   });
   windowId = win.id;
 

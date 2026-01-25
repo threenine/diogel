@@ -2,13 +2,17 @@
 html,
 body {
   min-width: 600px; /* Adjust as needed (Max width ~800px) */
-  min-height: 1000px; /* Adjust as needed (Max height ~600px) */
+  max-height: 800px; /* Adjust as needed (Max height ~600px) */
 
   // Apply page background & base text color from theme variables
   background-color: var(--page-bg);
   color: var(--text-color);
 }
 
+.popup-root {
+  width: 360px; /* common popup width */
+  min-height: 1000px;
+}
 // Header & toolbar theming
 .q-header {
   background-color: var(--header-bg);
