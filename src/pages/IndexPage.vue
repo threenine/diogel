@@ -48,6 +48,30 @@
               <div class="row justify-end q-mt-md">
                 <ExportButton :stored-key="activeStoredKey" />
               </div>
+              <q-separator class="q-mt-md" />
+              <q-card bordered class="q-pt-none warning-card" flat>
+                <q-item>
+                  <q-item-section avatar>
+                    <q-icon color="warning" name="warning" />
+                  </q-item-section>
+
+                  <q-item-section>
+                    <q-item-label>Important</q-item-label>
+                  </q-item-section>
+                </q-item>
+
+                <q-separator />
+
+                <q-card-section horizontal>
+                  <q-card-section bordered>
+                    <p>
+                      Ensure you back up your keys. If you lose them, you will lose access to your
+                      account.
+                    </p>
+                    <p>You will not be able to recover your account without it.</p>
+                  </q-card-section>
+                </q-card-section>
+              </q-card>
             </div>
             <div v-else class="text-center q-pa-md">No active account selected.</div>
           </q-tab-panel>

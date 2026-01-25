@@ -2,6 +2,7 @@
 html,
 body {
   min-width: 600px; /* Adjust as needed (Max width ~800px) */
+  min-height: 800px;
   max-height: 800px; /* Adjust as needed (Max height ~600px) */
 
   // Apply page background & base text color from theme variables
@@ -48,4 +49,8 @@ body {
   padding: 20px;
   background-color: var(--settings-form-bg);
   min-width: 580px;
+}
+
+.warning-card {
+  width: 100%;
 }
