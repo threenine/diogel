@@ -10,7 +10,7 @@ export default {
     keyPairExists: 'A key pair with this public key or alias already exists',
   },
   createAccount: {
-    title: 'Create Nostr Account',
+    title: 'Create Account',
     tabs: {
       create: 'Create New Account',
       import: 'Import Existing Account',

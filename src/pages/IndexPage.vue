@@ -1,20 +1,21 @@
 <template>
-  <q-page class="flex flex-center">
+  <q-page class="flex justify-center">
     <div class="q-pa-md full-width" style="max-width: 600px">
       <q-card>
         <q-tabs
           v-model="tab"
           active-color="primary"
           align="justify"
-          class="text-grey"
+          class="text-primary text-caption"
           dense
           indicator-color="primary"
+          inline-label
           narrow-indicator
         >
-          <q-tab icon="account_circle" label="Profile" name="profile" />
-          <q-tab icon="image" label="Images" name="images" />
-          <q-tab icon="mediation" label="Relays" name="relays" />
-          <q-tab icon="key" label="Key" name="key" />
+          <q-tab class="text-caption" icon="account_circle" label="Profile" name="profile" />
+          <q-tab class="text-caption" icon="image" label="Images" name="images" />
+          <q-tab class="text-caption" icon="mediation" label="Relays" name="relays" />
+          <q-tab class="text-caption" icon="key" label="Key" name="key" />
         </q-tabs>
 
         <q-separator />
