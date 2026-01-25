@@ -41,6 +41,18 @@ const pool = new SimplePool();
 async function fetchProfile() {
   if (!props.storedKey.id) return;
 
+  // Reset profile data before fetching new one
+  profile.value = {
+    name: '',
+    display_name: '',
+    about: '',
+    picture: '',
+    banner: '',
+    website: '',
+    nip05: '',
+    lud16: '',
+  };
+
   loading.value = true;
   try {
     const event = await pool.get(DEFAULT_RELAYS, {

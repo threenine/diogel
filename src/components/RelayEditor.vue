@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { NostrRelay, StoredKey } from 'src/types';
@@ -32,6 +32,7 @@ const newRelayRead = ref(true);
 const newRelayWrite = ref(true);
 
 async function fetchRelayList() {
+  relays.value = [];
   loading.value = true;
   const pool = new SimplePool();
   try {
@@ -42,9 +43,9 @@ async function fetchRelayList() {
 
     if (event) {
       relays.value = event.tags
-        .filter((tag) => tag[0] === 'r')
+        .filter((tag) => tag[0] === 'r' && !!tag[1])
         .map((tag) => {
-          const url = tag[1];
+          const url = tag[1] as string;
           const marker = tag[2];
           return {
             url,
@@ -139,6 +140,13 @@ async function saveRelayList() {
 onMounted(() => {
   void fetchRelayList();
 });
+
+watch(
+  () => props.storedKey.id,
+  () => {
+    void fetchRelayList();
+  },
+);
 </script>
 
 <template>
