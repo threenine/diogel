@@ -50,9 +50,9 @@
               </div>
               <q-separator class="q-mt-md" />
               <q-card bordered class="q-pt-none warning-card" flat>
-                <q-item>
+                <q-item class="bg-warning text-white">
                   <q-item-section avatar>
-                    <q-icon color="warning" name="warning" />
+                    <q-icon color="white" name="warning" />
                   </q-item-section>
 
                   <q-item-section>
