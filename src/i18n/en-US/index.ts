@@ -43,6 +43,10 @@ export default {
     saveSuccess: 'Profile updated successfully',
     saveError: 'Failed to update profile',
     noRelays: 'No relays configured to fetch/publish profile',
+    uploading: 'Uploading image...',
+    uploadSuccess: 'Image uploaded successfully',
+    uploadError: 'Failed to upload image',
+    blossomServer: 'Blossom Server URL',
   },
   relays: {
     title: 'Relay Settings',

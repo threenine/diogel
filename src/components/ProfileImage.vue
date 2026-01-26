@@ -5,6 +5,9 @@ import { useI18n } from 'vue-i18n';
 import type { NostrProfile, StoredKey } from 'src/types';
 import { finalizeEvent, getPublicKey, SimplePool } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
+import useSettingsStore from 'src/stores/settings-store';
+import ImagePreview from 'components/ImagePreview.vue';
+import ImageUploader from 'components/ImageUploader.vue';
 
 defineOptions({ name: 'ProfileImage' });
 
@@ -14,6 +17,9 @@ const props = defineProps<{
 
 const $q = useQuasar();
 const { t } = useI18n();
+const settingsStore = useSettingsStore();
+
+const uploading = ref(false);
 
 const profile = ref<NostrProfile>({
   name: '',
@@ -128,7 +134,8 @@ async function saveProfile() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await settingsStore.getSettings();
   void fetchProfile();
 });
 
@@ -146,17 +153,49 @@ watch(
       <q-spinner color="primary" size="3em" />
     </div>
     <q-form v-else class="q-gutter-md" @submit="saveProfile">
-      <q-input v-model="profile.picture" :label="t('profile.picture')" dense outlined>
-        <template v-slot:append>
-          <q-avatar v-if="profile.picture" size="40px">
-            <img :alt="profile.name || 'Profile picture'" :src="profile.picture" />
-          </q-avatar>
-        </template>
-      </q-input>
-      <q-input v-model="profile.banner" :label="t('profile.banner')" dense outlined />
+      <div class="row q-col-gutter-md items-center">
+        <div class="col-12">
+          <ImagePreview :name="profile.name" :url="profile.banner" />
+        </div>
+        <div class="col-12">
+          <q-input v-model="profile.banner" :label="t('profile.banner')" dense outlined>
+            <template v-slot:append>
+              <ImageUploader
+                :label="t('profile.banner')"
+                :stored-key="storedKey"
+                @uploaded="(url) => (profile.banner = url)"
+                @uploading="(status) => (uploading = status)"
+              />
+            </template>
+          </q-input>
+        </div>
+      </div>
+
+      <div class="row q-col-gutter-md items-center">
+        <div class="col-auto">
+          <ImagePreview :is-avatar="true" :name="profile.name" :url="profile.picture" size="80px" />
+        </div>
+        <div class="col">
+          <q-input v-model="profile.picture" :label="t('profile.picture')" dense outlined>
+            <template v-slot:append>
+              <ImageUploader
+                :label="t('profile.picture')"
+                :stored-key="storedKey"
+                @uploaded="(url) => (profile.picture = url)"
+                @uploading="(status) => (uploading = status)"
+              />
+            </template>
+          </q-input>
+        </div>
+      </div>
 
       <div class="row justify-end q-mt-md">
-        <q-btn :label="t('profile.save')" :loading="saving" color="primary" type="submit" />
+        <q-btn
+          :label="t('profile.save')"
+          :loading="saving || uploading"
+          color="primary"
+          type="submit"
+        />
       </div>
     </q-form>
   </div>
