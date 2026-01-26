@@ -31,6 +31,7 @@ declare module '@quasar/app-vite' {
         base64Data: string;
         fileType: string;
         blossomServer: string;
+        uploadId?: string;
       },
       any,
     ];

@@ -38,12 +38,6 @@ const routes: RouteRecordRaw[] = [
     component: () => import('layouts/PopupLayout.vue'),
     children: [{ path: '', component: () => import('pages/SignerApproval.vue') }],
   },
-  {
-    path: '/uploader',
-    component: () => import('layouts/PopupLayout.vue'),
-    children: [{ path: '', component: () => import('pages/ImageUploaderPage.vue') }],
-  },
-
   // Always leave this as last one,
   // but you can also remove it
   {

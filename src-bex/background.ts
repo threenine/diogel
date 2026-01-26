@@ -11,7 +11,6 @@ import { createBridge } from '#q-app/bex/background';
 import { finalizeEvent, getPublicKey, nip04 } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
 import { db } from '../src/services/database';
-import axios from 'axios';
 import { sha256 } from '@noble/hashes/sha256';
 
 const NOSTR_ACTIVE = 'nostr:active';
@@ -54,6 +53,7 @@ declare module '@quasar/app-vite' {
         base64Data: string;
         fileType: string;
         blossomServer: string;
+        uploadId?: string;
       },
       any,
     ];
@@ -207,13 +207,15 @@ bridge.on('nostr.nip04.decrypt', async ({ payload: { pubkey, ciphertext, origin 
   return nip04.decrypt(secretKey, pubkey, ciphertext);
 });
 
-bridge.on('blossom.upload', ({ payload: { base64Data, fileType, blossomServer } }) => {
-  console.log('[BEX] Handling blossom.upload');
+bridge.on('blossom.upload', ({ payload: { base64Data, fileType, blossomServer, uploadId } }) => {
+  console.log('[BEX] Handling blossom.upload, server:', blossomServer, 'uploadId:', uploadId);
+
+  const UPLOAD_STATUS_KEY = uploadId ? `blossom:upload_status:${uploadId}` : BLOSSOM_UPLOAD_STATUS;
 
   const processUpload = async () => {
     // Persist status as uploading
     await chrome.storage.local.set({
-      [BLOSSOM_UPLOAD_STATUS]: {
+      [UPLOAD_STATUS_KEY]: {
         uploading: true,
         error: null,
         url: null,
@@ -238,48 +240,131 @@ bridge.on('blossom.upload', ({ payload: { base64Data, fileType, blossomServer } 
         .join('');
 
       const normalizedServer = blossomServer.replace(/\/$/, '');
-      const uploadUrl = `${normalizedServer}/${hashHex}`;
 
-      const eventTemplate = {
-        kind: 24242,
-        created_at: Math.floor(Date.now() / 1000),
-        tags: [
-          ['u', uploadUrl],
-          ['method', 'PUT'],
-          ['x', hashHex],
-        ],
-        content: 'Upload file',
-        pubkey: pk,
-      };
+      // Blossom servers often support different upload endpoints.
+      // We try the standard ones in order.
+      const uploadOptions = [
+        { url: `${normalizedServer}/upload`, method: 'PUT' },
+        { url: `${normalizedServer}/upload`, method: 'POST' },
+        { url: `${normalizedServer}/`, method: 'PUT' },
+        { url: `${normalizedServer}/`, method: 'POST' },
+        { url: `${normalizedServer}/${hashHex}`, method: 'PUT' },
+        // Try without trailing slash if normalizedServer ends with it?
+        // No, normalizedServer already has it stripped.
+        // What about literally just PUT to the server url as configured if it's special?
+        { url: blossomServer, method: 'PUT' },
+      ];
 
-      const signedEvent = finalizeEvent(eventTemplate, sk);
-      const authHeader = `Nostr ${btoa(JSON.stringify(signedEvent))}`;
+      let lastError: any = null;
+      let finalUrl = '';
 
-      const response = await axios.put(uploadUrl, bytes.buffer, {
-        headers: {
-          Authorization: authHeader,
-          'Content-Type': fileType,
-        },
-      });
+      for (const option of uploadOptions) {
+        try {
+          // Add a small delay between retries if this is not the first attempt
+          if (option !== uploadOptions[0]) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
 
-      if (response.data && response.data.url) {
-        const url = String(response.data.url);
-        await chrome.storage.local.set({
-          [BLOSSOM_UPLOAD_STATUS]: {
-            uploading: false,
-            error: null,
-            url,
-          },
-        });
-        return { url };
+          console.log(`[BEX] Attempting ${option.method} upload to: ${option.url}`);
+
+          const eventTemplate = {
+            kind: 24242,
+            created_at: Math.floor(Date.now() / 1000),
+            tags: [
+              ['t', 'upload'],
+              ['x', hashHex],
+              ['u', option.url],
+              ['method', option.method],
+            ],
+            content: 'Upload file',
+            pubkey: pk,
+          };
+
+          // Some servers might require 'size' tag
+          eventTemplate.tags.push(['size', bytes.length.toString()]);
+
+          const signedEvent = finalizeEvent(eventTemplate, sk);
+          // Build auth header manually to ensure no unexpected escaping
+          const signedEventJson = JSON.stringify(signedEvent);
+          console.log(`[BEX] Signed Event: ${signedEventJson}`);
+          const authHeader = `Nostr ${btoa(signedEventJson)}`;
+
+          const response = await fetch(option.url, {
+            method: option.method,
+            headers: {
+              Authorization: authHeader,
+              'Content-Type': fileType,
+            },
+            body: bytes,
+          });
+
+          if (response.ok) {
+            console.log(`[BEX] Upload successful to ${option.url}`);
+
+            // Try to get URL from JSON response
+            if (response.status !== 204) {
+              try {
+                const responseText = await response.text();
+                console.log(`[BEX] Response body: ${responseText}`);
+                try {
+                  const data = JSON.parse(responseText);
+                  if (data && data.url) {
+                    finalUrl = String(data.url);
+                  }
+                } catch (e) {
+                  // Not JSON, maybe it's just the URL in plain text?
+                  if (responseText.startsWith('http')) {
+                    finalUrl = responseText.trim();
+                  }
+                }
+              } catch (e) {
+                console.warn('[BEX] Failed to read response body');
+              }
+            }
+
+            // Fallback: if we uploaded to a hash-based path, we already know the URL
+            if (!finalUrl && option.url === `${normalizedServer}/${hashHex}`) {
+              finalUrl = option.url;
+            }
+
+            if (finalUrl) {
+              await chrome.storage.local.set({
+                [UPLOAD_STATUS_KEY]: {
+                  uploading: false,
+                  error: null,
+                  url: finalUrl,
+                },
+              });
+              return { url: finalUrl };
+            }
+          } else {
+            const errorText = await response.text();
+            console.warn(
+              `[BEX] Upload to ${option.url} failed with ${response.status}: ${errorText}`,
+            );
+            lastError = new Error(
+              `Upload failed (${response.status}: ${response.statusText}) ${errorText.substring(0, 100)}`,
+            );
+
+            // If it's a 413 (Payload Too Large) or 401/403 (Unauthorized), stop trying fallbacks
+            if (response.status === 413 || response.status === 401 || response.status === 403) {
+              break;
+            }
+          }
+        } catch (e: any) {
+          console.error(`[BEX] Error trying upload to ${option.url}:`, e);
+          lastError = e;
+        }
       }
-      throw new Error('Invalid response from Blossom server');
+
+      throw lastError || new Error('Upload failed');
     } catch (error: any) {
       console.error('[BEX] Error in blossom.upload:', error);
+      const errorMessage = error.message || 'Upload failed';
       await chrome.storage.local.set({
-        [BLOSSOM_UPLOAD_STATUS]: {
+        [UPLOAD_STATUS_KEY]: {
           uploading: false,
-          error: error.message || 'Upload failed',
+          error: errorMessage,
           url: null,
         },
       });

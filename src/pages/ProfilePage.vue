@@ -4,6 +4,10 @@ import { useI18n } from 'vue-i18n';
 import useAccountStore from '../stores/account-store';
 import ProfileImage from '../components/ProfileImage.vue';
 import ProfileEditor from '../components/ProfileEditor.vue';
+import RelayEditor from '../components/RelayEditor.vue';
+
+import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
+import ExportButton from 'components/ExportButton.vue';
 
 const { t } = useI18n();
 const accountStore = useAccountStore();
@@ -43,6 +47,13 @@ onMounted(async () => {
               icon="image"
               name="images"
             />
+            <q-tab
+              :label="t('profile.relaysTitle')"
+              class="text-caption"
+              icon="relay"
+              name="relays"
+            />
+            <q-tab :label="t('profile.keysTitle')" class="text-caption" icon="key" name="keys" />
           </q-tabs>
 
           <q-separator />
@@ -54,6 +65,28 @@ onMounted(async () => {
 
             <q-tab-panel class="q-pa-none" name="images">
               <ProfileImage :stored-key="activeStoredKey" />
+            </q-tab-panel>
+
+            <q-tab-panel class="q-pa-none" name="relays">
+              <RelayEditor :stored-key="activeStoredKey" />
+            </q-tab-panel>
+
+            <q-tab-panel class="q-pa-none" name="keys">
+              <q-card>
+                <q-card-section>
+                  <ViewStoredKey :stored-key="activeStoredKey" />
+                </q-card-section>
+                <q-card-section class="q-pt-none row justify-end paddings-sm">
+                  <q-separator horizontal inset />
+                </q-card-section>
+
+                <q-card-section class="q-pt-none row justify-end paddings-sm">
+                  <ExportButton :stored-key="activeStoredKey" />
+                </q-card-section>
+              </q-card>
+              <q-card>
+                <q-card-section class="q-pt-none row justify-end paddings-sm"> </q-card-section>
+              </q-card>
             </q-tab-panel>
           </q-tab-panels>
         </div>

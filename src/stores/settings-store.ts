@@ -1,7 +1,7 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 
 const BLOSSOM_SERVER = 'nostr:blossom-server' as const;
-const DEFAULT_BLOSSOM_SERVER = 'https://blossom.threenine.dn';
+const DEFAULT_BLOSSOM_SERVER = 'https://blossom.primal.net/';
 
 const useSettingsStore = defineStore('settings', {
   state: () => ({

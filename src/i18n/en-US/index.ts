@@ -31,6 +31,8 @@ export default {
   profile: {
     title: 'Profile',
     imagesTitle: 'Images',
+    keysTitle: 'Keys',
+    relaysTitle: 'Relay List',
     name: 'Name',
     displayName: 'Display Name',
     about: 'About',
