@@ -26,6 +26,14 @@ declare module '@quasar/app-vite' {
     'nostr.getRelays': [{ origin: string }, any];
     'nostr.nip04.encrypt': [{ pubkey: string; plaintext: string; origin: string }, any];
     'nostr.nip04.decrypt': [{ pubkey: string; ciphertext: string; origin: string }, any];
+    'blossom.upload': [
+      {
+        base64Data: string;
+        fileType: string;
+        blossomServer: string;
+      },
+      any,
+    ];
     /* eslint-enable @typescript-eslint/no-explicit-any */
   }
 }

@@ -11,7 +11,7 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/IndexPage.vue'),
       },
       {
-        path: 'settings',
+        path: '/settings',
         name: 'settings',
         component: () => import('pages/ExtensionSettings.vue'),
       },
@@ -19,6 +19,11 @@ const routes: RouteRecordRaw[] = [
         path: 'create-account',
         name: 'create-account',
         component: () => import('pages/CreateAccount.vue'),
+      },
+      {
+        path: '/profile',
+        name: 'profile',
+        component: () => import('pages/ProfilePage.vue'),
       },
       {
         path: 'edit-account/:alias?',
@@ -32,6 +37,11 @@ const routes: RouteRecordRaw[] = [
     path: '/approve',
     component: () => import('layouts/PopupLayout.vue'),
     children: [{ path: '', component: () => import('pages/SignerApproval.vue') }],
+  },
+  {
+    path: '/uploader',
+    component: () => import('layouts/PopupLayout.vue'),
+    children: [{ path: '', component: () => import('pages/ImageUploaderPage.vue') }],
   },
 
   // Always leave this as last one,

@@ -2,7 +2,7 @@
 import { onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
-import type { NostrProfile, StoredKey } from 'src/types';
+import type { NostrProfile, StoredKey } from '../types';
 import { finalizeEvent, getPublicKey, SimplePool } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
 

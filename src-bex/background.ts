@@ -8,11 +8,14 @@
  * 3. Import it in your background service worker (if available for your target browser).
  */
 import { createBridge } from '#q-app/bex/background';
-import { finalizeEvent, nip04 } from 'nostr-tools';
+import { finalizeEvent, getPublicKey, nip04 } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
-import { db } from 'src/services/database';
+import { db } from '../src/services/database';
+import axios from 'axios';
+import { sha256 } from '@noble/hashes/sha256';
 
 const NOSTR_ACTIVE = 'nostr:active';
+const BLOSSOM_UPLOAD_STATUS = 'blossom:upload_status';
 
 async function getActiveStoredKey() {
   console.log('[BEX] Getting active account...');
@@ -46,6 +49,14 @@ declare module '@quasar/app-vite' {
     'nostr.nip04.encrypt': [{ pubkey: string; plaintext: string; origin: string }, any];
     'nostr.nip04.decrypt': [{ pubkey: string; ciphertext: string; origin: string }, any];
     'nostr.approval.respond': [{ approved: boolean }, void];
+    'blossom.upload': [
+      {
+        base64Data: string;
+        fileType: string;
+        blossomServer: string;
+      },
+      any,
+    ];
     /* eslint-enable @typescript-eslint/no-explicit-any */
   }
 }
@@ -193,7 +204,90 @@ bridge.on('nostr.nip04.decrypt', async ({ payload: { pubkey, ciphertext, origin 
     throw new Error('User rejected the request');
   }
   const secretKey = await getActiveSecretKey();
-  return  nip04.decrypt(secretKey, pubkey, ciphertext);
+  return nip04.decrypt(secretKey, pubkey, ciphertext);
+});
+
+bridge.on('blossom.upload', ({ payload: { base64Data, fileType, blossomServer } }) => {
+  console.log('[BEX] Handling blossom.upload');
+
+  const processUpload = async () => {
+    // Persist status as uploading
+    await chrome.storage.local.set({
+      [BLOSSOM_UPLOAD_STATUS]: {
+        uploading: true,
+        error: null,
+        url: null,
+      },
+    });
+
+    try {
+      const storedKey = await getActiveStoredKey();
+      const sk = hexToBytes(storedKey.account.privkey);
+      const pk = getPublicKey(sk);
+
+      // Convert base64 to Uint8Array
+      const binaryString = atob(base64Data);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      const hash = sha256(bytes);
+      const hashHex = Array.from(hash)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+
+      const normalizedServer = blossomServer.replace(/\/$/, '');
+      const uploadUrl = `${normalizedServer}/${hashHex}`;
+
+      const eventTemplate = {
+        kind: 24242,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ['u', uploadUrl],
+          ['method', 'PUT'],
+          ['x', hashHex],
+        ],
+        content: 'Upload file',
+        pubkey: pk,
+      };
+
+      const signedEvent = finalizeEvent(eventTemplate, sk);
+      const authHeader = `Nostr ${btoa(JSON.stringify(signedEvent))}`;
+
+      const response = await axios.put(uploadUrl, bytes.buffer, {
+        headers: {
+          Authorization: authHeader,
+          'Content-Type': fileType,
+        },
+      });
+
+      if (response.data && response.data.url) {
+        const url = String(response.data.url);
+        await chrome.storage.local.set({
+          [BLOSSOM_UPLOAD_STATUS]: {
+            uploading: false,
+            error: null,
+            url,
+          },
+        });
+        return { url };
+      }
+      throw new Error('Invalid response from Blossom server');
+    } catch (error: any) {
+      console.error('[BEX] Error in blossom.upload:', error);
+      await chrome.storage.local.set({
+        [BLOSSOM_UPLOAD_STATUS]: {
+          uploading: false,
+          error: error.message || 'Upload failed',
+          url: null,
+        },
+      });
+      throw error;
+    }
+  };
+
+  return processUpload();
 });
 
 

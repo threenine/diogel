@@ -175,6 +175,7 @@ watch(
         <div class="col-auto">
           <ImagePreview :is-avatar="true" :name="profile.name" :url="profile.picture" size="80px" />
         </div>
+        <q-separator horizontal inset />
         <div class="col">
           <q-input v-model="profile.picture" :label="t('profile.picture')" dense outlined>
             <template v-slot:append>

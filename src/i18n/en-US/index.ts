@@ -29,7 +29,8 @@ export default {
     created: 'Created',
   },
   profile: {
-    title: 'Profile Settings',
+    title: 'Profile',
+    imagesTitle: 'Images',
     name: 'Name',
     displayName: 'Display Name',
     about: 'About',

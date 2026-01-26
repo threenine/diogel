@@ -1,6 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import type { StoredKey } from 'src/types';
-import { get, getActive, save, setActive } from 'src/services/dexie-storage';
+import type { StoredKey } from '../types';
+import { get, getActive, save, setActive } from '../services/dexie-storage';
 
 const useAccountStore = defineStore('account', {
   state: () => ({
