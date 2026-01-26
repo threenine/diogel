@@ -2,12 +2,12 @@
 import { onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
-import type { NostrProfile, StoredKey } from 'src/types';
+import type { NostrProfile, StoredKey } from '../types';
 import { finalizeEvent, getPublicKey, SimplePool } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
-import useSettingsStore from 'src/stores/settings-store';
-import ImagePreview from 'components/ImagePreview.vue';
-import ImageUploader from 'components/ImageUploader.vue';
+import useSettingsStore from '../stores/settings-store';
+import ImagePreview from './ImagePreview.vue';
+import ImageUploader from './ImageUploader.vue';
 
 defineOptions({ name: 'ProfileImage' });
 

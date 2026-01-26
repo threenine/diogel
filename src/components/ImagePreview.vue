@@ -4,8 +4,8 @@ import { useI18n } from 'vue-i18n';
 defineOptions({ name: 'ImagePreview' });
 
 defineProps<{
-  url?: string;
-  name?: string;
+  url?: string | null | undefined;
+  name?: string | null | undefined;
   size?: string;
   isAvatar?: boolean;
 }>();

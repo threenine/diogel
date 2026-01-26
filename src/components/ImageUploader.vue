@@ -2,12 +2,12 @@
 import { ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
-import type { StoredKey } from 'src/types';
+import type { StoredKey } from '../types';
 import { finalizeEvent, getPublicKey } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
 import { sha256 } from '@noble/hashes/sha256';
 import axios from 'axios';
-import useSettingsStore from 'src/stores/settings-store';
+import useSettingsStore from '../stores/settings-store';
 
 defineOptions({ name: 'ImageUploader' });
 

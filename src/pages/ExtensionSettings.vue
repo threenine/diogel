@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { onMounted } from 'vue';
-import ThemeSwitch from 'components/ThemeSwitch/Index.vue';
-import useSettingsStore from 'src/stores/settings-store';
+import ThemeSwitch from '../components/ThemeSwitch/Index.vue';
+import useSettingsStore from '../stores/settings-store';
 import { useI18n } from 'vue-i18n';
 
 const { t } = useI18n();
@@ -42,7 +42,7 @@ onMounted(async () => {
                   class="q-mt-sm"
                   dense
                   outlined
-                  @update:model-value="settingsStore.setBlossomServer"
+                  @update:model-value="(val) => settingsStore.setBlossomServer(String(val))"
                 />
               </q-item-section>
             </q-item>
