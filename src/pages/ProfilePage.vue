@@ -50,7 +50,7 @@ onMounted(async () => {
             <q-tab
               :label="t('profile.relaysTitle')"
               class="text-caption"
-              icon="relay"
+              icon="hub"
               name="relays"
             />
             <q-tab :label="t('profile.keysTitle')" class="text-caption" icon="key" name="keys" />
@@ -85,7 +85,9 @@ onMounted(async () => {
                 </q-card-section>
               </q-card>
               <q-card>
-                <q-card-section class="q-pt-none row justify-end paddings-sm"> </q-card-section>
+                <q-card-section class="q-pt-none row justify-center paddings-sm">
+                  <p class="text-orange-5">Ensure you export and backup your private key.</p>
+                </q-card-section>
               </q-card>
             </q-tab-panel>
           </q-tab-panels>
