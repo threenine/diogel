@@ -134,15 +134,33 @@ watch(
   },
 );
 
-watch(innerValue, (v) => {
+watch(innerValue, (v, oldV) => {
   emit('update:modelValue', v);
   emit('change', v);
+
+  // If the value hasn't actually changed (e.g. initial setup), don't trigger navigation
+  if (v === oldV) return;
+
   // Navigate based on selection
   if (v === props.createValue) {
     router.push({ name: 'create-account' }).catch(() => {});
   } else if (v !== null && v !== undefined) {
     accountStore.setActiveKey(v as string).catch(() => {});
-    router.push({ path: '/' }).catch(() => {});
+    // Only navigate to home if we are specifically wanting to go back to home after account change,
+    // but don't do it if we are already on a management page like Profile or Settings.
+    // In fact, usually we only want to redirect to Home if we were on a route that depended on the old account context,
+    // or if we just want to reset the view.
+    // If the user is on /profile and changes account, they probably want to see the profile of the NEW account.
+    // So we should NOT redirect to / if they are already on /profile.
+    const currentPath = router.currentRoute.value.path;
+    if (
+      currentPath !== '/' &&
+      currentPath !== '/profile' &&
+      currentPath !== '/settings' &&
+      !currentPath.startsWith('/edit-account')
+    ) {
+      router.push({ path: '/' }).catch(() => {});
+    }
   }
 });
 

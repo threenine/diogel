@@ -1,5 +1,5 @@
 import { BlobWriter, configure, TextReader, ZipWriter } from '@zip.js/zip.js';
-import type { StoredKey } from 'src/types';
+import type { StoredKey } from '../types';
 import * as nip19 from 'nostr-tools/nip19';
 import { hexToBytes } from '@noble/hashes/utils';
 

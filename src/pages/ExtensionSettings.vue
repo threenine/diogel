@@ -1,5 +1,15 @@
 <script lang="ts" setup>
-import ThemeSwitch from 'components/ThemeSwitch/Index.vue';
+import { onMounted } from 'vue';
+import ThemeSwitch from '../components/ThemeSwitch/Index.vue';
+import useSettingsStore from '../stores/settings-store';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
+const settingsStore = useSettingsStore();
+
+onMounted(async () => {
+  await settingsStore.getSettings();
+});
 </script>
 
 <template>
@@ -10,7 +20,7 @@ import ThemeSwitch from 'components/ThemeSwitch/Index.vue';
           <q-toolbar-title>General</q-toolbar-title>
         </q-toolbar>
         <div class="q-pa-lg-lg full-width settings-form rounded-borders">
-          <q-list>
+          <q-list dividers>
             <q-item v-ripple tag="label">
               <q-item-section>
                 <q-item-label>Theme</q-item-label>
@@ -18,6 +28,22 @@ import ThemeSwitch from 'components/ThemeSwitch/Index.vue';
               </q-item-section>
               <q-item-section side top>
                 <theme-switch size="xl" />
+              </q-item-section>
+            </q-item>
+
+            <q-separator />
+
+            <q-item>
+              <q-item-section>
+                <q-item-label>{{ t('profile.blossomServer') }}</q-item-label>
+                <q-item-label caption> URL of the Blossom server for image uploads </q-item-label>
+                <q-input
+                  v-model="settingsStore.blossomServer"
+                  class="q-mt-sm"
+                  dense
+                  outlined
+                  @update:model-value="(val) => settingsStore.setBlossomServer(String(val))"
+                />
               </q-item-section>
             </q-item>
           </q-list>

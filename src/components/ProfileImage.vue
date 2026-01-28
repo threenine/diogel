@@ -2,9 +2,12 @@
 import { onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
-import type { NostrProfile, StoredKey } from 'src/types';
+import type { NostrProfile, StoredKey } from '../types';
 import { finalizeEvent, getPublicKey, SimplePool } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
+import useSettingsStore from '../stores/settings-store';
+import BannerEditor from './BannerEditor.vue';
+import AvatarEditor from './AvatarEditor.vue';
 
 defineOptions({ name: 'ProfileImage' });
 
@@ -14,6 +17,9 @@ const props = defineProps<{
 
 const $q = useQuasar();
 const { t } = useI18n();
+const settingsStore = useSettingsStore();
+
+const uploading = ref(false);
 
 const profile = ref<NostrProfile>({
   name: '',
@@ -78,7 +84,7 @@ async function fetchProfile() {
   }
 }
 
-async function saveProfile() {
+async function saveProfile(field: 'picture' | 'banner', url: string) {
   saving.value = true;
   try {
     const sk = hexToBytes(props.storedKey.account.privkey);
@@ -95,10 +101,10 @@ async function saveProfile() {
       currentProfile = JSON.parse(latestEvent.content) as NostrProfile;
     }
 
+    // SURGICAL UPDATE: Only touch the one field requested.
     const updatedProfile = {
       ...currentProfile,
-      picture: profile.value.picture,
-      banner: profile.value.banner,
+      [field]: url,
     };
 
     const eventTemplate = {
@@ -110,7 +116,6 @@ async function saveProfile() {
     };
 
     const signedEvent = finalizeEvent(eventTemplate, sk);
-
     await Promise.any(pool.publish(DEFAULT_RELAYS, signedEvent));
 
     $q.notify({
@@ -128,7 +133,8 @@ async function saveProfile() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await settingsStore.getSettings();
   void fetchProfile();
 });
 
@@ -145,19 +151,22 @@ watch(
     <div v-if="loading" class="flex flex-center q-pa-lg">
       <q-spinner color="primary" size="3em" />
     </div>
-    <q-form v-else class="q-gutter-md" @submit="saveProfile">
-      <q-input v-model="profile.picture" :label="t('profile.picture')" dense outlined>
-        <template v-slot:append>
-          <q-avatar v-if="profile.picture" size="40px">
-            <img :alt="profile.name || 'Profile picture'" :src="profile.picture" />
-          </q-avatar>
-        </template>
-      </q-input>
-      <q-input v-model="profile.banner" :label="t('profile.banner')" dense outlined />
+    <div v-else class="q-gutter-md">
+      <BannerEditor
+        v-model="profile.banner"
+        :name="profile.name"
+        :stored-key="storedKey"
+        @save="(field, url) => saveProfile(field, url)"
+        @uploading="(status) => (uploading = status)"
+      />
 
-      <div class="row justify-end q-mt-md">
-        <q-btn :label="t('profile.save')" :loading="saving" color="primary" type="submit" />
-      </div>
-    </q-form>
+      <AvatarEditor
+        v-model="profile.picture"
+        :name="profile.name"
+        :stored-key="storedKey"
+        @save="(field, url) => saveProfile(field, url)"
+        @uploading="(status) => (uploading = status)"
+      />
+    </div>
   </div>
 </template>

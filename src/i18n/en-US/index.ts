@@ -29,7 +29,10 @@ export default {
     created: 'Created',
   },
   profile: {
-    title: 'Profile Settings',
+    title: 'Profile',
+    imagesTitle: 'Images',
+    keysTitle: 'Keys',
+    relaysTitle: 'Relay List',
     name: 'Name',
     displayName: 'Display Name',
     about: 'About',
@@ -43,6 +46,10 @@ export default {
     saveSuccess: 'Profile updated successfully',
     saveError: 'Failed to update profile',
     noRelays: 'No relays configured to fetch/publish profile',
+    uploading: 'Uploading image...',
+    uploadSuccess: 'Image uploaded successfully',
+    uploadError: 'Failed to upload image',
+    blossomServer: 'Blossom Server URL',
   },
   relays: {
     title: 'Relay Settings',

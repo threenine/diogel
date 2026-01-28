@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie';
-import type { StoredKey } from 'src/types';
+import type { StoredKey } from '../types';
 
 export class NostrDatabase extends Dexie {
   storedKeys!: Table<StoredKey, string>; // 'id' is the primary key

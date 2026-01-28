@@ -1,4 +1,4 @@
-import type { StoredKey } from 'src/types';
+import type { StoredKey } from '../types';
 import { db } from './database';
 
 const NOSTR_ACTIVE = 'nostr:active' as const;

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { StoredKey } from 'src/types';
+import type { StoredKey } from '../../types';
 import { useQuasar } from 'quasar';
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
@@ -38,7 +38,7 @@ async function copyToClipboard(text: string) {
 
 <template>
   <q-list>
-    <q-item v-ripple tag="label">
+    <q-item tag="label">
       <q-item-section>
         <q-input :model-value="npub" class="text-input" :label="$t('account.publicKey')" readonly>
           <template v-slot:prepend>
