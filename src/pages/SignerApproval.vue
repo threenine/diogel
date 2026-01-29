@@ -24,7 +24,7 @@ onMounted(() => {
 async function approve() {
   console.log('Approving request...');
   // Give it a small delay to ensure bridge is fully ready if it wasn't
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 100));
   try {
     if (!$q.bex) {
       throw new Error('BEX bridge not available in approve()');
@@ -44,7 +44,7 @@ async function approve() {
 
 async function reject() {
   console.log('Rejecting request...');
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise((resolve) => setTimeout(resolve, 100));
   try {
     if (!$q.bex) {
       throw new Error('BEX bridge not available in reject()');
@@ -64,7 +64,7 @@ async function reject() {
 
 <template>
   <q-layout>
-    <q-page-container>
+    <q-page-container v-if="origin" class="flex flex-center" style="height: 100px">
       <q-page class="flex flex-center q-pa-md">
         <q-card style="width: 100%; max-width: 400px">
           <q-card-section>
@@ -80,18 +80,8 @@ async function reject() {
           </q-card-section>
 
           <q-card-actions align="right" class="q-pb-md q-pr-md">
-            <q-btn
-              flat
-              :label="t('approval.reject')"
-              color="negative"
-              @click="reject"
-            />
-            <q-btn
-              unelevated
-              :label="t('approval.approve')"
-              color="primary"
-              @click="approve"
-            />
+            <q-btn :label="t('approval.reject')" color="negative" flat @click="reject" />
+            <q-btn :label="t('approval.approve')" color="primary" unelevated @click="approve" />
           </q-card-actions>
         </q-card>
       </q-page>

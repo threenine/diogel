@@ -38,27 +38,22 @@ function onUploading(status: boolean) {
 
 <template>
   <div class="row q-col-gutter-md items-center">
-    <div class="col-auto">
-      <ImagePreview :is-avatar="true" :name="name" :url="modelValue" size="80px" />
-    </div>
-    <div class="col">
-      <q-input
-        :label="t('profile.picture')"
-        :model-value="modelValue"
-        dense
-        outlined
-        @update:model-value="(val) => onUrlInput(String(val))"
-      >
-        <template v-slot:append>
-          <ImageUploader
-            :label="t('profile.picture')"
-            :stored-key="storedKey"
-            upload-id="avatar"
-            @avatar-uploaded="onUploaded"
-            @avatar-uploading="onUploading"
-          />
-        </template>
-      </q-input>
-    </div>
+    <q-card>
+      <q-card-section class="text-left">
+        <p class="text-h7 text-orange-5">Profile Image</p>
+      </q-card-section>
+      <q-card-section>
+        <ImagePreview :is-avatar="true" :name="name" :url="modelValue" size="80px" />
+      </q-card-section>
+      <q-card-actions align="center" class="q-gutter-sm">
+        <ImageUploader
+          :label="t('profile.picture')"
+          :stored-key="storedKey"
+          upload-id="avatar"
+          @avatar-uploaded="onUploaded"
+          @avatar-uploading="onUploading"
+        />
+      </q-card-actions>
+    </q-card>
   </div>
 </template>

@@ -27,7 +27,7 @@ const { t } = useI18n();
         v-if="url"
         :alt="name || t('profile.banner')"
         :src="url"
-        class="rounded-borders"
+        class="rounded-borders q-pa-s"
         fit="cover"
         style="max-height: 200px; width: 100%"
       >

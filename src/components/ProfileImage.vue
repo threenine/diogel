@@ -151,22 +151,25 @@ watch(
     <div v-if="loading" class="flex flex-center q-pa-lg">
       <q-spinner color="primary" size="3em" />
     </div>
-    <div v-else class="q-gutter-md">
-      <BannerEditor
-        v-model="profile.banner"
-        :name="profile.name"
-        :stored-key="storedKey"
-        @save="(field, url) => saveProfile(field, url)"
-        @uploading="(status) => (uploading = status)"
-      />
-
-      <AvatarEditor
-        v-model="profile.picture"
-        :name="profile.name"
-        :stored-key="storedKey"
-        @save="(field, url) => saveProfile(field, url)"
-        @uploading="(status) => (uploading = status)"
-      />
+    <div v-else class="row q-col-gutter-md items-center">
+      <div class="col-3">
+        <AvatarEditor
+          v-model="profile.picture"
+          :name="profile.name"
+          :stored-key="storedKey"
+          @save="(field, url) => saveProfile(field, url)"
+          @uploading="(status) => (uploading = status)"
+        />
+      </div>
+      <div class="col-6">
+        <BannerEditor
+          v-model="profile.banner"
+          :name="profile.name"
+          :stored-key="storedKey"
+          @save="(field, url) => saveProfile(field, url)"
+          @uploading="(status) => (uploading = status)"
+        />
+      </div>
     </div>
   </div>
 </template>

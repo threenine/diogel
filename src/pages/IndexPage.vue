@@ -1,6 +1,6 @@
 <template>
   <q-page class="flex flex-center">
-    <div class="text-h6">Home Page</div>
+    <div class="text-h6">Cunt</div>
   </q-page>
 </template>
 

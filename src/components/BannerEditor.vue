@@ -26,10 +26,10 @@ function onUploaded(url: string) {
   emit('save', 'banner', url);
 }
 
-function onUrlInput(url: string) {
+/*function onUrlInput(url: string) {
   emit('update:modelValue', url);
   emit('save', 'banner', url);
-}
+}*/
 
 function onUploading(status: boolean) {
   emit('uploading', status);
@@ -39,18 +39,14 @@ function onUploading(status: boolean) {
 <template>
   <div class="row q-col-gutter-md items-center">
     <div class="col-12">
-      <ImagePreview :name="name" :url="modelValue" />
-    </div>
-    <q-separator />
-    <div class="col-12">
-      <q-input
-        :label="t('profile.banner')"
-        :model-value="modelValue"
-        dense
-        outlined
-        @update:model-value="(val) => onUrlInput(String(val))"
-      >
-        <template v-slot:append>
+      <q-card>
+        <q-card-section class="text-left">
+          <p class="text-h7 text-orange-5">Banner Image</p>
+        </q-card-section>
+        <q-card-section>
+          <div class="q-pa-st"><ImagePreview :name="name" :url="modelValue" /></div>
+        </q-card-section>
+        <q-card-actions align="center" class="q-gutter-sm">
           <ImageUploader
             :label="t('profile.banner')"
             :stored-key="storedKey"
@@ -58,8 +54,8 @@ function onUploading(status: boolean) {
             @banner-uploaded="onUploaded"
             @banner-uploading="onUploading"
           />
-        </template>
-      </q-input>
+        </q-card-actions>
+      </q-card>
     </div>
   </div>
 </template>

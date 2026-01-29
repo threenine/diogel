@@ -1,6 +1,6 @@
 <template>
   <q-layout>
-    <app-header />
+    <main-layout-header />
     <q-page-container>
       <router-view />
     </q-page-container>
@@ -8,5 +8,5 @@
 </template>
 
 <script setup lang="ts">
-import AppHeader from 'components/AppHeader.vue';
+import MainLayoutHeader from 'components/MainLayoutHeader.vue';
 </script>

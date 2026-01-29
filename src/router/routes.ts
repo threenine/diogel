@@ -14,13 +14,19 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('layouts/ExtensionLayout.vue'),
     children: [
       {
         path: '/',
         name: 'home',
         component: () => import('pages/IndexPage.vue'),
       },
+    ],
+  },
+  {
+    path: '/',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [
       {
         path: '/settings',
         name: 'settings',
