@@ -29,7 +29,7 @@
       {
         "matches": ["<all_urls>"],
         "css": ["assets/content.css"],
-        "js": ["content-script.ts", "nostr-provider.js"],
+        "js": ["content-script.ts"],
         "run_at": "document_start"
       }
     ]

@@ -1,9 +1,13 @@
 import type { StoredKey } from '../types';
 import { db } from './database';
+import { isVaultUnlocked } from './vault-service';
 
 const NOSTR_ACTIVE = 'nostr:active' as const;
 
 export async function get(): Promise<Record<string, StoredKey>> {
+  if (!(await isVaultUnlocked())) {
+    return {};
+  }
   const keys = await db.storedKeys.toArray();
   return keys.reduce(
     (acc, key) => {
@@ -34,6 +38,9 @@ export async function setActive(alias: string): Promise<void> {
 }
 
 export async function save(storedKey: StoredKey): Promise<void> {
+  if (!(await isVaultUnlocked())) {
+    throw new Error('Vault is locked. Cannot save key.');
+  }
   // Check if a key with the same alias or id already exists
   const existingAlias = await db.storedKeys.where('alias').equals(storedKey.alias).first();
   if (existingAlias) {
@@ -50,5 +57,8 @@ export async function save(storedKey: StoredKey): Promise<void> {
 }
 
 export async function remove(id: string): Promise<void> {
+  if (!(await isVaultUnlocked())) {
+    throw new Error('Vault is locked. Cannot remove key.');
+  }
   await db.storedKeys.delete(id);
 }
