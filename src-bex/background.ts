@@ -284,8 +284,8 @@ async function requestApproval(origin: string): Promise<boolean> {
     const win = await chrome.windows.create({
       url,
       type: 'popup',
-      width: 600,
-      height: 800,
+      width: 400,
+      height: 600,
     });
     windowId = win.id;
   } catch (err) {

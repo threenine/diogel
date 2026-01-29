@@ -3,7 +3,7 @@ import PopupHeader from 'components/PopupHeader.vue';
 </script>
 
 <template>
-  <q-layout view="hHh Lpr lFf">
+  <q-layout class="popup-layout" view="hHh Lpr lFf">
     <popup-header />
     <q-page-container>
       <router-view />

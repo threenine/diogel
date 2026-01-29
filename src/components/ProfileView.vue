@@ -114,7 +114,7 @@ watch(
       <div class="q-px-md q-pb-md content-section">
         <!-- Avatar - partially overlapping banner -->
         <div class="avatar-wrapper">
-          <q-avatar class="profile-avatar" size="120px">
+          <q-avatar class="profile-avatar" size="100px">
             <q-img v-if="profile.picture" :src="profile.picture" />
             <q-icon v-else class="bg-grey-3 full-width full-height" color="grey-7" name="person" />
           </q-avatar>
@@ -158,7 +158,7 @@ watch(
 
 .banner-container {
   position: relative;
-  height: 200px;
+  height: 150px;
   width: 100%;
 }
 
@@ -186,7 +186,7 @@ watch(
 }
 
 .avatar-wrapper {
-  margin-top: -80px;
+  margin-top: -60px;
   position: relative;
   z-index: 1;
 }
@@ -199,6 +199,12 @@ watch(
 .about-text {
   white-space: pre-wrap;
   word-break: break-word;
+  max-height: 100px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
 }
 
 .text-decoration-none {

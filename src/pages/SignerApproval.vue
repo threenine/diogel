@@ -22,13 +22,14 @@ onMounted(() => {
 });
 
 async function approve() {
-  console.log('Approving request...');
-  // Give it a small delay to ensure bridge is fully ready if it wasn't
   await new Promise((resolve) => setTimeout(resolve, 100));
+
+  if (!$q.bex) {
+    console.error('BEX bridge not available in approve()');
+    return;
+  }
+
   try {
-    if (!$q.bex) {
-      throw new Error('BEX bridge not available in approve()');
-    }
     await $q.bex.send({
       event: 'nostr.approval.respond',
       to: 'background',
@@ -45,10 +46,13 @@ async function approve() {
 async function reject() {
   console.log('Rejecting request...');
   await new Promise((resolve) => setTimeout(resolve, 100));
+
+  if (!$q.bex) {
+    console.error('BEX bridge not available in reject()');
+    return;
+  }
+
   try {
-    if (!$q.bex) {
-      throw new Error('BEX bridge not available in reject()');
-    }
     await $q.bex.send({
       event: 'nostr.approval.respond',
       to: 'background',
@@ -64,9 +68,9 @@ async function reject() {
 
 <template>
   <q-layout>
-    <q-page-container v-if="origin" class="flex flex-center" style="height: 100px">
-      <q-page class="flex flex-center q-pa-md">
-        <q-card style="width: 100%; max-width: 400px">
+    <q-page-container v-if="origin" class="flex flex-center" style="width: 100%">
+      <q-page class="q-pa-md">
+        <q-card style="width: 100%;">
           <q-card-section>
             <div class="text-h6">{{ t('approval.title') }}</div>
           </q-card-section>

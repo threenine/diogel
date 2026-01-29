@@ -1,13 +1,9 @@
 <template>
-  <q-page class="flex flex-center">
-    <div v-if="activeStoredKey" class="q-pa-xl full-width" style="max-width: 900px">
-      <q-card>
-        <q-card-section class="text-h6">
-          <ProfileView :stored-key="activeStoredKey" />
-        </q-card-section>
-      </q-card>
+  <q-page>
+    <div v-if="activeStoredKey" class="full-width">
+      <ProfileView :stored-key="activeStoredKey" />
     </div>
-    <div v-else class="q-pa-xl">
+    <div v-else class="q-pa-md">
       <div class="text-center">
         <q-icon color="grey-5" name="account_circle" size="4em" />
         <div class="text-h6 text-grey-7 q-mt-md">No active account</div>

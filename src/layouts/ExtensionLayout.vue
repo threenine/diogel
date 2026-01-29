@@ -1,5 +1,5 @@
 <template>
-  <q-layout>
+  <q-layout class="popup-layout">
     <extension-window-header />
     <q-page-container>
       <router-view />
@@ -10,3 +10,5 @@
 <script lang="ts" setup>
 import ExtensionWindowHeader from 'components/ExtensionWindowHeader.vue';
 </script>
+
+<style scoped></style>

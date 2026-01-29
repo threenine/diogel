@@ -1,18 +1,20 @@
 // app global css in SCSS form
 html,
 body {
-  min-width: 600px; /* Adjust as needed (Max width ~800px) */
-  min-height: 600px;
-  max-height: 600px; /* Adjust as needed (Max height ~600px) */
+  width: 100%;
+  height: 100%;
+  overflow: auto;
 
   // Apply page background & base text color from theme variables
   background-color: var(--page-bg);
   color: var(--text-color);
 }
 
-.popup-root {
-  width: 400px; /* common popup width */
-  min-height: 600px;
+.popup-layout {
+  width: 400px;
+  height: 600px;
+  margin: 0 auto;
+  overflow: hidden;
 }
 // Header & toolbar theming
 .q-header {
@@ -40,7 +42,6 @@ body {
 }
 
 .settings-container {
-  margin-top: 50px;
   display: flex;
   justify-content: center;
 }
