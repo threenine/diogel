@@ -151,7 +151,7 @@ watch(
     <div v-if="loading" class="flex flex-center q-pa-lg">
       <q-spinner color="primary" size="3em" />
     </div>
-    <div v-else class="row q-col-gutter-md items-center">
+    <div v-else class="row q-col-gutter-md items-stretch">
       <div class="col-3">
         <AvatarEditor
           v-model="profile.picture"
@@ -159,15 +159,17 @@ watch(
           :stored-key="storedKey"
           @save="(field, url) => saveProfile(field, url)"
           @uploading="(status) => (uploading = status)"
+          class="full-height"
         />
       </div>
-      <div class="col-6">
+      <div class="col-9">
         <BannerEditor
           v-model="profile.banner"
           :name="profile.name"
           :stored-key="storedKey"
           @save="(field, url) => saveProfile(field, url)"
           @uploading="(status) => (uploading = status)"
+          class="full-height"
         />
       </div>
     </div>

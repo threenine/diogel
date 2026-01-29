@@ -20,7 +20,6 @@ const { t } = useI18n();
         <img v-if="url" :alt="name || t('profile.picture')" :src="url" />
         <q-icon v-else name="person" />
       </q-avatar>
-      <q-separator />
     </template>
     <template v-else>
       <q-img
@@ -29,7 +28,7 @@ const { t } = useI18n();
         :src="url"
         class="rounded-borders q-pa-s"
         fit="cover"
-        style="max-height: 200px; width: 100%"
+        style="height: 150px; width: 100%"
       >
         <template v-slot:error>
           <div class="absolute-full flex flex-center bg-negative text-white">

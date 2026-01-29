@@ -26,34 +26,27 @@ function onUploaded(url: string) {
   emit('save', 'picture', url);
 }
 
-function onUrlInput(url: string) {
-  emit('update:modelValue', url);
-  emit('save', 'picture', url);
-}
-
 function onUploading(status: boolean) {
   emit('uploading', status);
 }
 </script>
 
 <template>
-  <div class="row q-col-gutter-md items-center">
-    <q-card>
-      <q-card-section class="text-left">
-        <p class="text-h7 text-orange-5">Profile Image</p>
-      </q-card-section>
-      <q-card-section>
-        <ImagePreview :is-avatar="true" :name="name" :url="modelValue" size="80px" />
-      </q-card-section>
-      <q-card-actions align="center" class="q-gutter-sm">
-        <ImageUploader
-          :label="t('profile.picture')"
-          :stored-key="storedKey"
-          upload-id="avatar"
-          @avatar-uploaded="onUploaded"
-          @avatar-uploading="onUploading"
-        />
-      </q-card-actions>
-    </q-card>
-  </div>
+  <q-card class="full-width full-height">
+    <q-card-section class="text-left">
+      <p class="text-h7 text-orange-5">Profile Image</p>
+    </q-card-section>
+    <q-card-section class="flex flex-center">
+      <ImagePreview :is-avatar="true" :name="name" :url="modelValue" size="80px" />
+    </q-card-section>
+    <q-card-actions align="center" class="q-gutter-sm">
+      <ImageUploader
+        :label="t('profile.picture')"
+        :stored-key="storedKey"
+        upload-id="avatar"
+        @avatar-uploaded="onUploaded"
+        @avatar-uploading="onUploading"
+      />
+    </q-card-actions>
+  </q-card>
 </template>
