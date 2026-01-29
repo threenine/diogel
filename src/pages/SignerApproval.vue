@@ -67,30 +67,26 @@ async function reject() {
 </script>
 
 <template>
-  <q-layout>
-    <q-page-container v-if="origin" class="flex flex-center" style="width: 100%">
-      <q-page class="q-pa-md">
-        <q-card style="width: 100%;">
-          <q-card-section>
-            <div class="text-h6">{{ t('approval.title') }}</div>
-          </q-card-section>
+  <q-page v-if="origin" class="flex flex-center q-gutter-md q-mb-md">
+    <q-card class="q-pa-sm">
+      <q-card-section>
+        <div class="text-h6">{{ t('approval.title') }}</div>
+      </q-card-section>
 
-          <q-card-section class="q-pt-none">
-            <p>{{ t('approval.description') }}</p>
-            <div class="text-caption text-grey-7 q-mt-sm">
-              {{ t('approval.origin') }}
-            </div>
-            <div class="text-subtitle2 break-word">{{ origin }}</div>
-          </q-card-section>
+      <q-card-section class="q-pt-none">
+        <p>{{ t('approval.description') }}</p>
+        <div class="text-caption text-grey-7 q-mt-sm">
+          {{ t('approval.origin') }}
+        </div>
+        <div class="text-subtitle2 break-word">{{ origin }}</div>
+      </q-card-section>
 
-          <q-card-actions align="right" class="q-pb-md q-pr-md">
-            <q-btn :label="t('approval.reject')" color="negative" flat @click="reject" />
-            <q-btn :label="t('approval.approve')" color="primary" unelevated @click="approve" />
-          </q-card-actions>
-        </q-card>
-      </q-page>
-    </q-page-container>
-  </q-layout>
+      <q-card-actions align="right" class="q-pb-md q-pr-md">
+        <q-btn :label="t('approval.reject')" color="negative" flat @click="reject" />
+        <q-btn :label="t('approval.approve')" color="primary" unelevated @click="approve" />
+      </q-card-actions>
+    </q-card>
+  </q-page>
 </template>
 
 <style scoped>

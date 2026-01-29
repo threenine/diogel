@@ -1,6 +1,6 @@
 <template>
   <q-page class="flex flex-center">
-    <q-card style="width: 400px; max-width: 90vw">
+    <q-card style="width: 500px; max-width: 760px">
       <q-card-section>
         <div class="text-h6">{{ vaultStore.vaultExists ? 'Unlock Vault' : 'Create Vault' }}</div>
       </q-card-section>

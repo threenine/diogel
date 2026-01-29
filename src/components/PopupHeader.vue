@@ -10,7 +10,7 @@ import AccountList from 'components/AccountList.vue';
       </div>
 
       <q-space />
-      <div class="q-pa-lg-lg"><account-list /></div>
+      <div class="q-pr-md"><account-list /></div>
     </q-header>
   </div>
 </template>

@@ -1,5 +1,5 @@
 <template>
-  <q-layout class="popup-layout">
+  <q-layout class="popup-root" view="hHh Lpr lFf">
     <extension-window-header />
     <q-page-container>
       <router-view />
