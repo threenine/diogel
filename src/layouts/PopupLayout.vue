@@ -16,7 +16,7 @@ import PopupHeader from 'components/PopupHeader.vue';
 
 <style scoped>
 .popup-root {
-  height: 450px; /* <-- set your desired max popup height */
+  height: 300px; /* <-- set your desired max popup height */
   overflow: hidden; /* hide outer scrollbars */
 }
 .popup-container :deep(.q-page) {

@@ -2,6 +2,17 @@ import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/popup',
+    component: () => import('layouts/ExtensionLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'popup',
+        component: () => import('pages/PopupHome.vue'),
+      },
+    ],
+  },
+  {
     path: '/login',
     component: () => import('layouts/BlankLayout.vue'),
     children: [

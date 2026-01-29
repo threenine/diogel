@@ -14,12 +14,6 @@ function openInTab(path: string) {
         <q-btn dense flat icon="menu" round>
           <q-menu anchor="bottom left" self="top left">
             <q-list style="max-width: 300px">
-              <q-item v-ripple clickable @click="openInTab('/')">
-                <q-item-section avatar>
-                  <q-icon name="home" size="sm" />
-                </q-item-section>
-                <q-item-section>Home</q-item-section>
-              </q-item>
               <q-item v-ripple clickable @click="openInTab('/profile')">
                 <q-item-section avatar>
                   <q-icon name="person" size="sm" />

@@ -113,8 +113,8 @@ watch(
       <!-- Content Section -->
       <div class="q-px-md q-pb-md content-section">
         <!-- Avatar - partially overlapping banner -->
-        <div class="avatar-wrapper">
-          <q-avatar class="profile-avatar" size="120px">
+        <div>
+          <q-avatar size="80px">
             <q-img v-if="profile.picture" :src="profile.picture" />
             <q-icon v-else class="bg-grey-3 full-width full-height" color="grey-7" name="person" />
           </q-avatar>
@@ -123,7 +123,7 @@ watch(
         <div class="profile-info q-mt-sm">
           <div class="row justify-between items-start">
             <div>
-              <div class="text-h6 text-weight-bold text-white">
+              <div class="text-h6 text-weight-bold">
                 {{ profile.display_name || profile.name || 'Anonymous' }}
               </div>
               <div v-if="profile.name && profile.display_name" class="text-subtitle2 text-orange-5">
@@ -132,7 +132,7 @@ watch(
             </div>
           </div>
 
-          <div v-if="profile.about" class="text-body2 text-white q-mt-sm about-text">
+          <div v-if="profile.about" class="text-body2 q-mt-sm about-text">
             {{ profile.about }}
           </div>
 
@@ -183,17 +183,6 @@ watch(
 
 .content-section {
   position: relative;
-}
-
-.avatar-wrapper {
-  margin-top: -60px;
-  position: relative;
-  z-index: 1;
-}
-
-.profile-avatar {
-  border: 4px solid black;
-  background-color: black;
 }
 
 .about-text {
