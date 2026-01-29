@@ -14,8 +14,10 @@ const useAccountStore = defineStore('account', {
   actions: {
     async saveKey(storedKey: StoredKey): Promise<void> {
       try {
+        // 1. Save to the encrypted Vault (using dexie-storage which now handles vault syncing)
         await save(storedKey);
         this.storedKeys.add(storedKey);
+        console.log('[AccountStore] Account saved to vault');
       } catch (error) {
         console.error('Failed to save key:', error);
         throw error;

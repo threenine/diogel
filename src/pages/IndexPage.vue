@@ -1,5 +1,7 @@
 <template>
-  <q-page class="flex justify-center"> </q-page>
+  <q-page class="flex flex-center">
+    <div class="text-h6">Home Page</div>
+  </q-page>
 </template>
 
 <script lang="ts" setup>

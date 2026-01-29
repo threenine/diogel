@@ -2,6 +2,17 @@ import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
+    path: '/login',
+    component: () => import('layouts/BlankLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'login',
+        component: () => import('pages/VaultLogin.vue'),
+      },
+    ],
+  },
+  {
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
     children: [

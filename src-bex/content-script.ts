@@ -40,50 +40,111 @@ declare module '@quasar/app-vite' {
 }
 
 // Inject the NIP-07 provider script
-const script = document.createElement('script');
-script.src = chrome.runtime.getURL('nostr-provider.js');
-script.dataset.name = 'Diogel';
-script.dataset.icon = chrome.runtime.getURL('icons/icon-128x128.png');
-(document.head || document.documentElement).appendChild(script);
-script.onload = () => {
-  script.remove();
+console.log('[BEX] Content script starting. document.readyState:', document.readyState);
+const injectProvider = () => {
+  console.log('[BEX] Injecting NIP-07 provider script...');
+  const script = document.createElement('script');
+  script.src = chrome.runtime.getURL('nostr-provider.js');
+  console.log('[BEX] Script source URL:', script.src);
+  script.onerror = (e) => {
+    console.error('[BEX] Failed to load provider script:', e);
+  };
+  const container = document.head || document.documentElement;
+  if (container) {
+    container.appendChild(script);
+    script.onload = () => {
+      console.log('[BEX] Provider script loaded and removed from DOM');
+      script.remove();
+    };
+  } else {
+    console.error('[BEX] Could not find container to inject script');
+  }
 };
 
-// Listen for messages from the page and relay them to the background script
-window.addEventListener('message', (event) => {
-  if (event.source !== window || !event.data || event.data.type !== 'nostr-ext-request') {
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', injectProvider);
+} else {
+  injectProvider();
+}
+
+window.addEventListener('message', async (event) => {
+  // Broad logging for debugging
+  if (event.data && event.data.type && event.data.type.startsWith('nostr-ext')) {
+    console.log('[BEX] Content script received potential nostr-ext message:', event.data);
+  }
+
+  // Filter messages. We only want 'nostr-ext-request' or 'nostr-ext-ping' from the current window.
+  if (event.source !== window || !event.data) {
+    return;
+  }
+
+  // Handle both our internal ping and external requests
+  if (event.data.type !== 'nostr-ext-request' && event.data.type !== 'nostr-ext-ping') {
+    return;
+  }
+
+  if (event.data.type === 'nostr-ext-ping') {
+    console.log('[BEX] Content script received ping (nostr-ext-ping) from page');
+    window.postMessage({ id: event.data.id, response: true, result: 'pong' }, '*');
     return;
   }
 
   const { id, method, payload } = event.data;
+  console.log('[BEX] Content script received request from page:', method, payload);
+
+  if (method === 'ping') {
+    console.log(`[BEX] Content script received ping (method=ping) for ID ${id}`);
+    window.postMessage({ id, response: true, result: 'pong' }, '*');
+    return;
+  }
+
   const origin = window.location.origin;
 
-  bridge
-    .send({
+  if (!bridge.isConnected) {
+    console.warn('[BEX] Bridge is not connected, attempting to connect...');
+    try {
+      await bridge.connectToBackground();
+      console.log('[BEX] Reconnected to background');
+    } catch (err: any) {
+      console.error('[BEX] Failed to reconnect:', err);
+      window.postMessage(
+        {
+          id,
+          response: true,
+          error: `Bridge connection failed: ${err.message || err}`,
+        },
+        '*',
+      );
+      return;
+    }
+  }
+
+  try {
+    const result = await bridge.send({
       event: `nostr.${method}`,
       to: 'background',
       payload: { ...payload, origin },
-    })
-    .then((result) => {
-      window.postMessage(
-        {
-          id,
-          response: true,
-          result,
-        },
-        '*',
-      );
-    })
-    .catch((error) => {
-      window.postMessage(
-        {
-          id,
-          response: true,
-          error: error.message || error,
-        },
-        '*',
-      );
     });
+    console.log(`[BEX] Content script received response from background for ID ${id}:`, result);
+    window.postMessage(
+      {
+        id,
+        response: true,
+        result,
+      },
+      '*',
+    );
+  } catch (error: any) {
+    console.error(`[BEX] Content script received error from background for ID ${id}:`, error);
+    window.postMessage(
+      {
+        id,
+        response: true,
+        error: error.message || error,
+      },
+      '*',
+    );
+  }
 });
 
 // Hook into the bridge to listen for events sent from the other BEX parts.
@@ -110,9 +171,9 @@ bridge.on('some.event', ({ payload }) => {
 bridge
   .connectToBackground()
   .then(() => {
-    console.log('Connected to background');
+    console.log('[BEX] Connected to background');
   })
   .catch((err) => {
-    console.error('Failed to connect to background:', err);
+    console.error('[BEX] Failed to connect to background:', err);
   });
 

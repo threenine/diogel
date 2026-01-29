@@ -1,15 +1,29 @@
 import Dexie, { type Table } from 'dexie';
-import type { StoredKey } from '../types';
 
-export class NostrDatabase extends Dexie {
-  storedKeys!: Table<StoredKey, string>; // 'id' is the primary key
+export interface Vault {
+  id: string; // 'master' or some unique ID
+  encryptedData: string;
+  createdAt: string;
+}
+
+export class DiogelDatabase extends Dexie {
+  vaults!: Table<Vault, string>;
 
   constructor() {
-    super('NostrDatabase');
-    this.version(1).stores({
-      storedKeys: 'id, alias, createdAt', // Primary key and indexed fields
+    super('DiogelDatabase');
+    console.log('[Database] Initializing NostrDatabase v3...');
+    this.version(3)
+      .stores({
+        vaults: 'id',
+      })
+      .upgrade((tx) => {
+        // Version 3 removes storedKeys table
+        return tx.table('storedKeys').clear();
+      });
+    this.on('ready', () => {
+      console.log('[Database] Dexie is ready');
     });
   }
 }
 
-export const db = new NostrDatabase();
+export const db = new DiogelDatabase();

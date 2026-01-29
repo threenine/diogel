@@ -220,7 +220,7 @@ export default defineConfig((ctx) => {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-browser-extensions/configuring-bex
     bex: {
-      extendBexScriptsConf(esbuildConf) {},
+      extendBexScriptsConf() {},
       extendBexManifestJson(json) {
         // @ts-expect-error: json is not typed correctly
         json.permissions ||= [];
@@ -245,7 +245,7 @@ export default defineConfig((ctx) => {
        *
        * @example [ 'my-script.ts', 'sub-folder/my-other-script.js' ]
        */
-      extraScripts: [],
+      extraScripts: ['nostr-provider.js'],
     },
   };
 });
