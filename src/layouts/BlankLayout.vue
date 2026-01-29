@@ -1,12 +1,11 @@
 <template>
-  <q-layout>
-    <app-header />
+  <q-layout view="lHh Lpr lFf">
     <q-page-container>
       <router-view />
     </q-page-container>
   </q-layout>
 </template>
 
-<script setup lang="ts">
-import AppHeader from 'components/AppHeader.vue';
+<script lang="ts" setup>
+// No extra logic needed for BlankLayout
 </script>
