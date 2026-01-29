@@ -126,7 +126,7 @@ watch(
               <div class="text-h6 text-weight-bold text-white">
                 {{ profile.display_name || profile.name || 'Anonymous' }}
               </div>
-              <div v-if="profile.name && profile.display_name" class="text-subtitle2 text-grey-5">
+              <div v-if="profile.name && profile.display_name" class="text-subtitle2 text-orange-5">
                 @{{ profile.name }}
               </div>
             </div>
