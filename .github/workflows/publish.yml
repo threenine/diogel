@@ -32,13 +32,13 @@ jobs:
       - name: Package zip
         run: |
           cd dist/bex-chrome--dev
-          zip -r ../../extension.zip .
+          zip -r ../../diogel.zip .
           cd ../..
 
       - name: Upload & Publish to Chrome Web Store
         uses: mnao305/chrome-extension-upload@v5.0.0
         with:
-          file-path: extension.zip
+          file-path: diogel.zip
           extension-id: ${{ secrets.CWS_EXTENSION_ID }}
           client-id: ${{ secrets.CWS_CLIENT_ID }}
           client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
