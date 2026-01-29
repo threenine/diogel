@@ -106,10 +106,12 @@ const CREATE_OPTION = computed<DropdownItem>(() => ({
 
 // Build options list from the account store ensuring the Create option is listed last
 const computedOptions = computed<DropdownItem[]>(() => {
-  const fromStore: DropdownItem[] = Array.from(accountStore.storedKeys).map((key) => ({
-    label: key.alias,
-    value: key.alias,
-  }));
+  const fromStore: DropdownItem[] = Array.from(accountStore.storedKeys)
+    .filter((key) => key.alias !== 'Main Account')
+    .map((key) => ({
+      label: key.alias,
+      value: key.alias,
+    }));
 
   // Ensure Create option is last
   return props.includeCreateOption ? [...fromStore, CREATE_OPTION.value] : fromStore;

@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     tags:
-      - "v*"
+      - "*"
 
 permissions:
   contents: read
@@ -20,23 +20,23 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "npm"
 
       - name: Install deps
         run: npm ci
 
       - name: Build extension (Quasar BEX)
-        run: npx quasar build -m bex
+        run: npx quasar build -m bex -T chrome
 
       - name: Package zip
         run: |
-          cd dist/bex
+          cd dist/bex-chrome--dev
           zip -r ../../extension.zip .
           cd ../..
 
       - name: Upload & Publish to Chrome Web Store
-        uses: mnao305/chrome-extension-upload@v5
+        uses: mnao305/chrome-extension-upload@v5.0.0
         with:
           file-path: extension.zip
           extension-id: ${{ secrets.CWS_EXTENSION_ID }}
