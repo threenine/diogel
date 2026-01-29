@@ -77,6 +77,8 @@ import { useQuasar } from 'quasar';
 import useVaultStore from 'src/stores/vault-store';
 // Note: generating mnemonic should ideally be done using a reliable library
 import * as nip06 from 'nostr-tools/nip06';
+import { getPublicKey } from 'nostr-tools';
+import { bytesToHex } from '@noble/hashes/utils';
 
 const vaultStore = useVaultStore();
 const router = useRouter();
@@ -140,7 +142,30 @@ async function handleCreate() {
     return;
   }
   loading.value = true;
-  const result = await vaultStore.create(password.value, mnemonic.value, passphrase.value);
+
+  // Generate an initial account from the mnemonic
+  let initialAccount = null;
+  try {
+    const sk = nip06.privateKeyFromSeedWords(mnemonic.value, passphrase.value, 0);
+    const pk = getPublicKey(sk);
+    initialAccount = {
+      id: pk,
+      alias: 'Main Account',
+      createdAt: new Date().toISOString(),
+      account: {
+        privkey: bytesToHex(sk),
+      },
+    };
+  } catch (e) {
+    console.error('[VaultLogin] Failed to generate initial account:', e);
+  }
+
+  const result = await vaultStore.create(
+    password.value,
+    mnemonic.value,
+    passphrase.value,
+    initialAccount,
+  );
   loading.value = false;
   if (result.success) {
     console.log('[VaultLogin] Vault created successfully, redirecting to home');

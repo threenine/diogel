@@ -51,11 +51,17 @@ const useVaultStore = defineStore('vault', {
       this.isUnlocked = false;
     },
 
-    async create(password: string, mnemonic: string, passphrase?: string) {
+    async create(
+      password: string,
+      mnemonic: string,
+      passphrase?: string,
+      initialAccount?: unknown,
+    ) {
       const vaultData = {
         mnemonic,
         passphrase: passphrase || '',
         createdAt: new Date().toISOString(),
+        accounts: initialAccount ? [initialAccount] : [],
       };
       const result = await createVaultBex(password, vaultData);
       if (result.success) {

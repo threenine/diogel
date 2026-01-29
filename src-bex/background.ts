@@ -10,9 +10,15 @@
 import { createBridge } from '#q-app/bex/background';
 import { finalizeEvent, getPublicKey, nip04 } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
-import { db } from 'src/services/database';
 import { sha256 } from '@noble/hashes/sha256';
-import { createNewVault, isVaultUnlocked, lockVault, unlockVault } from './vault';
+import {
+  createNewVault,
+  getVaultData,
+  isVaultUnlocked,
+  lockVault,
+  unlockVault,
+  updateVaultData,
+} from './vault';
 
 const NOSTR_ACTIVE = 'nostr:active';
 const BLOSSOM_UPLOAD_STATUS = 'blossom:upload_status';
@@ -33,10 +39,17 @@ async function getActiveStoredKey() {
     throw new Error('No active account found');
   }
 
-  const storedKey = await db.storedKeys.where('alias').equals(activeAlias).first();
+  const vaultRes = await getVaultData();
+  if (!vaultRes.success || !vaultRes.vaultData) {
+    console.error('[BEX] Failed to retrieve vault data from memory');
+    throw new Error('No active account found');
+  }
+
+  const vaultData = vaultRes.vaultData as { accounts?: any[] };
+  const storedKey = (vaultData.accounts || []).find((acc) => acc.alias === activeAlias);
 
   if (!storedKey) {
-    console.error('[BEX] No account found in database for alias:', activeAlias);
+    console.error('[BEX] No account found in vault for alias:', activeAlias);
     throw new Error('No active account found');
   }
 
@@ -57,6 +70,8 @@ declare module '@quasar/app-vite' {
     'vault.lock': [undefined, void];
     'vault.create': [{ password: string; vaultData: any }, any];
     'vault.isUnlocked': [undefined, boolean];
+    'vault.getData': [undefined, any];
+    'vault.updateData': [{ vaultData: any }, any];
     'blossom.upload': [
       {
         base64Data: string;
@@ -142,6 +157,17 @@ bridge.on('vault.isUnlocked', () => {
   return isVaultUnlocked();
 });
 
+bridge.on('vault.getData', async () => {
+  return await getVaultData();
+});
+
+bridge.on(
+  'vault.updateData',
+  async ({ payload: { vaultData } }: { payload: { vaultData: any } }) => {
+    return await updateVaultData(vaultData);
+  },
+);
+
 // Add direct chrome.runtime.onMessage listener as a fallback for the bridge
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'vault.isUnlocked') {
@@ -158,6 +184,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.type === 'vault.create') {
     createNewVault(message.payload.password, message.payload.vaultData).then(sendResponse);
+    return true;
+  }
+  if (message.type === 'vault.getData') {
+    getVaultData().then(sendResponse);
+    return true;
+  }
+  if (message.type === 'vault.updateData') {
+    updateVaultData(message.payload.vaultData).then(sendResponse);
     return true;
   }
   if (message.type === 'ping') {

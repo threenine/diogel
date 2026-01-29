@@ -93,6 +93,42 @@ export async function isVaultUnlocked(): Promise<boolean> {
   }
 }
 
+export async function getVaultData(): Promise<{
+  success: boolean;
+  vaultData?: unknown;
+  error?: string;
+}> {
+  try {
+    const data = await sendBexMessage('vault.getData');
+    return (
+      (data as { success: boolean; vaultData?: unknown; error?: string }) || {
+        success: false,
+        error: 'No response from background',
+      }
+    );
+  } catch (e) {
+    console.error('[VaultService] Failed to get vault data', e);
+    return { success: false, error: (e as Error).message };
+  }
+}
+
+export async function updateVaultData(
+  vaultData: unknown,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const data = await sendBexMessage('vault.updateData', { vaultData });
+    return (
+      (data as { success: boolean; error?: string }) || {
+        success: false,
+        error: 'No response from background',
+      }
+    );
+  } catch (e) {
+    console.error('[VaultService] Failed to update vault data', e);
+    return { success: false, error: (e as Error).message };
+  }
+}
+
 export async function hasVault() {
   console.log('[VaultService] Checking if vault exists via direct DB access...');
   try {

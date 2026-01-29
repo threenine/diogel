@@ -44,7 +44,7 @@ export async function lockVault() {
   clearVaultKey();
 }
 
-export async function createNewVault(password: string, vaultData: any) {
+export async function createNewVault(password: string, vaultData: unknown) {
   try {
     const { key, salt } = await deriveNewKey(password);
     vaultKey = key;
@@ -62,6 +62,46 @@ export async function createNewVault(password: string, vaultData: any) {
   } catch (err) {
     clearVaultKey();
     console.error('Create vault error:', err);
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+export async function updateVaultData(vaultData: unknown) {
+  if (!isVaultUnlocked() || !vaultKey || !vaultSalt) {
+    return { success: false, error: 'Vault is locked' };
+  }
+
+  try {
+    const encryptedVault = await encryptWithKey(vaultData, vaultKey, vaultSalt);
+
+    await db.vaults.put({
+      id: 'master',
+      encryptedData: encryptedVault,
+      createdAt: new Date().toISOString(),
+    });
+
+    return { success: true };
+  } catch (err) {
+    console.error('Update vault data error:', err);
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+export async function getVaultData() {
+  if (!isVaultUnlocked() || !vaultKey) {
+    return { success: false, error: 'Vault is locked' };
+  }
+
+  try {
+    const vault = await db.vaults.get('master');
+    if (!vault) {
+      return { success: false, error: 'No vault found' };
+    }
+
+    const vaultData = await decryptWithKey(vault.encryptedData, vaultKey);
+    return { success: true, vaultData };
+  } catch (err) {
+    console.error('Get vault data error:', err);
     return { success: false, error: (err as Error).message };
   }
 }
