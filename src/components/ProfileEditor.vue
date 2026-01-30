@@ -3,8 +3,7 @@ import { onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { NostrProfile, StoredKey } from '../types';
-import { finalizeEvent, getPublicKey, SimplePool } from 'nostr-tools';
-import { hexToBytes } from '@noble/hashes/utils';
+import { profileService } from '../services/profile-service';
 
 defineOptions({ name: 'ProfileEditor' });
 
@@ -29,16 +28,6 @@ const profile = ref<NostrProfile>({
 const loading = ref(false);
 const saving = ref(false);
 
-// Default relays for fetching/publishing if none are configured in the app yet
-const DEFAULT_RELAYS = [
-  'wss://relay.damus.io',
-  'wss://nos.lol',
-  'wss://relay.snort.social',
-  'wss://purplepag.es',
-];
-
-const pool = new SimplePool();
-
 async function fetchProfile() {
   if (!props.storedKey.id) return;
 
@@ -56,20 +45,16 @@ async function fetchProfile() {
 
   loading.value = true;
   try {
-    const event = await pool.get(DEFAULT_RELAYS, {
-      authors: [props.storedKey.id],
-      kinds: [0],
-    });
+    const profileData = await profileService.fetchProfile(props.storedKey.id);
 
-    if (event && event.content) {
-      const content = JSON.parse(event.content) as NostrProfile;
+    if (profileData) {
       profile.value = {
-        name: content.name || '',
-        display_name: content.display_name || '',
-        about: content.about || '',
-        website: content.website || '',
-        nip05: content.nip05 || '',
-        lud16: content.lud16 || '',
+        name: profileData.name || '',
+        display_name: profileData.display_name || '',
+        about: profileData.about || '',
+        website: profileData.website || '',
+        nip05: profileData.nip05 || '',
+        lud16: profileData.lud16 || '',
       };
     }
   } catch (error) {
@@ -86,36 +71,7 @@ async function fetchProfile() {
 async function saveProfile() {
   saving.value = true;
   try {
-    const sk = hexToBytes(props.storedKey.account.privkey);
-    const pk = getPublicKey(sk);
-
-    // Fetch latest profile to avoid overwriting other fields (like picture/banner)
-    const latestEvent = await pool.get(DEFAULT_RELAYS, {
-      authors: [pk],
-      kinds: [0],
-    });
-
-    let currentProfile: NostrProfile = {};
-    if (latestEvent && latestEvent.content) {
-      currentProfile = JSON.parse(latestEvent.content) as NostrProfile;
-    }
-
-    const updatedProfile = {
-      ...currentProfile,
-      ...profile.value,
-    };
-
-    const eventTemplate = {
-      kind: 0,
-      created_at: Math.floor(Date.now() / 1000),
-      tags: [],
-      content: JSON.stringify(updatedProfile),
-      pubkey: pk,
-    };
-
-    const signedEvent = finalizeEvent(eventTemplate, sk);
-
-    await Promise.any(pool.publish(DEFAULT_RELAYS, signedEvent));
+    await profileService.saveProfile(props.storedKey.account.privkey, profile.value);
 
     $q.notify({
       type: 'positive',

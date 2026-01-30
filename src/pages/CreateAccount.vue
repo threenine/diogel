@@ -107,6 +107,14 @@ function validate() {
     aliasInputRef.value?.focus();
     return false;
   }
+  if (trimmedAlias.value === 'Main Account') {
+    $q.notify({
+      type: 'negative',
+      message: 'Alias "Main Account" is reserved.',
+    });
+    aliasInputRef.value?.focus();
+    return false;
+  }
   return true;
 }
 </script>

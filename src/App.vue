@@ -33,6 +33,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref, watch } from 'vue';
+import { useQuasar } from 'quasar';
 import useAccountStore from './stores/account-store';
 import useSettingsStore from './stores/settings-store';
 import useVaultStore from './stores/vault-store';
@@ -43,6 +44,7 @@ const settingsStore = useSettingsStore();
 const vaultStore = useVaultStore();
 const router = useRouter();
 const route = useRoute();
+const $q = useQuasar();
 
 const logs = ref<string[]>([]);
 const addLog = (msg: string) => {
@@ -86,6 +88,9 @@ onMounted(async () => {
         ),
       ]);
       addLog('Settings loaded');
+      // Apply theme after loading settings
+      $q.dark.set(settingsStore.darkMode);
+      addLog(`Theme set to: ${settingsStore.darkMode ? 'dark' : 'light'}`);
     } catch (e) {
       addLog(`Settings load failed/timed out: ${String(e)}`);
     }
@@ -161,6 +166,14 @@ watch(
     }
   },
   { immediate: false },
+);
+
+watch(
+  () => settingsStore.darkMode,
+  (isDark) => {
+    addLog(`Settings darkMode changed to: ${String(isDark)}`);
+    $q.dark.set(isDark);
+  },
 );
 
 // Watch for vault status changes to handle locking/unlocking globally

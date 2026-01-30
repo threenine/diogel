@@ -1,19 +1,25 @@
 // app global css in SCSS form
 html,
-body {
-  min-width: 600px; /* Adjust as needed (Max width ~800px) */
-  min-height: 600px;
-  max-height: 600px; /* Adjust as needed (Max height ~600px) */
-
+body, #q-app {
   // Apply page background & base text color from theme variables
   background-color: var(--page-bg);
   color: var(--text-color);
+  height: 100%;
 }
 
 .popup-root {
-  width: 400px; /* common popup width */
-  min-height: 600px;
+  width: 500px;
+  height: 650px;
 }
+
+.popup-layout {
+  background-color: pink;
+}
+.popup-window {
+
+  height: 150px;
+}
+
 // Header & toolbar theming
 .q-header {
   background-color: var(--header-bg);
@@ -39,16 +45,12 @@ body {
   border-right: 1px solid var(--border-color);
 }
 
-.settings-container {
-  margin-top: 50px;
-  display: flex;
-  justify-content: center;
-}
 
 .settings-form {
   padding: 20px;
   background-color: var(--settings-form-bg);
-  min-width: 580px;
+  width: 100%;
+  max-width: 580px;
 }
 
 .warning-card {

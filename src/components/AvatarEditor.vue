@@ -6,11 +6,15 @@ import ImageUploader from './ImageUploader.vue';
 
 defineOptions({ name: 'AvatarEditor' });
 
-defineProps<{
-  modelValue: string | undefined;
-  storedKey: StoredKey;
-  name?: string | null | undefined;
-}>();
+withDefaults(
+  defineProps<{
+    modelValue: string | undefined;
+    storedKey: StoredKey;
+    name?: string | null | undefined;
+    size?: string;
+  }>(),
+  { size: '80px' },
+);
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void;
@@ -26,39 +30,27 @@ function onUploaded(url: string) {
   emit('save', 'picture', url);
 }
 
-function onUrlInput(url: string) {
-  emit('update:modelValue', url);
-  emit('save', 'picture', url);
-}
-
 function onUploading(status: boolean) {
   emit('uploading', status);
 }
 </script>
 
 <template>
-  <div class="row q-col-gutter-md items-center">
-    <div class="col-auto">
-      <ImagePreview :is-avatar="true" :name="name" :url="modelValue" size="80px" />
-    </div>
-    <div class="col">
-      <q-input
+  <q-card class="full-width full-height">
+    <q-card-section class="text-left">
+      <p class="text-h7 text-orange-5">Profile Image</p>
+    </q-card-section>
+    <q-card-section class="flex flex-center">
+      <ImagePreview :is-avatar="true" :name="name" :size="size" :url="modelValue" />
+    </q-card-section>
+    <q-card-actions align="center" class="q-gutter-sm">
+      <ImageUploader
         :label="t('profile.picture')"
-        :model-value="modelValue"
-        dense
-        outlined
-        @update:model-value="(val) => onUrlInput(String(val))"
-      >
-        <template v-slot:append>
-          <ImageUploader
-            :label="t('profile.picture')"
-            :stored-key="storedKey"
-            upload-id="avatar"
-            @avatar-uploaded="onUploaded"
-            @avatar-uploading="onUploading"
-          />
-        </template>
-      </q-input>
-    </div>
-  </div>
+        :stored-key="storedKey"
+        upload-id="avatar"
+        @avatar-uploaded="onUploaded"
+        @avatar-uploading="onUploading"
+      />
+    </q-card-actions>
+  </q-card>
 </template>

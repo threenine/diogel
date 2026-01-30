@@ -285,7 +285,8 @@ async function requestApproval(origin: string): Promise<boolean> {
       url,
       type: 'popup',
       width: 600,
-      height: 800,
+      height: 450,
+      focused: true,
     });
     windowId = win.id;
   } catch (err) {
