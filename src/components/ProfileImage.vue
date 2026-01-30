@@ -160,6 +160,7 @@ watch(
           @save="(field, url) => saveProfile(field, url)"
           @uploading="(status) => (uploading = status)"
           class="full-height"
+          size="150px"
         />
       </div>
       <div class="col-9">

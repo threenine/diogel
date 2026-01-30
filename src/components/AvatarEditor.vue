@@ -6,11 +6,15 @@ import ImageUploader from './ImageUploader.vue';
 
 defineOptions({ name: 'AvatarEditor' });
 
-defineProps<{
-  modelValue: string | undefined;
-  storedKey: StoredKey;
-  name?: string | null | undefined;
-}>();
+withDefaults(
+  defineProps<{
+    modelValue: string | undefined;
+    storedKey: StoredKey;
+    name?: string | null | undefined;
+    size?: string;
+  }>(),
+  { size: '80px' },
+);
 
 const emit = defineEmits<{
   (e: 'update:modelValue', value: string): void;
@@ -37,7 +41,7 @@ function onUploading(status: boolean) {
       <p class="text-h7 text-orange-5">Profile Image</p>
     </q-card-section>
     <q-card-section class="flex flex-center">
-      <ImagePreview :is-avatar="true" :name="name" :url="modelValue" size="80px" />
+      <ImagePreview :is-avatar="true" :name="name" :size="size" :url="modelValue" />
     </q-card-section>
     <q-card-actions align="center" class="q-gutter-sm">
       <ImageUploader

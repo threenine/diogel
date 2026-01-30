@@ -2,7 +2,7 @@
 import { onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { NostrProfile, StoredKey } from '../types';
-import { SimplePool } from 'nostr-tools';
+import { profileService } from '../services/profile-service';
 
 defineOptions({ name: 'ProfileView' });
 
@@ -30,15 +30,6 @@ const profile = ref<NostrProfile>({
 
 const loading = ref(false);
 
-const DEFAULT_RELAYS = [
-  'wss://relay.damus.io',
-  'wss://nos.lol',
-  'wss://relay.snort.social',
-  'wss://purplepag.es',
-];
-
-const pool = new SimplePool();
-
 async function fetchProfile() {
   if (!props.storedKey.id) return;
 
@@ -54,24 +45,15 @@ async function fetchProfile() {
   };
 
   loading.value = true;
-  try {
-    const event = await pool.get(DEFAULT_RELAYS, {
-      authors: [props.storedKey.id],
-      kinds: [0],
-    });
+  const profileData = await profileService.fetchProfile(props.storedKey.id);
 
-    if (event && event.content) {
-      const content = JSON.parse(event.content) as NostrProfile;
-      profile.value = {
-        ...profile.value,
-        ...content,
-      };
-    }
-  } catch (error) {
-    console.error('Error fetching profile:', error);
-  } finally {
-    loading.value = false;
+  if (profileData) {
+    profile.value = {
+      ...profile.value,
+      ...profileData,
+    };
   }
+  loading.value = false;
 }
 
 onMounted(() => {
