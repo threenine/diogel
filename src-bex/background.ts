@@ -618,5 +618,3 @@ bridge.on(
     return processUpload();
   },
 );
-
-

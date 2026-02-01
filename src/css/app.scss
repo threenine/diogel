@@ -1,6 +1,7 @@
 // app global css in SCSS form
 html,
-body, #q-app {
+body,
+#q-app {
   // Apply page background & base text color from theme variables
   background-color: var(--page-bg);
   color: var(--text-color);
@@ -43,7 +44,6 @@ body, #q-app {
   color: var(--text-color);
   border-right: 1px solid var(--border-color);
 }
-
 
 .settings-form {
   padding: 20px;

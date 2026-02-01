@@ -1,4 +1,3 @@
-
 const nostr = {
   name: 'Diogel',
   getPublicKey: async () => {
@@ -16,7 +15,7 @@ const nostr = {
     },
     decrypt: async (pubkey, ciphertext) => {
       return nostr.call('nip04.decrypt', { pubkey, ciphertext });
-    }
+    },
   },
 
   // Internal call helper
@@ -55,9 +54,9 @@ const nostr = {
             id,
             type: 'nostr-ext-request',
             method: type,
-            payload
+            payload,
           },
-          '*'
+          '*',
         );
       });
     } catch (e) {
@@ -77,7 +76,12 @@ const nostr = {
           reject(new Error('Ping timed out'));
         }, 5000);
         const handler = (event) => {
-          if (event.source === window && event.data && event.data.id === id && event.data.response) {
+          if (
+            event.source === window &&
+            event.data &&
+            event.data.id === id &&
+            event.data.response
+          ) {
             clearTimeout(timeout);
             window.removeEventListener('message', handler);
             resolve(event.data.result);
@@ -87,7 +91,7 @@ const nostr = {
         window.postMessage({ id, type: 'nostr-ext-ping' }, '*');
       });
     });
-  }
+  },
 };
 
 window.nostr = nostr;
@@ -97,7 +101,7 @@ window.dispatchEvent(
   new CustomEvent('nostr:registration', {
     detail: {
       name: 'Diogel',
-      methods: ['getPublicKey', 'signEvent', 'getRelays', 'nip04.encrypt', 'nip04.decrypt']
-    }
-  })
+      methods: ['getPublicKey', 'signEvent', 'getRelays', 'nip04.encrypt', 'nip04.decrypt'],
+    },
+  }),
 );
