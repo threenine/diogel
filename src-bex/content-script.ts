@@ -176,4 +176,3 @@ bridge
   .catch((err) => {
     console.error('[BEX] Failed to connect to background:', err);
   });
-

@@ -67,13 +67,13 @@ async function reject() {
 </script>
 
 <template>
-  <q-page v-if="origin" class="flex flex-center q-gutter-md q-mb-md">
-    <q-card class="q-pa-sm">
+  <q-page v-if="origin" class="flex flex-center">
+    <q-card bordered class="approval-card" flat>
       <q-card-section>
         <div class="text-h6">{{ t('approval.title') }}</div>
       </q-card-section>
 
-      <q-card-section class="q-pt-none">
+      <q-card-section class="q-pt-none overflow-auto" style="max-height: 200px">
         <p>{{ t('approval.description') }}</p>
         <div class="text-caption text-grey-7 q-mt-sm">
           {{ t('approval.origin') }}
@@ -90,7 +90,16 @@ async function reject() {
 </template>
 
 <style scoped>
+.approval-card {
+  width: 90%;
+  max-width: 400px;
+}
+
 .break-word {
   word-break: break-all;
+}
+
+.overflow-auto {
+  overflow: auto;
 }
 </style>

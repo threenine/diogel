@@ -57,6 +57,7 @@ vaultStore.isLoading = true;
 
 onMounted(async () => {
   addLog('Mounting App.vue...');
+  vaultStore.listenToLockChanges();
 
   // Force show UI after 8 seconds regardless of what happens
   const emergencyTimeout = setTimeout(() => {

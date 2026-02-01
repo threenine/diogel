@@ -4,8 +4,8 @@ import PopupHeader from 'components/PopupHeader.vue';
 
 <template>
   <q-layout class="popup-root" view="hHh Lpr lFf">
-    <div class="absolute-top-right q-mr-sm q-mt-sm">
-      <popup-header />
+    <div class="popup-header-slot">
+      <PopupHeader />
     </div>
 
     <q-page-container class="popup-container">
@@ -16,11 +16,33 @@ import PopupHeader from 'components/PopupHeader.vue';
 
 <style scoped>
 .popup-root {
-  height: 300px; /* <-- set your desired max popup height */
-  overflow: hidden; /* hide outer scrollbars */
-}
-.popup-container :deep(.q-page) {
-  min-height: 0;
+  position: relative;
   width: 100%;
+  height: 100%;
+  overflow: hidden !important; /* hide outer scrollbars */
+  display: flex;
+  flex-direction: column;
+}
+
+.popup-header-slot {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+}
+
+.popup-container {
+  overflow: hidden;
+  height: 100%;
+  max-height: 100%;
+}
+
+.popup-container :deep(.q-page) {
+  min-height: 100% !important;
+  max-height: 100% !important;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 </style>

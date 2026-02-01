@@ -15,6 +15,20 @@ const useVaultStore = defineStore('vault', {
   }),
 
   actions: {
+    listenToLockChanges() {
+      // @ts-expect-error bex is not typed on window
+      const bridge = window.bridge || window.$q?.bex;
+      if (bridge) {
+        bridge.on(
+          'vault.lock-status-changed',
+          ({ payload }: { payload: { unlocked: boolean } }) => {
+            console.log('[VaultStore] Lock status changed from background:', payload.unlocked);
+            this.isUnlocked = payload.unlocked;
+          },
+        );
+      }
+    },
+
     async checkVaultStatus() {
       console.log('[VaultStore] checkVaultStatus starting...');
       // Note: we don't set this.isLoading = true here anymore because App.vue handles the initial loading state

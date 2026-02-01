@@ -1,22 +1,52 @@
 // app global css in SCSS form
 html,
-body, #q-app {
+body,
+#q-app {
   // Apply page background & base text color from theme variables
   background-color: var(--page-bg);
   color: var(--text-color);
   height: 100%;
 }
 
+.q-card {
+  border-radius: 12px;
+}
+
+.q-btn {
+  border-radius: 8px;
+  text-transform: none;
+}
+
+.q-field--filled .q-field__control {
+  border-radius: 8px 8px 0 0;
+}
+
+.q-field--filled.q-field--rounded .q-field__control {
+  border-radius: 28px;
+}
+
+.q-field--outlined .q-field__control {
+  border-radius: 8px;
+}
+
+.q-field--outlined.q-field--rounded .q-field__control {
+  border-radius: 28px;
+}
+
+.q-menu,
+.q-dialog__inner > div {
+  border-radius: 12px !important;
+}
+
 .popup-root {
   width: 500px;
-  height: 650px;
+  height: 750px;
 }
 
 .popup-layout {
   background-color: pink;
 }
 .popup-window {
-
   height: 150px;
 }
 
@@ -44,7 +74,6 @@ body, #q-app {
   color: var(--text-color);
   border-right: 1px solid var(--border-color);
 }
-
 
 .settings-form {
   padding: 20px;

@@ -1,6 +1,14 @@
 <template>
-  <q-page class="flex flex-center">
-    <q-card style="width: 500px; max-width: 760px">
+  <q-page class="q-pa-md">
+    <q-card bordered class="q-mb-md" flat>
+      <q-card-section class="flex flex-center q-pa-lg">
+        <q-img
+          src="/images/login-banner.png"
+          style="max-width: 400px; width: 100%; border-radius: 12px"
+        />
+      </q-card-section>
+    </q-card>
+    <q-card bordered class="vault-card" flat>
       <q-card-section>
         <div class="text-h6">{{ vaultStore.vaultExists ? 'Unlock Vault' : 'Create Vault' }}</div>
       </q-card-section>
@@ -191,3 +199,9 @@ async function handleUnlock() {
   }
 }
 </script>
+
+<style scoped>
+.vault-card {
+  width: 100%;
+}
+</style>
