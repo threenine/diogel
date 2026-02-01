@@ -8,6 +8,36 @@ body,
   height: 100%;
 }
 
+.q-card {
+  border-radius: 12px;
+}
+
+.q-btn {
+  border-radius: 8px;
+  text-transform: none;
+}
+
+.q-field--filled .q-field__control {
+  border-radius: 8px 8px 0 0;
+}
+
+.q-field--filled.q-field--rounded .q-field__control {
+  border-radius: 28px;
+}
+
+.q-field--outlined .q-field__control {
+  border-radius: 8px;
+}
+
+.q-field--outlined.q-field--rounded .q-field__control {
+  border-radius: 28px;
+}
+
+.q-menu,
+.q-dialog__inner > div {
+  border-radius: 12px !important;
+}
+
 .popup-root {
   width: 500px;
   height: 750px;
