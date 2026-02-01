@@ -5,8 +5,10 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useQuasar } from 'quasar';
+import useSettingsStore from '../../stores/settings-store';
 
 const $q = useQuasar();
+const settingsStore = useSettingsStore();
 
 defineOptions({ name: 'ThemeSwitch' });
 
@@ -19,8 +21,11 @@ withDefaults(
   },
 );
 const checked = computed({
-  get: () => $q.dark.isActive,
-  set: (v: boolean) => $q.dark.set(v),
+  get: () => settingsStore.darkMode,
+  set: (v: boolean) => {
+    void settingsStore.setDarkMode(v);
+    $q.dark.set(v);
+  },
 });
 </script>
 

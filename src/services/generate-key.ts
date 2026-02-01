@@ -1,18 +1,13 @@
 import { generateSecretKey, getPublicKey } from 'nostr-tools';
 import type { Account, StoredKey } from 'src/types';
-import * as nip19 from 'nostr-tools/nip19';
+import { bytesToHex } from '@noble/hashes/utils';
 
 export function generateKey(): StoredKey {
   const sk = generateSecretKey();
   const pk = getPublicKey(sk);
 
   const account: Account = {
-    pubkey: pk,
-    priKey: nip19.nsecEncode(sk),
-    npub: nip19.npubEncode(pk),
-    nsec: nip19.nsecEncode(sk),
-    relays: [],
-    websites: [],
+    privkey: bytesToHex(sk),
   };
   return {
     id: pk,

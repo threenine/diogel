@@ -9,22 +9,21 @@ import { generateKey } from 'src/services/generate-key';
 import * as nip19 from 'nostr-tools/nip19';
 import { getPublicKey } from 'nostr-tools';
 
-import ViewAccount from 'components/ViewAccount/Index.vue';
+import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
+import { useI18n } from 'vue-i18n';
+
+import { bytesToHex } from '@noble/hashes/utils';
 
 const store = useAccountStore();
 const $q = useQuasar();
+const $t = useI18n().t;
 const router = useRouter();
 const storedKey = ref<StoredKey>({
   id: '',
   alias: '',
   createdAt: '',
   account: {
-    pubkey: '',
-    priKey: '',
-    npub: '',
-    nsec: '',
-    relays: [],
-    websites: [],
+    privkey: '',
   },
 });
 
@@ -62,12 +61,7 @@ function onImportClick(): void {
     const sk = decoded.data;
     const pk = getPublicKey(sk);
     const account: Account = {
-      pubkey: pk,
-      priKey: nip19.nsecEncode(sk),
-      npub: nip19.npubEncode(pk),
-      nsec: nip19.nsecEncode(sk),
-      relays: [],
-      websites: [],
+      privkey: bytesToHex(sk),
     };
     storedKey.value = {
       id: pk,
@@ -96,10 +90,13 @@ async function saveKey() {
   try {
     await store.saveKey(storedKey.value);
     await router.push({ name: 'edit-account', params: { alias: storedKey.value.alias } });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error ? error.message : String($t('validation.keyPairExists'));
+
     $q.notify({
       type: 'negative',
-      message: error.message || String($t('validation.keyPairExists')),
+      message: errorMessage,
     });
   }
 }
@@ -107,6 +104,14 @@ async function saveKey() {
 function validate() {
   if (!trimmedAlias.value) {
     notifyMissingAlias();
+    aliasInputRef.value?.focus();
+    return false;
+  }
+  if (trimmedAlias.value === 'Main Account') {
+    $q.notify({
+      type: 'negative',
+      message: 'Alias "Main Account" is reserved.',
+    });
     aliasInputRef.value?.focus();
     return false;
   }
@@ -178,7 +183,7 @@ function validate() {
                           </q-icon>
                         </template>
                       </q-input>
-                      <view-account :stored-key="storedKey" />
+                      <view-stored-key :stored-key="storedKey" />
                     </div>
 
                     <div class="row q-gutter-lg items-center q-mt-lg">
@@ -249,7 +254,7 @@ function validate() {
                             </q-icon>
                           </template>
                         </q-input>
-                        <view-account :stored-key="storedKey" />
+                        <view-stored-key :stored-key="storedKey" />
                       </div>
 
                       <div class="row q-gutter-lg items-center q-mt-lg">

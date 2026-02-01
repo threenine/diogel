@@ -1,5 +1,7 @@
 import { BlobWriter, configure, TextReader, ZipWriter } from '@zip.js/zip.js';
-import type { StoredKey } from 'src/types';
+import type { StoredKey } from '../types';
+import * as nip19 from 'nostr-tools/nip19';
+import { hexToBytes } from '@noble/hashes/utils';
 
 export const ZIP_MIME_TYPE = 'application/zip';
 // This required here to disable web workers for @zip.js
@@ -26,12 +28,21 @@ export async function createEncryptedZipBytes(
 }
 
 function createText(key: StoredKey): string {
+  let npub = '';
+  let nsec = '';
+  try {
+    npub = nip19.npubEncode(key.id);
+    nsec = nip19.nsecEncode(hexToBytes(key.account.privkey));
+  } catch (e) {
+    console.error('Failed to derive keys for export', e);
+  }
+
   const lines = [
     `Alias: ${key.alias}`,
     '',
     '== Nostr Keys ==',
-    `npub:  ${key.account.npub}`,
-    `nsec: ${key.account.nsec}`,
+    `npub:  ${npub}`,
+    `nsec: ${nsec}`,
     '',
     'Notes:',
     '- Keep this file secure. Do not leave this file in plain text on your computer.',

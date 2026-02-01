@@ -1,6 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
-import type { StoredKey } from 'src/types';
-import { get, getActive, save, setActive } from 'src/services/chrome-local';
+import type { StoredKey } from '../types';
+import { get, getActive, save, setActive } from '../services/dexie-storage';
 
 const useAccountStore = defineStore('account', {
   state: () => ({
@@ -14,8 +14,10 @@ const useAccountStore = defineStore('account', {
   actions: {
     async saveKey(storedKey: StoredKey): Promise<void> {
       try {
+        // 1. Save to the encrypted Vault (using dexie-storage which now handles vault syncing)
         await save(storedKey);
         this.storedKeys.add(storedKey);
+        console.log('[AccountStore] Account saved to vault');
       } catch (error) {
         console.error('Failed to save key:', error);
         throw error;
@@ -33,7 +35,7 @@ const useAccountStore = defineStore('account', {
       if (this.isListening) return;
 
       chrome.storage.onChanged.addListener((changes, areaName) => {
-        if (areaName === 'local' && 'nostr:keys' in changes) {
+        if (areaName === 'local' && 'nostr:active' in changes) {
           void this.getKeys();
         }
       });

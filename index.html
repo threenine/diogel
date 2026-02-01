@@ -12,13 +12,33 @@
       content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width<% if (ctx.mode.cordova || ctx.mode.capacitor) { %>, viewport-fit=cover<% } %>"
     />
 
-    <link href="icons/favicon-128x128.png" rel="icon" sizes="128x128" type="image/png">
-    <link href="icons/favicon-96x96.png" rel="icon" sizes="96x96" type="image/png">
-    <link href="icons/favicon-32x32.png" rel="icon" sizes="32x32" type="image/png">
-    <link href="icons/favicon-16x16.png" rel="icon" sizes="16x16" type="image/png">
-    <link href="favicon.ico" rel="icon" type="image/ico">
+    <link href="/icons/favicon-128x128.png" rel="icon" sizes="128x128" type="image/png" />
+    <link href="/icons/favicon-96x96.png" rel="icon" sizes="96x96" type="image/png" />
+    <link href="/icons/favicon-32x32.png" rel="icon" sizes="32x32" type="image/png" />
+    <link href="/icons/favicon-16x16.png" rel="icon" sizes="16x16" type="image/png" />
+    <link href="/favicon.ico" rel="icon" type="image/ico" />
   </head>
   <body>
     <!-- quasar:entry-point -->
+    <script>
+      setTimeout(() => {
+        const entry = document.getElementById('q-app') || document.body;
+        if (entry.innerHTML.trim() === '' || entry.innerHTML.includes('quasar:entry-point')) {
+          console.error('App failed to mount within 10 seconds. Check console for errors.');
+          const div = document.createElement('div');
+          div.style.padding = '20px';
+          div.style.color = 'black';
+          div.style.background = 'white';
+          div.style.position = 'fixed';
+          div.style.top = '0';
+          div.style.left = '0';
+          div.style.width = '100%';
+          div.style.zIndex = '9999';
+          div.innerHTML =
+            '<h3>Failed to load Diogel</h3><p>Please check the background script logs or extension console for errors.</p>';
+          document.body.appendChild(div);
+        }
+      }, 10000);
+    </script>
   </body>
 </html>

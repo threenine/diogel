@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { defineComponent, h } from 'vue';
+import { createPinia, setActivePinia } from 'pinia';
+import useSettingsStore from '../../stores/settings-store';
 import ThemeSwitch from './Index.vue';
 import type * as Quasar from 'quasar';
 
@@ -42,13 +44,35 @@ const QToggleStub = defineComponent({
   },
 });
 
-const mountWithQuasar = (props?: Record<string, unknown>) =>
-  mount(ThemeSwitch, {
+const mountWithQuasar = (props?: Record<string, unknown>, initialState?: { darkMode: boolean }) => {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+
+  if (initialState) {
+    const store = useSettingsStore(pinia);
+    store.darkMode = initialState.darkMode;
+  }
+
+  return mount(ThemeSwitch, {
     props: props ?? {},
     global: {
+      plugins: [pinia],
       stubs: { 'q-toggle': QToggleStub },
     },
   });
+};
+
+vi.stubGlobal('chrome', {
+  storage: {
+    local: {
+      get: vi.fn((_keys, callback) => callback({})),
+      set: vi.fn((_obj, callback) => callback && callback()),
+    },
+    onChanged: {
+      addListener: vi.fn(),
+    },
+  },
+});
 
 describe('ThemeSwitch', () => {
   let setSpy: ReturnType<typeof vi.fn<(v: boolean) => void>>;
@@ -68,7 +92,7 @@ describe('ThemeSwitch', () => {
 
   it('renders a QToggle with default size xl and reflects dark mode state', async () => {
     // Dark mode is off by default from beforeEach
-    const wrapper = mountWithQuasar();
+    const wrapper = mountWithQuasar({}, { darkMode: false });
     const toggle = wrapper.get('button');
 
     // size prop passed through
@@ -88,7 +112,7 @@ describe('ThemeSwitch', () => {
   it('accepts a custom size and toggles dark off when turned off', async () => {
     // Start with dark enabled
     darkState.isActive = true;
-    const wrapper = mountWithQuasar({ size: 'sm' });
+    const wrapper = mountWithQuasar({ size: 'sm' }, { darkMode: true });
     const toggle = wrapper.get('button');
 
     expect(toggle.attributes('data-size')).toBe('sm');
