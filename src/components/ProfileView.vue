@@ -69,7 +69,7 @@ watch(
 </script>
 
 <template>
-  <div class="profile-view">
+  <div class="profile-view q-mx-auto" style="max-width: 100%; overflow: hidden;">
     <div v-if="loading" class="flex flex-center q-pa-xl">
       <q-spinner color="primary" size="3em" />
     </div>
@@ -78,28 +78,28 @@ watch(
       <div class="banner-container">
         <q-img v-if="profile.banner" :src="profile.banner" class="banner-image" fit="cover" />
         <div v-else class="banner-placeholder bg-grey-9" />
-
-        <!-- Edit Profile Button overlaid on banner or just below -->
-        <div class="row justify-end q-pa-sm edit-btn-container">
-          <q-btn
-            :label="t('profile.edit')"
-            class="edit-profile-btn text-orange-5"
-            color="grey-9"
-            no-caps
-            rounded
-            @click="openInTab('/profile')"
-          />
-        </div>
       </div>
 
       <!-- Content Section -->
-      <div class="q-px-md q-pb-md content-section">
+      <div class="q-px-md q-pb-md content-section" style="margin-top: -40px; position: relative; z-index: 1">
         <!-- Avatar - partially overlapping banner -->
-        <div>
-          <q-avatar size="80px">
+        <div class="row items-end justify-between">
+          <q-avatar size="80px" style="border: 4px solid var(--q-dark-page)">
             <q-img v-if="profile.picture" :src="profile.picture" />
             <q-icon v-else class="bg-grey-3 full-width full-height" color="grey-7" name="person" />
           </q-avatar>
+
+          <!-- Edit Profile Button -->
+          <div class="q-pa-sm">
+            <q-btn
+              :label="t('profile.edit')"
+              class="edit-profile-btn text-orange-5"
+              color="grey-9"
+              no-caps
+              rounded
+              @click="openInTab('/profile')"
+            />
+          </div>
         </div>
 
         <div class="profile-info q-mt-sm">
@@ -136,26 +136,28 @@ watch(
 <style scoped>
 .profile-view {
   width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .banner-container {
   position: relative;
-  height: 200px;
+  aspect-ratio: 5 / 1;
   width: 100%;
+  overflow: hidden;
+  margin-bottom: -10px;
+  margin-top: 40px;
 }
 
-.banner-image,
+.banner-image {
+  height: 100%;
+  width: 100%;
+  display: block;
+}
+
 .banner-placeholder {
   height: 100%;
   width: 100%;
-}
-
-.edit-btn-container {
-  position: absolute;
-  bottom: -45px;
-  right: 0;
-  width: 100%;
-  z-index: 10;
 }
 
 .edit-profile-btn {
