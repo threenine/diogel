@@ -1,6 +1,6 @@
 {
   "name": "diogel",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Privacy focused nostr extension",
   "productName": "Diogel",
   "author": "threenine.io <support@threenine.co.uk>",
@@ -15,7 +15,7 @@
     "build": "quasar build",
     "postinstall": "quasar prepare",
     "build:chrome": "quasar build -m bex -T chrome",
-    "release": "npm build && npm build:chrome && changelogen --release && git push --follow-tags"
+    "release": "npm run build && npm run build:chrome && changelogen --release && git push --follow-tags"
   },
   "dependencies": {
     "@noble/ciphers": "^0.5.3",
