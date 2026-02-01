@@ -14,7 +14,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/login',
-    component: () => import('layouts/BlankLayout.vue'),
+    component: () => import('layouts/ExtensionLayout.vue'),
     children: [
       {
         path: '',

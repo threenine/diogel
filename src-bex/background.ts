@@ -26,15 +26,14 @@ const BLOSSOM_UPLOAD_STATUS = 'blossom:upload_status';
 async function getActiveStoredKey() {
   console.log('[BEX] Getting active account...');
   if (!isVaultUnlocked()) {
-    console.warn('[BEX] Vault is locked, requesting approval/unlock...');
-    const approved = await requestApproval('internal:unlock');
-    if (!approved || !isVaultUnlocked()) {
-      console.error('[BEX] Vault remains locked after approval request');
-      if (typeof bridge !== 'undefined' && bridge.send) {
-        bridge.send('vault.lock-status-changed', { unlocked: false });
-      }
-      return null;
+    console.warn('[BEX] Vault is locked, requesting internal unlock...');
+    // When vault is locked, we want to notify the extension to show the login page
+    // instead of opening a popup.
+    if (bridge && bridge.send) {
+      void bridge.send('vault.lock-status-changed', { unlocked: false });
     }
+    // We can't automatically unlock without user interaction in the extension UI.
+    return null;
   }
   const items = await chrome.storage.local.get([NOSTR_ACTIVE]);
   console.log('[BEX] Active account items:', items);
@@ -226,6 +225,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function requestApproval(origin: string): Promise<boolean> {
   console.log('[BEX] Requesting approval for:', origin);
+
+  // If vault is locked, we should NOT open the popup.
+  // Instead, we return false and expect the caller to handle it (e.g. by throwing an error that might trigger a UI update)
+  if (!isVaultUnlocked()) {
+    console.warn('[BEX] Vault is locked, cannot request approval via popup');
+    if (bridge && bridge.send) {
+      void bridge.send('vault.lock-status-changed', { unlocked: false });
+    }
+    return false;
+  }
+
   // If there's already a pending approval, we might want to queue it or reject it.
   // For simplicity, let's reject it for now.
   if (approvalPromise) {
@@ -309,6 +319,9 @@ bridge.on(
 
     console.log('[BEX] Approval result for getPublicKey:', approved);
     if (!approved) {
+      if (!isVaultUnlocked()) {
+        throw new Error('Vault is locked. Please open the extension to unlock.');
+      }
       throw new Error('User rejected the request');
     }
 
@@ -329,6 +342,9 @@ bridge.on(
 
     console.log('[BEX] Approval result for signEvent:', approved);
     if (!approved) {
+      if (!isVaultUnlocked()) {
+        throw new Error('Vault is locked. Please open the extension to unlock.');
+      }
       throw new Error('User rejected the request');
     }
 
@@ -350,6 +366,9 @@ bridge.on(
 bridge.on('nostr.getRelays', async ({ payload: { origin } }: { payload: { origin: string } }) => {
   const approved = await requestApproval(origin);
   if (!approved) {
+    if (!isVaultUnlocked()) {
+      throw new Error('Vault is locked. Please open the extension to unlock.');
+    }
     throw new Error('User rejected the request');
   }
   return {};
@@ -372,6 +391,9 @@ bridge.on(
   }) => {
     const approved = await requestApproval(origin);
     if (!approved) {
+      if (!isVaultUnlocked()) {
+        throw new Error('Vault is locked. Please open the extension to unlock.');
+      }
       throw new Error('User rejected the request');
     }
 
@@ -389,6 +411,9 @@ bridge.on(
   }) => {
     const approved = await requestApproval(origin);
     if (!approved) {
+      if (!isVaultUnlocked()) {
+        throw new Error('Vault is locked. Please open the extension to unlock.');
+      }
       throw new Error('User rejected the request');
     }
     const secretKey = await getActiveSecretKey();

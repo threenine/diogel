@@ -1,6 +1,6 @@
 <template>
   <q-page class="flex flex-center">
-    <q-card style="width: 500px; max-width: 760px">
+    <q-card class="vault-card">
       <q-card-section>
         <div class="text-h6">{{ vaultStore.vaultExists ? 'Unlock Vault' : 'Create Vault' }}</div>
       </q-card-section>
@@ -191,3 +191,10 @@ async function handleUnlock() {
   }
 }
 </script>
+
+<style scoped>
+.vault-card {
+  width: 100%;
+  max-width: 450px;
+}
+</style>
