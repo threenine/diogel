@@ -8,6 +8,7 @@ import RelayEditor from '../components/RelayEditor.vue';
 
 import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
 import ExportButton from 'components/ExportButton.vue';
+import WarningCard from 'components/WarningCard.vue';
 
 const { t } = useI18n();
 const accountStore = useAccountStore();
@@ -91,9 +92,14 @@ onMounted(async () => {
                   </q-card-section>
                 </q-card>
                 <q-card>
-                  <q-card-section class="q-pt-none row justify-center paddings-sm">
-                    <p class="text-orange-5">Ensure you export and backup your private key.</p>
-                  </q-card-section>
+                  <q-card>
+                    <q-card-section class="text-center">
+                      <warning-card
+                        headline="Ensure you export and backup your keys."
+                        message="If you lose them, you will lose access to your account and there is no way to recover them."
+                      />
+                    </q-card-section>
+                  </q-card>
                 </q-card>
               </q-tab-panel>
             </q-tab-panels>

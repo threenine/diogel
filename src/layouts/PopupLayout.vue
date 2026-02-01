@@ -17,8 +17,8 @@ import PopupHeader from 'components/PopupHeader.vue';
 <style scoped>
 .popup-root {
   position: relative;
-  width: 450px;
-  height: 500px;
+  width: 100%;
+  height: 100%;
   overflow: hidden !important; /* hide outer scrollbars */
   display: flex;
   flex-direction: column;
@@ -33,8 +33,8 @@ import PopupHeader from 'components/PopupHeader.vue';
 
 .popup-container {
   overflow: hidden;
-  height: 500px;
-  max-height: 500px;
+  height: 100%;
+  max-height: 100%;
 }
 
 .popup-container :deep(.q-page) {

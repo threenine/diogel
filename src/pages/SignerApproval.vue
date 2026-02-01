@@ -73,7 +73,7 @@ async function reject() {
         <div class="text-h6">{{ t('approval.title') }}</div>
       </q-card-section>
 
-      <q-card-section class="q-pt-none overflow-auto" style="max-height: 250px">
+      <q-card-section class="q-pt-none overflow-auto" style="max-height: 200px">
         <p>{{ t('approval.description') }}</p>
         <div class="text-caption text-grey-7 q-mt-sm">
           {{ t('approval.origin') }}
