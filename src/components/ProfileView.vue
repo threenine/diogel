@@ -69,7 +69,7 @@ watch(
 </script>
 
 <template>
-  <div class="profile-view q-mx-auto" style="max-width: 100%; overflow: hidden;">
+  <div class="profile-view q-mx-auto" style="max-width: 100%; overflow: hidden">
     <div v-if="loading" class="flex flex-center q-pa-xl">
       <q-spinner color="primary" size="3em" />
     </div>
@@ -81,10 +81,16 @@ watch(
       </div>
 
       <!-- Content Section -->
-      <div class="q-px-md q-pb-md content-section" style="margin-top: -40px; position: relative; z-index: 1">
+      <div
+        class="q-px-md q-pb-md content-section"
+        style="margin-top: -40px; position: relative; z-index: 1"
+      >
         <!-- Avatar - partially overlapping banner -->
         <div class="row items-end justify-between">
-          <q-avatar size="80px" style="border: 4px solid var(--q-dark-page)">
+          <q-avatar
+            size="80px"
+            style="border: 4px solid var(--q-dark-page); background-color: var(--q-dark-page)"
+          >
             <q-img v-if="profile.picture" :src="profile.picture" />
             <q-icon v-else class="bg-grey-3 full-width full-height" color="grey-7" name="person" />
           </q-avatar>
