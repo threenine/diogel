@@ -12,8 +12,8 @@ export default {
   createAccount: {
     title: 'Create Account',
     tabs: {
-      create: 'Create New Account',
-      import: 'Import Existing Account',
+      create: 'Create New',
+      import: 'Import Existing',
     },
     generateKeys: 'Generate Keys',
     importNsecLabel: 'NSEC Private Key',

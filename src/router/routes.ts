@@ -32,6 +32,11 @@ const routes: RouteRecordRaw[] = [
         name: 'home',
         component: () => import('pages/IndexPage.vue'),
       },
+      {
+        path: 'create-account',
+        name: 'create-account',
+        component: () => import('pages/CreateAccount.vue'),
+      },
     ],
   },
   {
@@ -43,11 +48,7 @@ const routes: RouteRecordRaw[] = [
         name: 'settings',
         component: () => import('pages/ExtensionSettings.vue'),
       },
-      {
-        path: 'create-account',
-        name: 'create-account',
-        component: () => import('pages/CreateAccount.vue'),
-      },
+
       {
         path: '/profile',
         name: 'profile',

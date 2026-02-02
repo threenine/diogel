@@ -120,7 +120,7 @@ function validate() {
 </script>
 
 <template>
-  <q-page>
+  <q-card bordered class="full-width" flat>
     <div class="settings-container">
       <div class="shadow-0">
         <q-toolbar>
@@ -276,7 +276,7 @@ function validate() {
         </q-tab-panels>
       </div>
     </div>
-  </q-page>
+  </q-card>
 </template>
 
 <style scoped>

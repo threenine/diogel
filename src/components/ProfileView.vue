@@ -69,93 +69,119 @@ watch(
 </script>
 
 <template>
-  <div class="profile-view">
+  <div>
     <div v-if="loading" class="flex flex-center q-pa-xl">
       <q-spinner color="primary" size="3em" />
     </div>
-    <div v-else>
-      <!-- Banner Section -->
-      <div class="banner-container">
-        <q-img v-if="profile.banner" :src="profile.banner" class="banner-image" fit="cover" />
-        <div v-else class="banner-placeholder bg-grey-9" />
+    <q-card v-else class="profile-view q-pa-md-md" flat square style="max-height: 600px">
+      <q-card-section class="q-px-md q-pt-none">
+        <q-card>
+          <q-card-section>
+            <div class="banner-container">
+              <q-img
+                v-if="profile.banner"
+                :src="profile.banner"
+                class="banner-image"
+                fit="contain"
+                ratio="16/9"
+              />
+              <div v-else class="banner-placeholder bg-grey-9" />
+            </div>
+          </q-card-section>
+          <q-card-section
+            class="q-px-md q-pb-md content-section"
+            style="margin-top: -120px; position: relative; z-index: 1"
+          >
+            <!-- Avatar - partially overlapping banner -->
+            <div class="row items-end justify-between">
+              <q-avatar
+                size="80px"
+                style="border: 4px solid var(--q-dark-page); background-color: var(--q-dark-page)"
+              >
+                <q-img v-if="profile.picture" :src="profile.picture" />
+                <q-icon
+                  v-else
+                  class="bg-grey-3 full-width full-height"
+                  color="grey-7"
+                  name="person"
+                />
+              </q-avatar>
 
-        <!-- Edit Profile Button overlaid on banner or just below -->
-        <div class="row justify-end q-pa-sm edit-btn-container">
-          <q-btn
-            :label="t('profile.edit')"
-            class="edit-profile-btn text-orange-5"
-            color="grey-9"
-            no-caps
-            rounded
-            @click="openInTab('/profile')"
-          />
-        </div>
-      </div>
+              <!-- Edit Profile Button -->
+            </div>
 
-      <!-- Content Section -->
-      <div class="q-px-md q-pb-md content-section">
-        <!-- Avatar - partially overlapping banner -->
-        <div>
-          <q-avatar size="80px">
-            <q-img v-if="profile.picture" :src="profile.picture" />
-            <q-icon v-else class="bg-grey-3 full-width full-height" color="grey-7" name="person" />
-          </q-avatar>
-        </div>
-
-        <div class="profile-info q-mt-sm">
-          <div class="row justify-between items-start">
-            <div>
-              <div class="text-h6 text-weight-bold">
-                {{ profile.display_name || profile.name || 'Anonymous' }}
+            <div class="profile-info q-mt-sm">
+              <div class="row justify-between items-start">
+                <div>
+                  <div class="text-h6 text-weight-bold">
+                    {{ profile.display_name || profile.name || 'Anonymous' }}
+                  </div>
+                  <div
+                    v-if="profile.name && profile.display_name"
+                    class="text-subtitle2 text-orange-5"
+                  >
+                    @{{ profile.name }}
+                  </div>
+                </div>
               </div>
-              <div v-if="profile.name && profile.display_name" class="text-subtitle2 text-orange-5">
-                @{{ profile.name }}
+
+              <div v-if="profile.about" class="text-body2 q-mt-sm about-text">
+                {{ profile.about }}
+              </div>
+
+              <div v-if="profile.website" class="q-mt-xs">
+                <a
+                  :href="profile.website"
+                  class="text-orange-5 text-body2 text-decoration-none"
+                  target="_blank"
+                >
+                  {{ profile.website }}
+                </a>
               </div>
             </div>
-          </div>
-
-          <div v-if="profile.about" class="text-body2 q-mt-sm about-text">
-            {{ profile.about }}
-          </div>
-
-          <div v-if="profile.website" class="q-mt-xs">
-            <a
-              :href="profile.website"
-              class="text-orange-5 text-body2 text-decoration-none"
-              target="_blank"
-            >
-              {{ profile.website }}
-            </a>
-          </div>
-        </div>
-      </div>
-    </div>
+          </q-card-section>
+          <q-card-actions class="q-px-md q-pt-none q-pb-md justify-end">
+            <q-btn
+              :label="t('profile.edit')"
+              class="edit-profile-btn text-orange-5"
+              color="grey-9"
+              no-caps
+              rounded
+              @click="openInTab('/profile')"
+            />
+          </q-card-actions>
+        </q-card>
+      </q-card-section>
+    </q-card>
   </div>
 </template>
 
 <style scoped>
 .profile-view {
   width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 .banner-container {
   position: relative;
   height: 200px;
+  /* aspect-ratio: 5 / 1;
   width: 100%;
+  overflow: hidden;
+  margin-bottom: -10px;
+  margin-top: 40px;*/
 }
 
-.banner-image,
+.banner-image {
+  height: 100%;
+  width: 100%;
+  display: block;
+}
+
 .banner-placeholder {
   height: 100%;
   width: 100%;
-}
-
-.edit-btn-container {
-  position: absolute;
-  bottom: -45px;
-  right: 0;
-  width: 100%;
-  z-index: 10;
 }
 
 .edit-profile-btn {

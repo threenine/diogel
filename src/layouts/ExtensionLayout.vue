@@ -1,7 +1,7 @@
 <template>
   <q-layout class="extension-window" view="hHh Lpr lFf">
     <extension-window-header />
-    <q-page-container class="page-container">
+    <q-page-container>
       <router-view />
     </q-page-container>
   </q-layout>
@@ -13,7 +13,7 @@ import ExtensionWindowHeader from 'components/ExtensionWindowHeader.vue';
 
 <style scoped>
 .extension-window {
-  width: 500px;
+  width: 550px;
   height: 600px;
 }
 .page-container {
