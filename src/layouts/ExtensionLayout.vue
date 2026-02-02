@@ -13,7 +13,7 @@ import ExtensionWindowHeader from 'components/ExtensionWindowHeader.vue';
 
 <style scoped>
 .extension-window {
-  width: 500px;
+  width: 550px;
   height: 600px;
 }
 .page-container {

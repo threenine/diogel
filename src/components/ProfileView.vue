@@ -73,17 +73,19 @@ watch(
     <div v-if="loading" class="flex flex-center q-pa-xl">
       <q-spinner color="primary" size="3em" />
     </div>
-    <div v-else>
+    <q-card v-else class="q-gutter-lg">
       <!-- Banner Section -->
-      <div class="banner-container">
-        <q-img v-if="profile.banner" :src="profile.banner" class="banner-image" fit="cover" />
-        <div v-else class="banner-placeholder bg-grey-9" />
-      </div>
+      <q-card-section>
+        <div class="banner-container">
+          <q-img v-if="profile.banner" :src="profile.banner" class="banner-image" fit="contain" />
+          <div v-else class="banner-placeholder bg-grey-9" />
+        </div>
+      </q-card-section>
 
       <!-- Content Section -->
-      <div
+      <q-card-section
         class="q-px-md q-pb-md content-section"
-        style="margin-top: -40px; position: relative; z-index: 1"
+        style="margin-top: -120px; position: relative; z-index: 1"
       >
         <!-- Avatar - partially overlapping banner -->
         <div class="row items-end justify-between">
@@ -96,16 +98,6 @@ watch(
           </q-avatar>
 
           <!-- Edit Profile Button -->
-          <div class="q-pa-sm">
-            <q-btn
-              :label="t('profile.edit')"
-              class="edit-profile-btn text-orange-5"
-              color="grey-9"
-              no-caps
-              rounded
-              @click="openInTab('/profile')"
-            />
-          </div>
         </div>
 
         <div class="profile-info q-mt-sm">
@@ -134,8 +126,19 @@ watch(
             </a>
           </div>
         </div>
-      </div>
-    </div>
+      </q-card-section>
+      <q-card-actions class="q-px-md q-pt-none q-pb-md justify-end">
+        <q-btn
+          :label="t('profile.edit')"
+          class="edit-profile-btn text-orange-5"
+          color="grey-9"
+          no-caps
+          rounded
+          @click="openInTab('/profile')"
+        />
+      </q-card-actions>
+    </q-card>
+    <q-separator class="q-my-md" />
   </div>
 </template>
 
@@ -148,11 +151,12 @@ watch(
 
 .banner-container {
   position: relative;
-  aspect-ratio: 5 / 1;
+  height: 200px;
+ /* aspect-ratio: 5 / 1;
   width: 100%;
   overflow: hidden;
   margin-bottom: -10px;
-  margin-top: 40px;
+  margin-top: 40px;*/
 }
 
 .banner-image {
