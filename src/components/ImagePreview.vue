@@ -16,7 +16,7 @@ const { t } = useI18n();
 <template>
   <div class="image-preview">
     <template v-if="isAvatar">
-      <q-avatar :size="size || '40px'" >
+      <q-avatar :size="size || '40px'">
         <img v-if="url" :alt="name || t('profile.picture')" :src="url" />
         <q-icon v-else name="person" />
       </q-avatar>
