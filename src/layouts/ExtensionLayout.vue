@@ -1,7 +1,7 @@
 <template>
   <q-layout class="extension-window" view="hHh Lpr lFf">
     <extension-window-header />
-    <q-page-container class="page-container">
+    <q-page-container>
       <router-view />
     </q-page-container>
   </q-layout>
