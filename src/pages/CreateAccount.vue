@@ -121,7 +121,7 @@ function validate() {
 
 <template>
   <q-page>
-    <div class="settings-container">
+    <div>
       <div class="shadow-0">
         <q-toolbar>
           <q-toolbar-title>{{ $t('createAccount.title') }}</q-toolbar-title>
