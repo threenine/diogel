@@ -32,3 +32,7 @@ web applications.
 
 - No data collection or analytics
 - Fully open source
+
+### Development
+
+The project has been bootstrapped with Quasar Framework. [Learn More](https://quasar.dev/introduction-to-quasar)
