@@ -108,7 +108,7 @@ onMounted(async () => {
             <q-icon color="grey-5" name="account_circle" size="4em" />
             <div class="text-h6 text-grey-7 q-mt-md">No active account selected</div>
             <p class="text-grey-6">Please select or create an account to manage your profile.</p>
-            <q-btn class="q-mt-md" color="primary" label="Go to Accounts" outline to="/" />
+            <q-btn class="q-mt-md" color="primary" label="Create Account" outline to="/create-account" />
           </div>
         </q-card>
       </div>
