@@ -31,9 +31,15 @@ jobs:
 
       - name: Package zip
         run: |
+          tag="${GITHUB_REF#refs/tags/}"
           cd dist/bex-chrome--dev
-          zip -r ../../diogel.zip .
-          cd ../..
+          zip -r ../../diogel-${tag}.zip .
+         
+          gh release create "$tag" \
+                                       --title="$tag" \
+                                       --draft \
+                                        "diogel-${tag}.zip"
+           cd ../..
 
       - name: Upload & Publish to Chrome Web Store
         uses: mnao305/chrome-extension-upload@v5.0.0
