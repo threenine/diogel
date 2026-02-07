@@ -48,11 +48,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${{ steps.package.outputs.tag }}"
+          echo "Uploading diogel-${tag}.zip to release $tag"
+          if [ ! -f "diogel-${tag}.zip" ]; then
+            echo "Error: diogel-${tag}.zip not found!"
+            exit 1
+          fi
+          
+          # Try to create the release. If it exists, upload to it.
           gh release create "$tag" \
+            "diogel-${tag}.zip" \
             --title="$tag" \
-            --draft \
-            --generate-notes \
-            "diogel-${tag}.zip"
+            --generate-notes || \
+          gh release upload "$tag" \
+            "diogel-${tag}.zip" \
+            --clobber
 
       - name: Upload & Publish to Chrome Web Store
         uses: mnao305/chrome-extension-upload@v5.0.0
