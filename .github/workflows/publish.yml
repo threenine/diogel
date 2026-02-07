@@ -7,7 +7,7 @@ on:
       - "*"
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build-and-publish:
@@ -32,14 +32,20 @@ jobs:
       - name: Package zip
         run: |
           tag="${GITHUB_REF#refs/tags/}"
-          cd dist/bex-chrome--dev
+          cd dist/bex-chrome
           zip -r ../../diogel-${tag}.zip .
-         
+          cd ../..
+          cp diogel-${tag}.zip diogel.zip
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
           gh release create "$tag" \
-                                       --title="$tag" \
-                                       --draft \
-                                        "diogel-${tag}.zip"
-           cd ../..
+            --title="$tag" \
+            --draft \
+            "diogel-${tag}.zip"
 
       - name: Upload & Publish to Chrome Web Store
         uses: mnao305/chrome-extension-upload@v5.0.0
