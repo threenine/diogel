@@ -36,3 +36,25 @@ web applications.
 ### Development
 
 The project has been bootstrapped with Quasar Framework. [Learn More](https://quasar.dev/introduction-to-quasar)
+
+### Installation 
+To install a browser extension from the GitHub repository, follow these steps:
+
+1. Download the extension code
+   Go to the e[releases page](https://github.com/threenine/diogel/releases) , select the latest release, and  expand the "Assets" section.
+   Select "Download ZIP" to get the source files.
+
+2. Extract the ZIP file
+   Unzip the downloaded file to a folder on your computer. Make sure the folder contains a manifest.json file, which is required for Chrome extensions.
+
+3. Enable Developer Mode in Chrome
+   Open Chrome and go to chrome://extensions. Toggle on "Developer mode" in the top right corner.
+
+4. Load the extension
+   Click "Load unpacked", then navigate to the folder where you extracted the files.  Select it and click "Open".
+
+The extension will now appear in your extensions list and be active.
+
+⚠️ Security Note:  Although extensions from GitHub are not vetted like those in the Chrome Web Store, they can access 
+your browsing data, including passwords and personal information. Only install extensions from trusted sources.
+
