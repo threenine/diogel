@@ -10,7 +10,7 @@
 
 ### ❤️ Contributors
 
-- Gary Woodfine <gary.woodfine@threenine.co.uk>
+- Gary Woodfine <annex-storage-slip@duck.com>
 
 ## v0.0.5
 
