@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.0.9
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.8...v0.0.9)
+
+### 🏡 Chore
+
+- Improve release workflow to handle existing releases and validate zip file before upload ([0905325](https://github.com/threenine/diogel/commit/0905325))
+
+### ❤️ Contributors
+
+- Gary Woodfine <annex-storage-slip@duck.com>
+
 ## v0.0.8
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.7...v0.0.8)
