@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.0.6
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.5...v0.0.6)
+
+### 🏡 Chore
+
+- Update manifest to run scripts at document_end and bump version to 0.0.5 ([ddf8d3e](https://github.com/threenine/diogel/commit/ddf8d3e))
+
+### ❤️ Contributors
+
+- Gary Woodfine <gary.woodfine@threenine.co.uk>
+
 ## v0.0.5
 
 [compare changes](https://github.com/threenine/nostr-ext/compare/v0.0.4...v0.0.5)
