@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.0.7
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.6...v0.0.7)
+
+### 🏡 Chore
+
+- Update publish workflow to enable release creation and adjust zip packaging ([5a9fb51](https://github.com/threenine/diogel/commit/5a9fb51))
+- Update contributor email in changelog ([6787603](https://github.com/threenine/diogel/commit/6787603))
+
+### ❤️ Contributors
+
+- Gary Woodfine <annex-storage-slip@duck.com>
+
 ## v0.0.6
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.5...v0.0.6)
