@@ -2,6 +2,9 @@
   <q-page>
     <div v-if="activeStoredKey" class="full-width">
       <ProfileView :stored-key="activeStoredKey" />
+      <div  class="text-center q-pb-md text-orange-5 text-caption">
+        {{ $t('warning.exportKeys') }}
+      </div>
     </div>
     <div v-else class="q-pa-md">
       <div class="text-center">

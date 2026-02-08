@@ -73,4 +73,7 @@ export default {
     approve: 'Approve',
     reject: 'Reject',
   },
+  warning: {
+    exportKeys: 'Ensure you Export & Back up your keys',
+  },
 };
