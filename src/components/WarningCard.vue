@@ -3,7 +3,7 @@ defineProps<{ message: string; headline?: string }>();
 </script>
 
 <template>
-  <q-card bordered class="bg-orange-5">
+  <q-card bordered class="bg-orange-5 margings-sm">
     <q-card-section class="row items-center">
       <q-icon color="text-white" name="info" size="md" />
       <span class="q-ml-sm text-weight-bold text-white">Important</span>

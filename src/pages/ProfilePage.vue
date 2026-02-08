@@ -91,6 +91,7 @@ onMounted(async () => {
                     <ExportButton :stored-key="activeStoredKey" />
                   </q-card-section>
                 </q-card>
+                <q-separator horizontal class="q-mt-xl q-mb-md" inset />
                 <q-card>
                   <q-card>
                     <q-card-section class="text-center">

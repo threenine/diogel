@@ -153,6 +153,9 @@ watch(
         </q-card>
       </q-card-section>
     </q-card>
+    <div v-if="!loading" class="text-center q-pb-md text-orange-5 text-caption">
+      {{ $t('warning.exportKeys') }}
+    </div>
   </div>
 </template>
 
@@ -166,11 +169,6 @@ watch(
 .banner-container {
   position: relative;
   height: 200px;
-  /* aspect-ratio: 5 / 1;
-  width: 100%;
-  overflow: hidden;
-  margin-bottom: -10px;
-  margin-top: 40px;*/
 }
 
 .banner-image {
