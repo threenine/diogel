@@ -1,5 +1,25 @@
 # Changelog
 
+## v0.0.10
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.9...v0.0.10)
+
+### 🚀 Enhancements
+
+- Improve user notifications and interface consistency ([8503eb1](https://github.com/threenine/diogel/commit/8503eb1))
+
+### 📖 Documentation
+
+- Add installation guide for browser extension to README.md ([d080a9b](https://github.com/threenine/diogel/commit/d080a9b))
+
+### 🏡 Chore
+
+- **release:** V0.0.9 ([dfd96dd](https://github.com/threenine/diogel/commit/dfd96dd))
+
+### ❤️ Contributors
+
+- Gary Woodfine <annex-storage-slip@duck.com>
+
 ## v0.0.9
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.8...v0.0.9)
