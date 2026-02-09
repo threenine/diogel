@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.0.11
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.10...v0.0.11)
+
+### 💅 Refactors
+
+- Relocate export keys warning for better visibility and UI consistency ([4eac96c](https://github.com/threenine/diogel/commit/4eac96c))
+
+### ❤️ Contributors
+
+- Gary Woodfine <annex-storage-slip@duck.com>
+
 ## v0.0.10
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.9...v0.0.10)
