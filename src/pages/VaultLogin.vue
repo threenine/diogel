@@ -14,29 +14,8 @@
       </q-card-section>
 
       <q-card-section v-if="!vaultStore.vaultExists">
-        <p>Set a password for your new vault. A mnemonic seed phrase will be generated for you.</p>
-        <q-input
-          v-model="mnemonic"
-          class="q-mb-md"
-          filled
-          label="Mnemonic"
-          readonly
-          type="textarea"
-        />
-        <q-btn
-          class="q-mb-md"
-          color="primary"
-          flat
-          label="Generate New Mnemonic"
-          @click="handleGenerateMnemonic"
-        />
-        <q-input
-          v-model="passphrase"
-          class="q-mb-md"
-          filled
-          label="Passphrase (Optional)"
-          type="password"
-        />
+        <p>Set a password for your new vault.</p>
+
         <q-input
           v-model="password"
           :rules="[(val) => val.length >= 8 || 'Minimum 8 characters']"
@@ -117,9 +96,6 @@ onMounted(async () => {
   if (vaultStore.isUnlocked && (route.path === '/login' || route.name === 'login')) {
     console.log('[VaultLogin] Already unlocked, redirecting to home');
     await router.push({ name: 'home' });
-  } else if (!vaultStore.vaultExists && !vaultStore.isLoading) {
-    console.log('[VaultLogin] No vault, generating mnemonic');
-    handleGenerateMnemonic();
   }
 });
 
@@ -141,9 +117,7 @@ watch(
   },
 );
 
-function handleGenerateMnemonic() {
-  mnemonic.value = nip06.generateSeedWords();
-}
+
 
 async function handleCreate() {
   if (password.value.length < 8 || password.value !== confirmPassword.value) {
