@@ -1,8 +1,12 @@
 <template>
-  <q-layout class="extension-window" view="hHh Lpr lFf">
+  <q-layout class="extension-window-layout" view="hHh Lpr lFf">
     <extension-window-header />
     <q-page-container>
-      <router-view />
+      <div class="page-center-container">
+        <div class="page-content-wrapper">
+          <router-view />
+        </div>
+      </div>
     </q-page-container>
   </q-layout>
 </template>
@@ -11,9 +15,22 @@
 import ExtensionWindowHeader from 'components/ExtensionWindowHeader.vue';
 </script>
 
-<style scoped>
-.extension-window {
+<style>
+/* Using global style to affect html/body when this layout is used */
+html.extension-popup,
+html.extension-popup body {
   width: 550px;
-  height: 700px;
+  height: 600px;
+  overflow: hidden;
+}
+
+/* Also handle login and other pages if they are opened in the popup */
+/* We use the .extension-popup class added in App.vue */
+</style>
+
+<style scoped>
+.extension-window-layout {
+  width: 100%;
+  height: 100%;
 }
 </style>

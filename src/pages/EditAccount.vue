@@ -37,35 +37,33 @@ function loadStoredKeys() {
 
 <template>
   <q-page>
-    <div class="settings-container">
-      <div class="shadow-0">
-        <q-toolbar>
-          <q-toolbar-title>Edit Account</q-toolbar-title>
-        </q-toolbar>
-        <div class="q-pa-lg-lg full-width settings-form rounded-borders">
-          <q-list>
-            <q-item v-ripple tag="label">
-              <q-item-section>
-                <div class="q-gutter-lg">
-                  <q-input
-                    v-model="storedKey.alias"
-                    class="text-input"
-                    label="Profile Name"
-                    readonly
-                  >
-                    <template v-slot:prepend>
-                      <q-icon name="person" />
-                    </template>
-                  </q-input>
-                  <view-stored-key :stored-key="storedKey" />
-                </div>
-                <div class="row justify-end q-gutter-sm q-mt-lg">
-                  <ExportButton :stored-key="storedKey" />
-                </div>
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </div>
+    <div class="shadow-0">
+      <q-toolbar>
+        <q-toolbar-title>Edit Account</q-toolbar-title>
+      </q-toolbar>
+      <div class="q-pa-lg-lg full-width settings-form rounded-borders">
+        <q-list>
+          <q-item v-ripple tag="label">
+            <q-item-section>
+              <div class="q-gutter-lg">
+                <q-input
+                  v-model="storedKey.alias"
+                  class="text-input"
+                  label="Profile Name"
+                  readonly
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="person" />
+                  </template>
+                </q-input>
+                <view-stored-key :stored-key="storedKey" />
+              </div>
+              <div class="row justify-end q-gutter-sm q-mt-lg">
+                <ExportButton :stored-key="storedKey" />
+              </div>
+            </q-item-section>
+          </q-item>
+        </q-list>
       </div>
     </div>
   </q-page>

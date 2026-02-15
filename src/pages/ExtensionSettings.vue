@@ -13,8 +13,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <q-page class="settings-page" padding>
-    <q-card class="settings-card shadow-0">
+  <q-page padding>
+    <q-card class="shadow-0">
       <q-toolbar>
         <q-toolbar-title>Extension Settings</q-toolbar-title>
       </q-toolbar>
@@ -51,15 +51,3 @@ onMounted(async () => {
     </q-card>
   </q-page>
 </template>
-<style scoped>
-.settings-page {
-  display: flex;
-  justify-content: center; /* horizontal center */
-  padding: 16px; /* keeps space on small screens */
-}
-
-.settings-card {
-  width: 100%;
-  max-width: 840px; /* adjust to taste (e.g., 480px, 720px) */
-}
-</style>

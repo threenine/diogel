@@ -2,7 +2,11 @@
   <q-layout>
     <main-layout-header />
     <q-page-container>
-      <router-view />
+      <div class="page-center-container">
+        <div class="page-content-wrapper">
+          <router-view />
+        </div>
+      </div>
     </q-page-container>
   </q-layout>
 </template>

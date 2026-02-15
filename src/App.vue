@@ -59,6 +59,11 @@ onMounted(async () => {
   addLog('Mounting App.vue...');
   vaultStore.listenToLockChanges();
 
+  // Detect if we're in a popup and add a class to html
+  if (window.location.hash.includes('popup') || window.location.search.includes('popup')) {
+    document.documentElement.classList.add('extension-popup');
+  }
+
   // Force show UI after 8 seconds regardless of what happens
   const emergencyTimeout = setTimeout(() => {
     if (vaultStore.isLoading) {

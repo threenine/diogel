@@ -28,8 +28,8 @@ onMounted(async () => {
 
 <template>
   <div class="q-pt-lg">
-    <q-page class="flex justify-center">
-      <div class="q-pa-md full-width" style="max-width: 900px">
+    <q-page>
+      <div class="q-pa-md full-width">
         <q-card>
           <div v-if="activeStoredKey">
             <q-tabs

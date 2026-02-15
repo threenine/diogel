@@ -14,11 +14,23 @@ import PopupHeader from 'components/PopupHeader.vue';
   </q-layout>
 </template>
 
+<style>
+/* Using global style to affect html/body when this layout is used */
+html.extension-popup,
+html.extension-popup body {
+  width: 500px;
+  height: 600px;
+  overflow: hidden;
+}
+</style>
+
 <style scoped>
 .popup-root {
   position: relative;
-  width: 100%;
-  height: 100%;
+  width: 500px;
+  height: 600px;
+  max-width: 100vw;
+  max-height: 100vh;
   overflow: hidden !important; /* hide outer scrollbars */
   display: flex;
   flex-direction: column;

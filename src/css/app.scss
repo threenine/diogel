@@ -1,11 +1,21 @@
 // app global css in SCSS form
 html,
-body,
+body {
+  overflow: hidden;
+}
+
 #q-app {
   // Apply page background & base text color from theme variables
   background-color: var(--page-bg);
   color: var(--text-color);
   height: 100%;
+}
+
+.extension-window {
+  width: 550px;
+  height: 600px;
+  max-width: 100vw;
+  max-height: 100vh;
 }
 
 .q-card {
@@ -40,7 +50,7 @@ body,
 
 .popup-root {
   width: 500px;
-  height: 750px;
+  height: 600px;
 }
 
 .popup-layout {
@@ -79,7 +89,17 @@ body,
   padding: 20px;
   background-color: var(--settings-form-bg);
   width: 100%;
-  max-width: 580px;
+}
+
+.page-center-container {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.page-content-wrapper {
+  width: 100%;
+  max-width: 840px;
 }
 
 .warning-card {
