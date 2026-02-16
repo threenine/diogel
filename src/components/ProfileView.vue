@@ -73,7 +73,7 @@ watch(
     <div v-if="loading" class="flex flex-center q-pa-xl">
       <q-spinner color="primary" size="3em" />
     </div>
-    <q-card v-else class="profile-view q-pa-md-md" flat square style="max-height: 600px">
+    <q-card v-else class="profile-view q-pa-md-md" flat square style="max-height: 600px; margin-top: 20px;padding-top: 20px;">
       <q-card-section class="q-px-md q-pt-none">
         <q-card>
           <q-card-section>
