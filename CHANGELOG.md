@@ -1,5 +1,23 @@
 # Changelog
 
+## v0.0.12
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.11...v0.0.12)
+
+### 🚀 Enhancements
+
+- Add favicon display for site origin and fix header image path ([3d1c9d1](https://github.com/threenine/diogel/commit/3d1c9d1))
+
+### 🏡 Chore
+
+- Refactor layouts and styles for consistent UI alignment and popup responsiveness ([79a28a1](https://github.com/threenine/diogel/commit/79a28a1))
+- Add MIT license and adjust UI styling for ProfileView and page container ([c892a34](https://github.com/threenine/diogel/commit/c892a34))
+- Update file structure, adjust styles, and add logout option ([93746d1](https://github.com/threenine/diogel/commit/93746d1))
+
+### ❤️ Contributors
+
+- Gary Woodfine <annex-storage-slip@duck.com>
+
 ## v0.0.11
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.10...v0.0.11)
