@@ -1,5 +1,10 @@
 <img alt="Diogel" src="https://res.cloudinary.com/threenine-co-uk/image/upload/v1733252921/github-banner_rtnvqv.png" width="800"/>
 
+
+[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/inhkmeiabnknligdjngmoocohdonoboa?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/nostrame/inhkmeiabnknligdjngmoocohdonoboa)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+
 A Nostr Account and Signer browser extension, enabling you to manage and switch between multiple identities while
 interacting with Nostr apps.
 
@@ -55,6 +60,10 @@ To install a browser extension from the GitHub repository, follow these steps:
 
 The extension will now appear in your extensions list and be active.
 
-⚠️ Security Note:  Although extensions from GitHub are not vetted like those in the Chrome Web Store, they can access 
-your browsing data, including passwords and personal information. Only install extensions from trusted sources.
+> [!WARNING]
+> Although extensions from GitHub are not vetted like those in the Chrome Web Store, they can access   
+> your browsing data, including passwords and personal information. Only install extensions from trusted sources.
+
+
+
 
