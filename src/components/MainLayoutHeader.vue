@@ -29,7 +29,7 @@ function openInTab(path: string) {
             </q-list>
           </q-menu>
         </q-btn>
-        <q-img src="/images/diogel-header.png" style="width: 200px; height: 45px" />
+        <q-img src="../../src-bex/images/diogel-header.png" style="width: 200px; height: 45px" />
       </div>
       <q-space />
       <div class="q-pa-lg-lg"><account-dropdown /></div>

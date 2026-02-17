@@ -1,17 +1,17 @@
 <template>
-  <q-page class="q-pa-md">
-    <q-card bordered class="q-mb-md" flat>
-      <q-card-section class="flex flex-center q-pa-lg">
-        <q-img
-          src="/images/login-banner.png"
-          style="max-width: 400px; width: 100%; border-radius: 12px"
-        />
-      </q-card-section>
-    </q-card>
-    <q-card bordered class="vault-card" flat>
-      <q-card-section>
-        <div class="text-h6">{{ vaultStore.vaultExists ? 'Unlock Vault' : 'Create Vault' }}</div>
-      </q-card-section>
+  <q-page class="q-pa-md flex flex-center">
+    <div class="full-width q-pa-sm" style="max-width: 450px">
+      <q-card bordered class="vault-card shadow-2" flat>
+        <q-card-section class="flex flex-center q-pt-lg q-pb-none">
+          <q-img
+            src="../../src-bex/assets/images/login-banner.png"
+            style="max-width: 100%; width: 180px; border-radius: 8px"
+          />
+        </q-card-section>
+
+        <q-card-section>
+          <div class="text-h6 text-center">{{ vaultStore.vaultExists ? 'Unlock Vault' : 'Create Vault' }}</div>
+        </q-card-section>
 
       <q-card-section v-if="!vaultStore.vaultExists">
         <p>Set a password for your new vault.</p>
@@ -53,7 +53,8 @@
         />
         <q-btn v-else :loading="loading" color="primary" label="Unlock" @click="handleUnlock" />
       </q-card-actions>
-    </q-card>
+      </q-card>
+    </div>
   </q-page>
 </template>
 

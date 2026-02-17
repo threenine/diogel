@@ -21,7 +21,7 @@ html.extension-popup,
 html.extension-popup body {
   width: 550px;
   height: 600px;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 /* Also handle login and other pages if they are opened in the popup */

@@ -1,9 +1,19 @@
 <script lang="ts" setup>
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
+import useVaultStore from 'src/stores/vault-store';
+import { useRouter } from 'vue-router';
+
+const vaultStore = useVaultStore();
+const router = useRouter();
 
 function openInTab(path: string) {
   const url = chrome.runtime.getURL(`www/index.html#${path}`);
   void chrome.tabs.create({ url });
+}
+
+async function handleLogout() {
+  await vaultStore.lock();
+  void router.push({ name: 'login' });
 }
 </script>
 
@@ -25,6 +35,13 @@ function openInTab(path: string) {
                   <q-icon name="settings" size="sm" />
                 </q-item-section>
                 <q-item-section> Extension Settings </q-item-section>
+              </q-item>
+              <q-separator />
+              <q-item v-ripple clickable @click="handleLogout">
+                <q-item-section avatar>
+                  <q-icon name="logout" size="sm" />
+                </q-item-section>
+                <q-item-section> Logout </q-item-section>
               </q-item>
             </q-list>
           </q-menu>
