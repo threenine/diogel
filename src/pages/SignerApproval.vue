@@ -9,10 +9,20 @@ const { t } = useI18n();
 const route = useRoute();
 
 const origin = ref('');
+const faviconUrl = ref('');
 
 onMounted(() => {
   origin.value = (route.query.origin as string) || 'Unknown';
   console.log('SignerApproval mounted, origin:', origin.value);
+
+  if (origin.value !== 'Unknown') {
+    try {
+      const url = new URL(origin.value);
+      faviconUrl.value = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`;
+    } catch (e) {
+      console.error('Failed to parse origin for favicon:', e);
+    }
+  }
 
   if ($q.bex) {
     console.log('BEX bridge available');
@@ -74,11 +84,23 @@ async function reject() {
       </q-card-section>
 
       <q-card-section class="q-pt-none overflow-auto" style="max-height: 200px">
-        <p>{{ t('approval.description') }}</p>
-        <div class="text-caption text-grey-7 q-mt-sm">
-          {{ t('approval.origin') }}
+        <div class="row items-center q-mb-md">
+          <q-avatar size="48px" class="q-mr-md" bordered>
+            <q-img v-if="faviconUrl" :src="faviconUrl">
+              <template #error>
+                <q-icon name="public" size="32px" color="grey-7" />
+              </template>
+            </q-img>
+            <q-icon v-else name="public" size="32px" color="grey-7" />
+          </q-avatar>
+          <div>
+            <div class="text-caption text-grey-7">
+              {{ t('approval.origin') }}
+            </div>
+            <div class="text-subtitle2 break-word text-weight-bold">{{ origin }}</div>
+          </div>
         </div>
-        <div class="text-subtitle2 break-word">{{ origin }}</div>
+        <p>{{ t('approval.description') }}</p>
       </q-card-section>
 
       <q-card-actions align="right" class="q-pb-md q-pr-md">
