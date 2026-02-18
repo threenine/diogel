@@ -39,9 +39,9 @@ async function handleLogout() {
               <q-separator />
               <q-item v-ripple clickable @click="handleLogout">
                 <q-item-section avatar>
-                  <q-icon name="logout" size="sm" />
+                  <q-icon name="lock" size="sm" />
                 </q-item-section>
-                <q-item-section> Logout </q-item-section>
+                <q-item-section> Lock </q-item-section>
               </q-item>
             </q-list>
           </q-menu>

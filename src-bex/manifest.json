@@ -14,6 +14,15 @@
     "content_security_policy": {
       "extension_pages": "script-src 'self'; object-src 'self';"
     },
+    "browser_specific_settings": {
+      "gecko": {
+        "id": "@diogel",
+        "strict_min_version": "109.0",
+        "data_collection_permissions": {
+          "required": ["none"]
+        }
+      }
+    },
     "web_accessible_resources": [
       {
         "resources": ["assets/**/**", "nostr-provider.js"],

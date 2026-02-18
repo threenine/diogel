@@ -1,0 +1,75 @@
+name: Publish to firefox Web Store
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build extension (Quasar BEX)
+        run: npx quasar build -m bex -T firefox
+
+      - name: Package zip
+        id: package
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            TAG=${GITHUB_REF#refs/tags/}
+          else
+            TAG=$(node -p "require('./package.json').version")-$(git rev-parse --short HEAD)
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          cd dist/bex-firefox
+          zip -r ../../diogel-firefox-${TAG}.zip .
+          cd ../..
+          cp diogel-firefox-${TAG}.zip diogel.zip
+
+      - name: Publish to AMO (Firefox Add-ons)
+        uses: browser-actions/release-firefox-addon@latest
+        with:
+          addon-id: ${{ secrets.AMO_ADDON_ID }}
+          addon-path: diogel.zip
+          auth-api-issuer: ${{ secrets.AMO_API_ISSUER }}
+          auth-api-secret: ${{ secrets.AMO_API_SECRET }}
+          # Set this to "listed" to publish publicly, or "unlisted" for self-distribution.
+          channel: listed
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+            tag="${{ steps.package.outputs.tag }}"
+            echo "Uploading diogel-firefox-${tag}.zip to release $tag"
+            if [ ! -f "diogel-firefox-${tag}.zip" ]; then
+              echo "Error: diogel-firefox-${tag}.zip not found!"
+              exit 1
+            fi
+            
+            gh release create "$tag" \
+              "diogel-firefox-${tag}.zip" \
+              --title="$tag" \
+              --generate-notes || \
+            gh release upload "$tag" \
+              "diogel-firefox-${tag}.zip" \
+              --clobber
+
+     
