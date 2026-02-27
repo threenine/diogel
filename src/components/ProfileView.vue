@@ -69,11 +69,11 @@ watch(
 </script>
 
 <template>
-  <div>
+  <div class="">
     <div v-if="loading" class="flex flex-center q-pa-xl">
-      <q-spinner color="primary" size="3em" />
+      <q-spinner color="primary" size="2em" />
     </div>
-    <q-card v-else class="profile-view q-pa-md-md" flat square style="max-height: 600px; margin-top: 20px;padding-top: 20px;">
+    <q-card v-else class="profile-view q-pa-md-md" flat square style="max-height: 500px; margin-top: 2px;padding-top: 5px;">
       <q-card-section class="q-px-md q-pt-none">
         <q-card>
           <q-card-section>
@@ -83,19 +83,19 @@ watch(
                 :src="profile.banner"
                 class="banner-image"
                 fit="contain"
-                ratio="16/9"
+                ratio="12/7"
               />
               <div v-else class="banner-placeholder bg-grey-9" />
             </div>
           </q-card-section>
           <q-card-section
             class="q-px-md q-pb-md content-section"
-            style="margin-top: -120px; position: relative; z-index: 1"
+            style="margin-top: -45px; position: relative; z-index: 1"
           >
             <!-- Avatar - partially overlapping banner -->
             <div class="row items-end justify-between">
               <q-avatar
-                size="80px"
+                size="50px"
                 style="border: 4px solid var(--q-dark-page); background-color: var(--q-dark-page)"
               >
                 <q-img v-if="profile.picture" :src="profile.picture" />
@@ -168,7 +168,7 @@ watch(
 
 .banner-container {
   position: relative;
-  height: 200px;
+  height: 80px;
 }
 
 .banner-image {
