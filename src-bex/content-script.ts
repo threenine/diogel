@@ -42,10 +42,8 @@ declare module '@quasar/app-vite' {
 // Inject the NIP-07 provider script
 console.log('[BEX] Content script starting. document.readyState:', document.readyState);
 const injectProvider = () => {
-  console.log('[BEX] Injecting NIP-07 provider script...');
   const script = document.createElement('script');
   script.src = chrome.runtime.getURL('nostr-provider.js');
-  console.log('[BEX] Script source URL:', script.src);
   script.onerror = (e) => {
     console.error('[BEX] Failed to load provider script:', e);
   };

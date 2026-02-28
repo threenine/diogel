@@ -18,7 +18,7 @@ async function handleLogout() {
 </script>
 
 <template>
-  <q-header elevated style="background-color: var(--q-dark-page)">
+  <q-header style="background-color: var(--q-dark-page)">
     <q-toolbar>
       <div class="q-pa-lg-lg">
         <q-btn dense flat icon="menu" round>

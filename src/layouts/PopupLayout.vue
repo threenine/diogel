@@ -47,6 +47,7 @@ html.extension-popup body {
   overflow: hidden;
   height: 100%;
   max-height: 100%;
+  padding-top: 60px;
 }
 
 .popup-container :deep(.q-page) {
@@ -56,5 +57,6 @@ html.extension-popup body {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  justify-content: flex-start;
 }
 </style>

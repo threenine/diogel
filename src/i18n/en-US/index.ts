@@ -68,7 +68,7 @@ export default {
   },
   approval: {
     title: 'Approval Request',
-    description: 'A website is requesting to access your public key.',
+    description: '{website} is requesting to access your public key.',
     origin: 'Request from:',
     approve: 'Approve',
     reject: 'Reject',

@@ -9,15 +9,16 @@ const { t } = useI18n();
 const route = useRoute();
 
 const origin = ref('');
+const hostname = ref('');
 const faviconUrl = ref('');
 
 onMounted(() => {
   origin.value = (route.query.origin as string) || 'Unknown';
   console.log('SignerApproval mounted, origin:', origin.value);
-
   if (origin.value !== 'Unknown') {
     try {
       const url = new URL(origin.value);
+      hostname.value = url.hostname;
       faviconUrl.value = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`;
     } catch (e) {
       console.error('Failed to parse origin for favicon:', e);
@@ -77,7 +78,7 @@ async function reject() {
 </script>
 
 <template>
-  <q-page v-if="origin" class="flex flex-center">
+  <q-page v-if="origin" class="flex justify-center q-pa-md">
     <q-card bordered class="approval-card" flat>
       <q-card-section>
         <div class="text-h6">{{ t('approval.title') }}</div>
@@ -100,13 +101,19 @@ async function reject() {
             <div class="text-subtitle2 break-word text-weight-bold">{{ origin }}</div>
           </div>
         </div>
-        <p>{{ t('approval.description') }}</p>
+        <p>{{ t('approval.description', { website: hostname }) }}</p>
       </q-card-section>
 
       <q-card-actions align="right" class="q-pb-md q-pr-md">
         <q-btn :label="t('approval.reject')" color="negative" flat @click="reject" />
         <q-btn :label="t('approval.approve')" color="primary" unelevated @click="approve" />
       </q-card-actions>
+    </q-card>
+
+    <q-card  class="approval-card q-mt-md" flat>
+      <q-card-section>
+        <div class="text-h6">{{ t('approval.title') }}</div>
+      </q-card-section>
     </q-card>
   </q-page>
 </template>
