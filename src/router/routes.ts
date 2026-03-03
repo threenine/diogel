@@ -24,16 +24,56 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/',
+    path: '/settings',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'settings',
+        component: () => import('pages/ExtensionSettings.vue'),
+      },
+    ],
+  },
+  {
+    path: '/profile',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'profile',
+        component: () => import('pages/ProfilePage.vue'),
+      },
+    ],
+  },
+  {
+    path: '/logs',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'logs',
+        component: () => import('pages/ViewLogs.vue'),
+      },
+    ],
+  },
+  {
+    path: '/edit-account/:alias?',
+    component: () => import('layouts/MainLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'edit-account',
+        component: () => import('pages/EditAccount.vue'),
+        props: true,
+      },
+    ],
+  },
+  {
+    path: '/create-account',
     component: () => import('layouts/ExtensionLayout.vue'),
     children: [
       {
-        path: '/',
-        name: 'home',
-        component: () => import('pages/IndexPage.vue'),
-      },
-      {
-        path: 'create-account',
+        path: '',
         name: 'create-account',
         component: () => import('pages/CreateAccount.vue'),
       },
@@ -41,29 +81,12 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('layouts/ExtensionLayout.vue'),
     children: [
       {
-        path: '/settings',
-        name: 'settings',
-        component: () => import('pages/ExtensionSettings.vue'),
-      },
-
-      {
-        path: '/profile',
-        name: 'profile',
-        component: () => import('pages/ProfilePage.vue'),
-      },
-      {
-        path: '/logs',
-        name: 'Logs',
-        component: () => import('pages/ViewLogs.vue'),
-      },
-      {
-        path: 'edit-account/:alias?',
-        name: 'edit-account',
-        component: () => import('pages/EditAccount.vue'),
-        props: true,
+        path: '',
+        name: 'home',
+        component: () => import('pages/IndexPage.vue'),
       },
     ],
   },

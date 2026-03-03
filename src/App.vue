@@ -38,6 +38,7 @@ import useAccountStore from './stores/account-store';
 import useSettingsStore from './stores/settings-store';
 import useVaultStore from './stores/vault-store';
 import { useRoute, useRouter } from 'vue-router';
+import { logService } from './services/log-service';
 
 const accountStore = useAccountStore();
 const settingsStore = useSettingsStore();
@@ -73,14 +74,17 @@ onMounted(async () => {
   }, 8000);
 
   window.addEventListener('error', (event) => {
-    if (event.error && typeof event.error === 'object' && 'message' in event.error) {
-      addLog(`Global Error: ${String(event.error.message)}`);
-    } else {
-      addLog(`Global Error: ${event.message}`);
-    }
+    const message =
+      event.error && typeof event.error === 'object' && 'message' in event.error
+        ? String(event.error.message)
+        : event.message;
+    addLog(`Global Error: ${message}`);
+    void logService.logException(message, accountStore.activeKey);
   });
   window.addEventListener('unhandledrejection', (event) => {
-    addLog(`Unhandled Rejection: ${String(event.reason)}`);
+    const message = String(event.reason);
+    addLog(`Unhandled Rejection: ${message}`);
+    void logService.logException(message, accountStore.activeKey);
   });
   try {
     accountStore.listenToStorageChanges();

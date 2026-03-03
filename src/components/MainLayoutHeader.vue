@@ -5,7 +5,7 @@ import MainNavigation from 'components/MainNavigation.vue';
 </script>
 
 <template>
-  <q-header elevated>
+  <q-header>
     <q-toolbar>
       <div class="q-pa-lg-lg">
       <main-navigation />
