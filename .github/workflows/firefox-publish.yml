@@ -42,7 +42,24 @@ jobs:
           zip -r ../../diogel-firefox-${TAG}.zip .
           cd ../..
           cp diogel-firefox-${TAG}.zip diogel.zip
-
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.package.outputs.tag }}"
+          echo "Uploading diogel-firefox-${tag}.zip to release $tag"
+          if [ ! -f "diogel-firefox-${tag}.zip" ]; then
+            echo "Error: diogel-firefox-${tag}.zip not found!"
+            exit 1
+          fi
+          
+          gh release create "$tag" \
+            "diogel-firefox-${tag}.zip" \
+            --title="$tag" \
+            --generate-notes || \
+          gh release upload "$tag" \
+            "diogel-firefox-${tag}.zip" \
+            --clobber
       - name: Publish to AMO (Firefox Add-ons)
         uses: browser-actions/release-firefox-addon@latest
         with:
@@ -53,23 +70,5 @@ jobs:
           # Set this to "listed" to publish publicly, or "unlisted" for self-distribution.
           channel: listed
 
-      - name: Create Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-            tag="${{ steps.package.outputs.tag }}"
-            echo "Uploading diogel-firefox-${tag}.zip to release $tag"
-            if [ ! -f "diogel-firefox-${tag}.zip" ]; then
-              echo "Error: diogel-firefox-${tag}.zip not found!"
-              exit 1
-            fi
-            
-            gh release create "$tag" \
-              "diogel-firefox-${tag}.zip" \
-              --title="$tag" \
-              --generate-notes || \
-            gh release upload "$tag" \
-              "diogel-firefox-${tag}.zip" \
-              --clobber
 
      
