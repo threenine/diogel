@@ -5,9 +5,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 
-
-[![Chrome Web Store](https://img.shields.io/chrome-web-store/v/inhkmeiabnknligdjngmoocohdonoboa?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/diogel/inhkmeiabnknligdjngmoocohdonoboa)
-[![License](https://img.shields.io/badge/license-Public%20Domain-blue.svg)](LICENSE)
 A Nostr Account and Signer browser extension, enabling you to manage and switch between multiple identities while
 interacting with Nostr apps.
 
