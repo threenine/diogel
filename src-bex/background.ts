@@ -226,13 +226,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function requestApproval(origin: string): Promise<boolean> {
   console.log('[BEX] Requesting approval for:', origin);
 
-  // If vault is locked, we should NOT open the popup.
-  // Instead, we return false and expect the caller to handle it (e.g. by throwing an error that might trigger a UI update)
+  // If vault is locked, open the unlock popup so the user can unlock the vault
   if (!isVaultUnlocked()) {
-    console.warn('[BEX] Vault is locked, cannot request approval via popup');
+    console.warn('[BEX] Vault is locked, opening unlock popup');
+
+    // Notify UI listeners of locked status
     if (bridge && bridge.send) {
       void bridge.send('vault.lock-status-changed', { unlocked: false });
     }
+
+    try {
+      const loginUrl = chrome.runtime.getURL('www/index.html#/login');
+      await chrome.windows.create({
+        url: loginUrl,
+        type: 'popup',
+        width: 450,
+        height: 700,
+        focused: true,
+      });
+    } catch (e) {
+      console.error('[BEX] Failed to open unlock popup:', e);
+    }
+
+    // Return false so the caller can surface a friendly message and/or retry after unlock
     return false;
   }
 
