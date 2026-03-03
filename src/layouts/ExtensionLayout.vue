@@ -15,19 +15,6 @@
 import ExtensionWindowHeader from 'components/ExtensionWindowHeader.vue';
 </script>
 
-<style>
-/* Using global style to affect html/body when this layout is used */
-html.extension-popup,
-html.extension-popup body {
-  width: 550px;
-  height: 600px;
-  overflow-y: auto;
-}
-
-/* Also handle login and other pages if they are opened in the popup */
-/* We use the .extension-popup class added in App.vue */
-</style>
-
 <style scoped>
 .extension-window-layout {
   width: 100%;

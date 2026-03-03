@@ -27,7 +27,7 @@ const { t } = useI18n();
         :alt="name || t('profile.banner')"
         :src="url"
         class="rounded-borders q-pa-s"
-        fit="cover"
+        fit="contain"
         style="height: 150px; width: 100%"
       >
         <template v-slot:error>
