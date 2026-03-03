@@ -55,6 +55,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('pages/ProfilePage.vue'),
       },
       {
+        path: '/logs',
+        name: 'Logs',
+        component: () => import('pages/ViewLogs.vue'),
+      },
+      {
         path: 'edit-account/:alias?',
         name: 'edit-account',
         component: () => import('pages/EditAccount.vue'),

@@ -1,51 +1,13 @@
 <script lang="ts" setup>
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
-import useVaultStore from 'src/stores/vault-store';
-import { useRouter } from 'vue-router';
-
-const vaultStore = useVaultStore();
-const router = useRouter();
-
-function openInTab(path: string) {
-  const url = chrome.runtime.getURL(`www/index.html#${path}`);
-  void chrome.tabs.create({ url });
-}
-
-async function handleLogout() {
-  await vaultStore.lock();
-  void router.push({ name: 'login' });
-}
+import MainNavigation from 'components/MainNavigation.vue';
 </script>
 
 <template>
   <q-header elevated style="background-color: var(--q-dark-page)">
     <q-toolbar>
       <div class="q-pa-lg-lg">
-        <q-btn dense flat icon="menu" round>
-          <q-menu anchor="bottom left" self="top left">
-            <q-list style="max-width: 300px">
-              <q-item v-ripple clickable @click="openInTab('/profile')">
-                <q-item-section avatar>
-                  <q-icon name="person" size="sm" />
-                </q-item-section>
-                <q-item-section>Profile</q-item-section>
-              </q-item>
-              <q-item v-ripple clickable @click="openInTab('/settings')">
-                <q-item-section avatar>
-                  <q-icon name="settings" size="sm" />
-                </q-item-section>
-                <q-item-section> Extension Settings </q-item-section>
-              </q-item>
-              <q-separator />
-              <q-item v-ripple clickable @click="handleLogout">
-                <q-item-section avatar>
-                  <q-icon name="lock" size="sm" />
-                </q-item-section>
-                <q-item-section> Lock </q-item-section>
-              </q-item>
-            </q-list>
-          </q-menu>
-        </q-btn>
+        <main-navigation />
         <q-img src="/images/diogel.svg" style="width: 35px; height: 35px" />
       </div>
       <q-space />
