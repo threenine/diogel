@@ -159,6 +159,10 @@ watch(innerValue, (v, oldV) => {
       currentPath !== '/' &&
       currentPath !== '/profile' &&
       currentPath !== '/settings' &&
+      currentPath !== '/logs' &&
+      currentPath !== '/popup' &&
+      currentPath !== '/login' &&
+      currentPath !== '/create-account' &&
       !currentPath.startsWith('/edit-account')
     ) {
       router.push({ path: '/' }).catch(() => {});

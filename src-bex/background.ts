@@ -10,7 +10,8 @@
 import { createBridge } from '#q-app/bex/background';
 import { finalizeEvent, getPublicKey, nip04 } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
-import { sha256 } from '@noble/hashes/sha256';
+import { sha256 } from '@noble/hashes/sha2.js';
+import { logService } from 'src/services/log-service';
 import {
   createNewVault,
   getVaultData,
@@ -22,6 +23,11 @@ import {
 
 const NOSTR_ACTIVE = 'nostr:active';
 const BLOSSOM_UPLOAD_STATUS = 'blossom:upload_status';
+
+async function getActiveAlias() {
+  const items = await chrome.storage.local.get([NOSTR_ACTIVE]);
+  return items[NOSTR_ACTIVE];
+}
 
 async function getActiveStoredKey() {
   console.log('[BEX] Getting active account...');
@@ -42,6 +48,7 @@ async function getActiveStoredKey() {
 
   if (!activeAlias) {
     console.error('[BEX] No active account alias found in storage');
+    void logService.logException('No active account alias found in storage', activeAlias);
     // If no active alias is set, try to pick the first one from the vault as a fallback
     const vaultDataRes = await getVaultData();
     if (vaultDataRes.success && vaultDataRes.vaultData) {
@@ -60,6 +67,7 @@ async function getActiveStoredKey() {
   const vaultRes = await getVaultData();
   if (!vaultRes.success || !vaultRes.vaultData) {
     console.error('[BEX] Failed to retrieve vault data from memory');
+    void logService.logException('Failed to retrieve vault data from memory', activeAlias);
     return null;
   }
 
@@ -68,6 +76,7 @@ async function getActiveStoredKey() {
 
   if (!storedKey) {
     console.error('[BEX] No account found in vault for alias:', activeAlias);
+    void logService.logException(`No account found in vault for alias: ${activeAlias}`, activeAlias);
     return null;
   }
 
@@ -125,8 +134,11 @@ try {
   if (typeof window !== 'undefined' && (window as any).$q) {
     (window as any).$q.bex = bridge;
   }
-} catch (e) {
+  } catch (e) {
   console.error('[BEX] Failed to create bridge:', e);
+  getActiveAlias().then((alias) => {
+    void logService.logException(`Failed to create bridge: ${String(e)}`, alias);
+  });
 }
 
 // Global ping handler for diagnostics
@@ -134,6 +146,27 @@ bridge.on('ping', () => {
   console.log('[BEX] Received ping');
   return 'pong';
 });
+
+// Global error handlers for logging exceptions
+if (typeof self !== 'undefined') {
+  self.addEventListener('error', async (event: any) => {
+    const activeAlias = await getActiveAlias();
+    void logService.logException(event.message || 'Unknown error', activeAlias);
+  });
+
+  self.addEventListener('unhandledrejection', async (event: any) => {
+    const activeAlias = await getActiveAlias();
+    void logService.logException(event.reason?.message || String(event.reason), activeAlias);
+  });
+}
+
+const getHostname = (origin: string) => {
+  try {
+    return new URL(origin).hostname;
+  } catch (e) {
+    return origin;
+  }
+};
 
 interface ApprovalPromise {
   resolve: (value: boolean) => void;
@@ -246,6 +279,8 @@ async function requestApproval(origin: string): Promise<boolean> {
       });
     } catch (e) {
       console.error('[BEX] Failed to open unlock popup:', e);
+      const alias = await getActiveAlias();
+      void logService.logException(`Failed to open unlock popup: ${String(e)}`, alias);
     }
 
     // Return false so the caller can surface a friendly message and/or retry after unlock
@@ -317,6 +352,8 @@ async function requestApproval(origin: string): Promise<boolean> {
     windowId = win.id;
   } catch (err) {
     console.error('[BEX] Failed to create approval window:', err);
+    const alias = await getActiveAlias();
+    void logService.logException(`Failed to create approval window: ${String(err)}`, alias);
     const currentPromise = approvalPromise as ApprovalPromise | null;
     if (currentPromise) {
       currentPromise.reject(err);
@@ -331,6 +368,8 @@ bridge.on(
   'nostr.getPublicKey',
   async ({ payload: { origin } }: { payload: { origin: string } }) => {
     console.log('[BEX] Handling nostr.getPublicKey for:', origin);
+    const activeStoredKey = await getActiveStoredKey();
+    void logService.logApproval('get_public_key', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin);
 
     console.log('[BEX] Approval result for getPublicKey:', approved);
@@ -341,12 +380,11 @@ bridge.on(
       throw new Error('User rejected the request');
     }
 
-    const storedKey = await getActiveStoredKey();
-    if (!storedKey) {
+    if (!activeStoredKey) {
       throw new Error('No active account found');
     }
-    console.log('[BEX] Returning pubkey:', storedKey.id);
-    return storedKey.id;
+    console.log('[BEX] Returning pubkey:', activeStoredKey.id);
+    return activeStoredKey.id;
   },
 );
 
@@ -354,6 +392,8 @@ bridge.on(
   'nostr.signEvent',
   async ({ payload: { event, origin } }: { payload: { event: any; origin: string } }) => {
     console.log('[BEX] Handling nostr.signEvent for:', origin, event);
+    const activeStoredKey = await getActiveStoredKey();
+    void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin);
 
     console.log('[BEX] Approval result for signEvent:', approved);
@@ -364,15 +404,14 @@ bridge.on(
       throw new Error('User rejected the request');
     }
 
-    const storedKey = await getActiveStoredKey();
-    if (!storedKey) {
+    if (!activeStoredKey) {
       throw new Error('No active account found');
     }
     // Ensure the event has the correct pubkey
-    event.pubkey = storedKey.id;
+    event.pubkey = activeStoredKey.id;
 
     // finalizeEvent from nostr-tools v2
-    const sk = hexToBytes(storedKey.account.privkey);
+    const sk = hexToBytes(activeStoredKey.account.privkey);
     const signedEvent = finalizeEvent(event, sk);
     console.log('[BEX] Returning signed event:', signedEvent);
     return signedEvent;
@@ -380,6 +419,8 @@ bridge.on(
 );
 
 bridge.on('nostr.getRelays', async ({ payload: { origin } }: { payload: { origin: string } }) => {
+  const activeStoredKey = await getActiveStoredKey();
+  void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
   const approved = await requestApproval(origin);
   if (!approved) {
     if (!isVaultUnlocked()) {
@@ -405,6 +446,8 @@ bridge.on(
   }: {
     payload: { pubkey: string; plaintext: string; origin: string };
   }) => {
+    const activeStoredKey = await getActiveStoredKey();
+    void logService.logApproval('nip04_encrypt', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin);
     if (!approved) {
       if (!isVaultUnlocked()) {
@@ -425,6 +468,8 @@ bridge.on(
   }: {
     payload: { pubkey: string; ciphertext: string; origin: string };
   }) => {
+    const activeStoredKey = await getActiveStoredKey();
+    void logService.logApproval('nip04_decrypt', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin);
     if (!approved) {
       if (!isVaultUnlocked()) {
@@ -619,6 +664,11 @@ bridge.on(
         return uploadResult;
       } else {
         console.error('[BEX] Error in blossom.upload:', finalError);
+        const alias = await getActiveAlias();
+        void logService.logException(
+          `Error in blossom.upload: ${finalError?.message || String(finalError)}`,
+          alias,
+        );
         const errorMessage = finalError?.message || 'Upload failed';
         await chrome.storage.local.set({
           [UPLOAD_STATUS_KEY]: {

@@ -76,4 +76,18 @@ export default {
   warning: {
     exportKeys: 'Ensure you Export & Back up your keys',
   },
+  logs: {
+    title: 'Event Logs',
+    tabs: {
+      approvals: 'Approvals',
+      exceptions: 'Exceptions',
+    },
+    columns: {
+      dateTime: 'Date/Time',
+      eventKind: 'Kind',
+      hostname: 'Hostname',
+      message: 'Message',
+    },
+    noData: 'No logs found',
+  },
 };
