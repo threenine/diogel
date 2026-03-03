@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.0.13
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.12...v0.0.13)
+
+### 🚀 Enhancements
+
+- Add Firefox Web Store publishing workflow and improve manifest/browser-specific support ([5b00ba9](https://github.com/threenine/diogel/commit/5b00ba9))
+
+### 📖 Documentation
+
+- Update README with badges and warning block formatting ([206753a](https://github.com/threenine/diogel/commit/206753a))
+
+### 🏡 Chore
+
+- Adjust UI dimensions, styling, and scrolling behavior ([8f785c3](https://github.com/threenine/diogel/commit/8f785c3))
+- Update diogel-header image in assets ([36a9372](https://github.com/threenine/diogel/commit/36a9372))
+- Upgrade dependencies, add `MainNavigation` component, and implement unlock popup handling on vault lock ([f6137b4](https://github.com/threenine/diogel/commit/f6137b4))
+
+### ❤️ Contributors
+
+- Gary Woodfine <lnb0l9dc@duck.com>
+
 ## v0.0.12
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.11...v0.0.12)
