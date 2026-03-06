@@ -142,13 +142,16 @@ watch(
           </q-card-section>
           <q-card-actions class="q-px-md q-pt-none q-pb-md justify-end">
             <q-btn
-              :label="t('profile.edit')"
+              round
+              icon="edit"
               class="edit-profile-btn text-orange-5"
               color="grey-9"
               no-caps
-              rounded
               @click="openInTab('/profile')"
-            />
+              size="sm"
+            >
+              <q-tooltip class="text-capitalize">{{ t('profile.edit') }}</q-tooltip>
+            </q-btn>
           </q-card-actions>
         </q-card>
       </q-card-section>

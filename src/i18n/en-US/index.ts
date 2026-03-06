@@ -50,7 +50,7 @@ export default {
     uploadSuccess: 'Image uploaded successfully',
     uploadError: 'Failed to upload image',
     blossomServer: 'Blossom Server URL',
-    edit: 'edit profile',
+    edit: 'edit',
   },
   relays: {
     title: 'Relay Settings',
