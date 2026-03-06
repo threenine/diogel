@@ -39,6 +39,7 @@ import useSettingsStore from './stores/settings-store';
 import useVaultStore from './stores/vault-store';
 import { useRoute, useRouter } from 'vue-router';
 import { logService } from './services/log-service';
+import { useVaultAutoLock } from './composables/useVaultAutoLock';
 
 const accountStore = useAccountStore();
 const settingsStore = useSettingsStore();
@@ -46,6 +47,8 @@ const vaultStore = useVaultStore();
 const router = useRouter();
 const route = useRoute();
 const $q = useQuasar();
+
+useVaultAutoLock();
 
 const logs = ref<string[]>([]);
 const addLog = (msg: string) => {
@@ -98,6 +101,7 @@ onMounted(async () => {
         ),
       ]);
       addLog('Settings loaded');
+      addLog(`Vault auto-lock minutes: ${String(settingsStore.vaultAutoLockMinutes)}`);
       // Apply theme after loading settings
       $q.dark.set(settingsStore.darkMode);
       addLog(`Theme set to: ${settingsStore.darkMode ? 'dark' : 'light'}`);

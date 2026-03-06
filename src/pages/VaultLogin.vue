@@ -11,6 +11,12 @@
 
         <q-card-section>
           <div class="text-h6 text-center">{{ vaultStore.vaultExists ? 'Unlock Vault' : 'Create Vault' }}</div>
+          <div
+            v-if="vaultStore.vaultExists && vaultStore.lastLockReason === 'inactivity'"
+            class="q-mt-sm text-center text-orange-8 text-weight-medium"
+          >
+            Vault locked due to inactivity.
+          </div>
         </q-card-section>
 
       <q-card-section v-if="!vaultStore.vaultExists">

@@ -29,6 +29,35 @@ onMounted(async () => {
               <theme-switch size="xl" />
             </q-item-section>
           </q-item>
+
+          <q-item>
+            <q-item-section>
+              <q-item-label>Vault auto-lock</q-item-label>
+              <q-item-label caption lines="2">
+                Automatically lock the vault after inactivity. Set to 0 to disable.
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side style="min-width: 140px">
+              <q-select
+                :model-value="settingsStore.vaultAutoLockMinutes"
+                :options="[
+                  { label: 'Off', value: 0 },
+                  { label: '1 minute', value: 1 },
+                  { label: '5 minutes', value: 5 },
+                  { label: '15 minutes', value: 15 },
+                  { label: '30 minutes', value: 30 },
+                  { label: '60 minutes', value: 60 },
+                ]"
+                emit-value
+                map-options
+                dense
+                outlined
+                @update:model-value="
+                  (val) => settingsStore.setVaultAutoLockMinutes(Number(val))
+                "
+              />
+            </q-item-section>
+          </q-item>
         </q-list>
       </q-card-section>
       <q-card-section>
