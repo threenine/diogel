@@ -231,7 +231,8 @@ bridge.on('vault.export', async () => {
   return await exportVault();
 });
 
-bridge.on('vault.import', async ({ payload: { encryptedData } }) => {
+bridge.on('vault.import', async ({ payload }: { payload: { encryptedData: string } }) => {
+  const { encryptedData } = payload;
   const result = await importVault(encryptedData);
   if (result.success) {
     bridge.send('vault.lock-status-changed', { unlocked: false });
