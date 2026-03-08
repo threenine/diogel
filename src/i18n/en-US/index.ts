@@ -52,6 +52,16 @@ export default {
     blossomServer: 'Blossom Server URL',
     edit: 'edit',
   },
+  settings: {
+    vaultManagement: 'Vault Management',
+    exportVault: 'Export Vault',
+    exportVaultCaption: 'Download an encrypted backup of your entire vault.',
+    importVault: 'Import Vault',
+    importVaultCaption: 'Restore your vault from a previously exported backup file.',
+    importConfirm: 'This will overwrite your current vault. Are you sure?',
+    importSuccess: 'Vault imported successfully. Please log in again.',
+    importError: 'Failed to import vault.',
+  },
   relays: {
     title: 'Relay Settings',
     url: 'Relay URL',

@@ -106,6 +106,42 @@ export async function getVaultData() {
   }
 }
 
+export async function exportVault() {
+  try {
+    const vault = await db.vaults.get('master');
+    if (!vault) {
+      return { success: false, error: 'No vault found' };
+    }
+    return { success: true, encryptedData: vault.encryptedData };
+  } catch (err) {
+    console.error('Export vault error:', err);
+    return { success: false, error: (err as Error).message };
+  }
+}
+
+export async function importVault(encryptedData: string) {
+  try {
+    // Basic validation
+    if (!encryptedData || !encryptedData.startsWith('v2:')) {
+      return { success: false, error: 'Invalid vault format' };
+    }
+
+    await db.vaults.put({
+      id: 'master',
+      encryptedData,
+      createdAt: new Date().toISOString(),
+    });
+
+    // When importing a vault, it's safer to clear the current session's key
+    clearVaultKey();
+
+    return { success: true };
+  } catch (err) {
+    console.error('Import vault error:', err);
+    return { success: false, error: (err as Error).message };
+  }
+}
+
 export function getVaultKey() {
   return { key: vaultKey, salt: vaultSalt };
 }

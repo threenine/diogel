@@ -143,3 +143,39 @@ export async function hasVault() {
     return false;
   }
 }
+
+export async function exportVault(): Promise<{
+  success: boolean;
+  encryptedData?: string;
+  error?: string;
+}> {
+  try {
+    const data = await sendBexMessage('vault.export');
+    return (
+      (data as { success: boolean; encryptedData?: string; error?: string }) || {
+        success: false,
+        error: 'No response from background',
+      }
+    );
+  } catch (e) {
+    console.error('[VaultService] Failed to export vault', e);
+    return { success: false, error: (e as Error).message };
+  }
+}
+
+export async function importVault(
+  encryptedData: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const data = await sendBexMessage('vault.import', { encryptedData });
+    return (
+      (data as { success: boolean; error?: string }) || {
+        success: false,
+        error: 'No response from background',
+      }
+    );
+  } catch (e) {
+    console.error('[VaultService] Failed to import vault', e);
+    return { success: false, error: (e as Error).message };
+  }
+}

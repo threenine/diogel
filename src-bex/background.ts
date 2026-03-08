@@ -14,7 +14,9 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { logService } from 'src/services/log-service';
 import {
   createNewVault,
+  exportVault,
   getVaultData,
+  importVault,
   isVaultUnlocked,
   lockVault,
   unlockVault,
@@ -99,6 +101,8 @@ declare module '@quasar/app-vite' {
     'vault.isUnlocked': [undefined, boolean];
     'vault.getData': [undefined, any];
     'vault.updateData': [{ vaultData: any }, any];
+    'vault.export': [undefined, any];
+    'vault.import': [{ encryptedData: string }, any];
     'blossom.upload': [
       {
         base64Data: string;
@@ -223,6 +227,18 @@ bridge.on(
   },
 );
 
+bridge.on('vault.export', async () => {
+  return await exportVault();
+});
+
+bridge.on('vault.import', async ({ payload: { encryptedData } }) => {
+  const result = await importVault(encryptedData);
+  if (result.success) {
+    bridge.send('vault.lock-status-changed', { unlocked: false });
+  }
+  return result;
+});
+
 // Add direct chrome.runtime.onMessage listener as a fallback for the bridge
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'vault.isUnlocked') {
@@ -247,6 +263,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (message.type === 'vault.updateData') {
     updateVaultData(message.payload.vaultData).then(sendResponse);
+    return true;
+  }
+  if (message.type === 'vault.export') {
+    exportVault().then(sendResponse);
+    return true;
+  }
+  if (message.type === 'vault.import') {
+    importVault(message.payload.encryptedData).then((result) => {
+      if (result.success) {
+        bridge.send('vault.lock-status-changed', { unlocked: false });
+      }
+      sendResponse(result);
+    });
     return true;
   }
   if (message.type === 'ping') {
