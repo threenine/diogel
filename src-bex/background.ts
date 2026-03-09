@@ -3,7 +3,7 @@
  *
  * Warnings:
  * 1. Do NOT remove the import statement below. It is required for the extension to work.
- *    If you don't need createBridge(), leave it as "import '#q-app/bex/background'".
+ *    If you don't need create Bridge(), leave it as "import '#q-app/bex/background'".
  * 2. Do NOT import this file in multiple background scripts. Only in one!
  * 3. Import it in your background service worker (if available for your target browser).
  */
@@ -429,7 +429,7 @@ bridge.on(
     console.log('[BEX] Approval result for signEvent:', approved);
     if (!approved) {
       if (!isVaultUnlocked()) {
-        throw new Error('Vault is locked. Please open the extension to unlock.');
+        throw new Error('Vault is locked. Open the extension to unlock.');
       }
       throw new Error('User rejected the request');
     }
@@ -503,7 +503,7 @@ bridge.on(
     const approved = await requestApproval(origin);
     if (!approved) {
       if (!isVaultUnlocked()) {
-        throw new Error('Vault is locked. Please open the extension to unlock.');
+        throw new Error('Vault is locked. Open the extension to unlock.');
       }
       throw new Error('User rejected the request');
     }
