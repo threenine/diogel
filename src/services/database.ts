@@ -11,6 +11,7 @@ export interface ExceptionLog {
   dateTime: string;
   message: string;
   account?: string | null;
+  hostname?: string | null;
 }
 
 export interface ApprovalLog {
@@ -47,6 +48,12 @@ export class DiogelDatabase extends Dexie {
     this.version(5).stores({
       vaults: 'id',
       exceptions: '++id, dateTime, account',
+      approvals: '++id, dateTime, eventKind, hostname, account',
+    });
+
+    this.version(6).stores({
+      vaults: 'id',
+      exceptions: '++id, dateTime, account, hostname',
       approvals: '++id, dateTime, eventKind, hostname, account',
     });
 

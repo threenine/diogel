@@ -52,7 +52,7 @@ const nostr = {
         window.postMessage(
           {
             id,
-            type: 'nostr-ext-request',
+            type: 'diogel-request',
             method: type,
             payload,
           },
@@ -88,7 +88,7 @@ const nostr = {
           }
         };
         window.addEventListener('message', handler);
-        window.postMessage({ id, type: 'nostr-ext-ping' }, '*');
+        window.postMessage({ id, type: 'diogel-ping' }, '*');
       });
     });
   },
