@@ -53,7 +53,19 @@ const exceptionColumns = computed<QTableColumn[]>(() => [
     align: 'left',
     sortable: true,
   },
-  { name: 'message', label: t('logs.columns.message'), field: 'message', align: 'left', sortable: true },
+  {
+    name: 'message',
+    label: t('logs.columns.hostname'),
+    field: 'hostname',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'message',
+    label: t('logs.columns.message'),
+    field: 'message',
+    align: 'left',
+    sortable: true },
 ]);
 
 const formatDateTime = (val: string) => {

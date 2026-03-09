@@ -11,6 +11,12 @@
 
         <q-card-section>
           <div class="text-h6 text-center">{{ vaultStore.vaultExists ? 'Unlock Vault' : 'Create Vault' }}</div>
+          <div
+            v-if="vaultStore.vaultExists && vaultStore.lastLockReason === 'inactivity'"
+            class="q-mt-sm text-center text-orange-8 text-weight-medium"
+          >
+            Vault locked due to inactivity.
+          </div>
         </q-card-section>
 
       <q-card-section v-if="!vaultStore.vaultExists">
@@ -112,8 +118,14 @@ watch(
   (unlocked) => {
     console.log(`[VaultLogin] isUnlocked changed to: ${unlocked}`);
     if (unlocked && (route.path === '/login' || route.name === 'login')) {
-      console.log('[VaultLogin] Vault unlocked while on login page, redirecting to home');
-      void router.push({ name: 'home' });
+      const redirect = route.query.redirect as string;
+      if (redirect) {
+        console.log(`[VaultLogin] Vault unlocked, redirecting to: ${redirect}`);
+        void router.push({ path: redirect, query: route.query });
+      } else {
+        console.log('[VaultLogin] Vault unlocked while on login page, redirecting to home');
+        void router.push({ name: 'home' });
+      }
     }
   },
 );
@@ -166,8 +178,15 @@ async function handleUnlock() {
   const result = await vaultStore.unlock(password.value);
   loading.value = false;
   if (result.success) {
-    console.log('[VaultLogin] Vault unlocked successfully, redirecting to home');
-    await router.push({ name: 'home' });
+    console.log('[VaultLogin] Vault unlocked successfully');
+    const redirect = route.query.redirect as string;
+    if (redirect) {
+      console.log(`[VaultLogin] Redirecting to: ${redirect}`);
+      await router.push({ path: redirect, query: route.query });
+    } else {
+      console.log('[VaultLogin] Redirecting to home');
+      await router.push({ name: 'home' });
+    }
   } else {
     console.error('[VaultLogin] Failed to unlock vault:', result.error);
     $q.notify({ type: 'negative', message: result.error || 'Invalid password' });

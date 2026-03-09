@@ -12,6 +12,7 @@ const useVaultStore = defineStore('vault', {
     isUnlocked: false,
     vaultExists: false,
     isLoading: false,
+    lastLockReason: null as 'manual' | 'inactivity' | 'background' | null,
   }),
 
   actions: {
@@ -24,6 +25,9 @@ const useVaultStore = defineStore('vault', {
           ({ payload }: { payload: { unlocked: boolean } }) => {
             console.log('[VaultStore] Lock status changed from background:', payload.unlocked);
             this.isUnlocked = payload.unlocked;
+            if (!payload.unlocked) {
+              this.lastLockReason = 'background';
+            }
           },
         );
       }
@@ -55,14 +59,16 @@ const useVaultStore = defineStore('vault', {
       const result = await unlockVaultBex(password);
       if (result.success) {
         this.isUnlocked = true;
+        this.lastLockReason = null;
         return { success: true };
       }
       return { success: false, error: result.error };
     },
 
-    async lock() {
+    async lock(reason: 'manual' | 'inactivity' = 'manual') {
       await lockVaultBex();
       this.isUnlocked = false;
+      this.lastLockReason = reason;
     },
 
     async create(
