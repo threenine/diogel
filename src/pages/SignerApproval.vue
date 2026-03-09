@@ -77,7 +77,7 @@ async function reject() {
 </script>
 
 <template>
-  <q-page v-if="origin" class="flex flex-center">
+  <q-page v-if="origin" class="flex justify-center q-pa-md">
     <q-card bordered class="approval-card" flat>
       <q-card-section>
         <div class="text-h6">{{ t('approval.title') }}</div>
