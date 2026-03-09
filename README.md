@@ -1,4 +1,4 @@
-<img alt="Diogel" src="https://res.cloudinary.com/threenine-co-uk/image/upload/v1733252921/github-banner_rtnvqv.png" width="800"/>
+<a href="https://threenine.io/products/diogel" target="_blank"> <img alt="Diogel" src="https://res.cloudinary.com/threenine-co-uk/image/upload/v1733252921/github-banner_rtnvqv.png" width="800"/></a>
 
 
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/inhkmeiabnknligdjngmoocohdonoboa?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/nostrame/inhkmeiabnknligdjngmoocohdonoboa)
