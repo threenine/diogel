@@ -106,7 +106,7 @@ declare module '@quasar/app-vite' {
     'nostr.getRelays': [{ origin: string }, any];
     'nostr.nip04.encrypt': [{ pubkey: string; plaintext: string; origin: string }, any];
     'nostr.nip04.decrypt': [{ pubkey: string; ciphertext: string; origin: string }, any];
-    'nostr.approval.respond': [{ approved: boolean }, void];
+    'nostr.approval.respond': [{ approved: boolean; duration: string }, void];
     'vault.unlock': [{ password: string }, any];
     'vault.lock': [undefined, void];
     'vault.create': [{ password: string; vaultData: any }, any];
@@ -189,7 +189,7 @@ const getHostname = (origin: string) => {
 };
 
 interface ApprovalPromise {
-  resolve: (value: boolean) => void;
+  resolve: (value: { approved: boolean; duration: string }) => void;
   reject: (reason?: any) => void;
 }
 
@@ -197,10 +197,10 @@ let approvalPromise: ApprovalPromise | null = null;
 
 bridge.on(
   'nostr.approval.respond',
-  ({ payload: { approved } }: { payload: { approved: boolean } }) => {
-    console.log('[BEX] Received nostr.approval.respond:', approved);
+  ({ payload: { approved, duration } }: { payload: { approved: boolean; duration: string } }) => {
+    console.log('[BEX] Received nostr.approval.respond:', approved, duration);
     if (approvalPromise) {
-      approvalPromise.resolve(approved);
+      approvalPromise.resolve({ approved, duration });
       approvalPromise = null;
     } else {
       console.warn('[BEX] Received approval response but no approvalPromise was found');
@@ -305,6 +305,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 async function requestApproval(origin: string): Promise<boolean> {
   console.log('[BEX] Requesting approval for:', origin);
 
+  const hostname = getHostname(origin);
+  const activeAlias = await getActiveAlias();
+  const PERMISSIONS_KEY = `permissions:${activeAlias || 'default'}`;
+
+  // Check existing permissions
+  const items = await chrome.storage.local.get([PERMISSIONS_KEY]);
+  const permissions = items[PERMISSIONS_KEY] || {};
+  const perm = permissions[hostname];
+
+  if (perm && perm.approved) {
+    if (perm.duration === 'always') {
+      console.log('[BEX] Valid "always" permission found for:', hostname);
+      return true;
+    }
+    if (perm.duration === '8h' && perm.timestamp) {
+      const eightHours = 8 * 60 * 60 * 1000;
+      if (Date.now() - perm.timestamp < eightHours) {
+        console.log('[BEX] Valid "8h" permission found for:', hostname);
+        return true;
+      }
+      console.log('[BEX] "8h" permission expired for:', hostname);
+    }
+  }
+
   // If vault is locked, open the unlock popup so the user can unlock the vault
   if (!isVaultUnlocked()) {
     console.warn('[BEX] Vault is locked, opening unlock popup');
@@ -365,7 +389,7 @@ async function requestApproval(origin: string): Promise<boolean> {
 
   let windowId: number | undefined;
 
-  const promise = new Promise<boolean>((resolve, reject) => {
+  const promise = new Promise<{ approved: boolean; duration: string }>((resolve, reject) => {
     approvalPromise = { resolve, reject };
 
     // Set a timeout to reject if no response
@@ -388,7 +412,7 @@ async function requestApproval(origin: string): Promise<boolean> {
       if (closedWindowId === windowId) {
         if (approvalPromise) {
           console.log('[BEX] Approval window closed manually');
-          approvalPromise.resolve(false);
+          approvalPromise.resolve({ approved: false, duration: 'once' });
           approvalPromise = null;
         }
       }
@@ -396,10 +420,28 @@ async function requestApproval(origin: string): Promise<boolean> {
     chrome.windows.onRemoved.addListener(onRemovedHandler);
 
     if (approvalPromise) {
-      approvalPromise.resolve = (val) => {
+      approvalPromise.resolve = async (val) => {
         clearTimeout(timeout);
         chrome.windows.onRemoved.removeListener(onRemovedHandler);
-        originalResolve(val);
+
+        // Store permission if not "once"
+        if (val.approved && val.duration !== 'once') {
+          try {
+            const currentItems = await chrome.storage.local.get([PERMISSIONS_KEY]);
+            const currentPermissions = currentItems[PERMISSIONS_KEY] || {};
+            currentPermissions[hostname] = {
+              approved: true,
+              duration: val.duration,
+              timestamp: Date.now(),
+            };
+            await chrome.storage.local.set({ [PERMISSIONS_KEY]: currentPermissions });
+            console.log(`[BEX] Stored permission "${val.duration}" for:`, hostname);
+          } catch (e) {
+            console.error('[BEX] Failed to store permission:', e);
+          }
+        }
+
+        originalResolve(val as any);
       };
       approvalPromise.reject = (err) => {
         clearTimeout(timeout);
@@ -433,7 +475,7 @@ async function requestApproval(origin: string): Promise<boolean> {
     }
   }
 
-  return promise;
+  return promise.then((res) => res.approved);
 }
 
 bridge.on(

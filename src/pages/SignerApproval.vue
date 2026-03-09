@@ -10,6 +10,13 @@ const route = useRoute();
 
 const origin = ref('');
 const faviconUrl = ref('');
+const rememberChoice = ref('once');
+
+const rememberOptions = [
+  { label: t('approval.remember.options.once'), value: 'once' },
+  { label: t('approval.remember.options.eightHours'), value: '8h' },
+  { label: t('approval.remember.options.always'), value: 'always' },
+];
 
 onMounted(() => {
   origin.value = (route.query.origin as string) || 'Unknown';
@@ -43,7 +50,7 @@ async function approve() {
     await $q.bex.send({
       event: 'nostr.approval.respond',
       to: 'background',
-      payload: { approved: true },
+      payload: { approved: true, duration: rememberChoice.value },
     });
     console.log('Approval response sent successfully');
     // Another small delay before closing to ensure message is sent
@@ -101,6 +108,21 @@ async function reject() {
           </div>
         </div>
         <p>{{ t('approval.description') }}</p>
+
+        <div class="q-mt-lg q-px-sm">
+          <div class="text-caption text-grey-7 q-mb-sm">
+            {{ t('approval.remember.label') }}
+          </div>
+          <q-select
+            v-model="rememberChoice"
+            :options="rememberOptions"
+            dense
+            outlined
+            emit-value
+            map-options
+            options-dense
+          />
+        </div>
       </q-card-section>
 
       <q-card-actions align="right" class="q-pb-md q-pr-md">

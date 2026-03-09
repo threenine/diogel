@@ -82,6 +82,14 @@ export default {
     origin: 'Request from:',
     approve: 'Approve',
     reject: 'Reject',
+    remember: {
+      label: 'Remember this choice',
+      options: {
+        once: 'Just this once',
+        eightHours: 'For the next 8 hours',
+        always: 'Always for this site',
+      },
+    },
   },
   warning: {
     exportKeys: 'Ensure you Export & Back up your keys',
