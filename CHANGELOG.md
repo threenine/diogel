@@ -1,5 +1,24 @@
 # Changelog
 
+## v0.0.14
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.13...v0.0.14)
+
+### 🚀 Enhancements
+
+- Enhance redirect handling, logging, and message consistency ([8ad25bd](https://github.com/threenine/diogel/commit/8ad25bd))
+- Add hostname column to logs and adjust dropdown width in AccountList ([01b9547](https://github.com/threenine/diogel/commit/01b9547))
+- Add "Remember this choice" option in SignerApproval ([74f415b](https://github.com/threenine/diogel/commit/74f415b))
+- Add "Remember this choice" option in SignerApproval ([613b533](https://github.com/threenine/diogel/commit/613b533))
+
+### 🏡 Chore
+
+- Replace "nostr-ext" with "diogel" in message handling; simplify error messages ([6f6721a](https://github.com/threenine/diogel/commit/6f6721a))
+
+### ❤️ Contributors
+
+- Gary Woodfine <annex-storage-slip@duck.com>
+
 ## v0.0.13
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.12...v0.0.13)
