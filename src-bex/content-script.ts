@@ -69,22 +69,27 @@ if (document.readyState === 'loading') {
 
 window.addEventListener('message', async (event) => {
   // Broad logging for debugging
-  if (event.data && event.data.type && event.data.type.startsWith('nostr-ext')) {
-    console.log('[BEX] Content script received potential nostr-ext message:', event.data);
+  if (event.data && event.data.type && event.data.type.startsWith('diogel')) {
+    console.log('[BEX] Content script received potential diogel message:', event.data);
   }
 
-  // Filter messages. We only want 'nostr-ext-request' or 'nostr-ext-ping' from the current window.
+  // Filter messages. We only want 'diogel-request', 'diogel-request', 'diogel-ping', or 'diogel-ping' from the current window.
   if (event.source !== window || !event.data) {
     return;
   }
 
   // Handle both our internal ping and external requests
-  if (event.data.type !== 'nostr-ext-request' && event.data.type !== 'nostr-ext-ping') {
+  if (
+    event.data.type !== 'diogel-request' &&
+    event.data.type !== 'diogel-request' &&
+    event.data.type !== 'diogel-ping' &&
+    event.data.type !== 'diogel-ping'
+  ) {
     return;
   }
 
-  if (event.data.type === 'nostr-ext-ping') {
-    console.log('[BEX] Content script received ping (nostr-ext-ping) from page');
+  if (event.data.type === 'diogel-ping' || event.data.type === 'diogel-ping') {
+    console.log(`[BEX] Content script received ping (${event.data.type}) from page`);
     window.postMessage({ id: event.data.id, response: true, result: 'pong' }, '*');
     return;
   }

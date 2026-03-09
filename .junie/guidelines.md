@@ -1,6 +1,6 @@
 Act as Senior Developer, who is skilled using Quasar, Vue 3, TypeScript, and Browser Extension (BEX) development.
 
-### Project development guidelines (nostr-ext)
+### Project development guidelines (diogel)
 
 These notes capture project-specific details to help advanced contributors work efficiently with this
 Quasar + Vue 3 + TypeScript codebase and its Browser Extension (BEX) targets.

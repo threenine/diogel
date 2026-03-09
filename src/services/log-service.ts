@@ -1,12 +1,13 @@
 import { db } from './database';
 
 export class LogService {
-  async logException(message: string, account?: string | null) {
+  async logException(message: string, account?: string | null, hostname?: string | null) {
     try {
       await db.exceptions.add({
         dateTime: new Date().toISOString(),
         message,
         account: account || null,
+        hostname: hostname || null,
       });
     } catch (e) {
       console.error('[LogService] Failed to log exception:', e);

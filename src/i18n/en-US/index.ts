@@ -50,7 +50,17 @@ export default {
     uploadSuccess: 'Image uploaded successfully',
     uploadError: 'Failed to upload image',
     blossomServer: 'Blossom Server URL',
-    edit: 'edit profile',
+    edit: 'edit',
+  },
+  settings: {
+    vaultManagement: 'Vault Management',
+    exportVault: 'Export Vault',
+    exportVaultCaption: 'Download an encrypted backup of your entire vault.',
+    importVault: 'Import Vault',
+    importVaultCaption: 'Restore your vault from a previously exported backup file.',
+    importConfirm: 'This will overwrite your current vault. Are you sure?',
+    importSuccess: 'Vault imported successfully. Please log in again.',
+    importError: 'Failed to import vault.',
   },
   relays: {
     title: 'Relay Settings',
@@ -72,6 +82,14 @@ export default {
     origin: 'Request from:',
     approve: 'Approve',
     reject: 'Reject',
+    remember: {
+      label: 'Remember this choice',
+      options: {
+        once: 'Just this once',
+        eightHours: 'For the next 8 hours',
+        always: 'Always for this site',
+      },
+    },
   },
   warning: {
     exportKeys: 'Ensure you Export & Back up your keys',

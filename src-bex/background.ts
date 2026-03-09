@@ -3,7 +3,7 @@
  *
  * Warnings:
  * 1. Do NOT remove the import statement below. It is required for the extension to work.
- *    If you don't need createBridge(), leave it as "import '#q-app/bex/background'".
+ *    If you don't need create Bridge(), leave it as "import '#q-app/bex/background'".
  * 2. Do NOT import this file in multiple background scripts. Only in one!
  * 3. Import it in your background service worker (if available for your target browser).
  */
@@ -14,7 +14,9 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { logService } from 'src/services/log-service';
 import {
   createNewVault,
+  exportVault,
   getVaultData,
+  importVault,
   isVaultUnlocked,
   lockVault,
   unlockVault,
@@ -48,7 +50,11 @@ async function getActiveStoredKey() {
 
   if (!activeAlias) {
     console.error('[BEX] No active account alias found in storage');
-    void logService.logException('No active account alias found in storage', activeAlias);
+    void logService.logException(
+      'No active account alias found in storage',
+      activeAlias,
+      'background',
+    );
     // If no active alias is set, try to pick the first one from the vault as a fallback
     const vaultDataRes = await getVaultData();
     if (vaultDataRes.success && vaultDataRes.vaultData) {
@@ -67,7 +73,11 @@ async function getActiveStoredKey() {
   const vaultRes = await getVaultData();
   if (!vaultRes.success || !vaultRes.vaultData) {
     console.error('[BEX] Failed to retrieve vault data from memory');
-    void logService.logException('Failed to retrieve vault data from memory', activeAlias);
+    void logService.logException(
+      'Failed to retrieve vault data from memory',
+      activeAlias,
+      'background',
+    );
     return null;
   }
 
@@ -76,7 +86,11 @@ async function getActiveStoredKey() {
 
   if (!storedKey) {
     console.error('[BEX] No account found in vault for alias:', activeAlias);
-    void logService.logException(`No account found in vault for alias: ${activeAlias}`, activeAlias);
+    void logService.logException(
+      `No account found in vault for alias: ${activeAlias}`,
+      activeAlias,
+      'background',
+    );
     return null;
   }
 
@@ -92,13 +106,15 @@ declare module '@quasar/app-vite' {
     'nostr.getRelays': [{ origin: string }, any];
     'nostr.nip04.encrypt': [{ pubkey: string; plaintext: string; origin: string }, any];
     'nostr.nip04.decrypt': [{ pubkey: string; ciphertext: string; origin: string }, any];
-    'nostr.approval.respond': [{ approved: boolean }, void];
+    'nostr.approval.respond': [{ approved: boolean; duration: string }, void];
     'vault.unlock': [{ password: string }, any];
     'vault.lock': [undefined, void];
     'vault.create': [{ password: string; vaultData: any }, any];
     'vault.isUnlocked': [undefined, boolean];
     'vault.getData': [undefined, any];
     'vault.updateData': [{ vaultData: any }, any];
+    'vault.export': [undefined, any];
+    'vault.import': [{ encryptedData: string }, any];
     'blossom.upload': [
       {
         base64Data: string;
@@ -137,7 +153,7 @@ try {
   } catch (e) {
   console.error('[BEX] Failed to create bridge:', e);
   getActiveAlias().then((alias) => {
-    void logService.logException(`Failed to create bridge: ${String(e)}`, alias);
+    void logService.logException(`Failed to create bridge: ${String(e)}`, alias, 'background');
   });
 }
 
@@ -151,12 +167,16 @@ bridge.on('ping', () => {
 if (typeof self !== 'undefined') {
   self.addEventListener('error', async (event: any) => {
     const activeAlias = await getActiveAlias();
-    void logService.logException(event.message || 'Unknown error', activeAlias);
+    void logService.logException(event.message || 'Unknown error', activeAlias, 'background');
   });
 
   self.addEventListener('unhandledrejection', async (event: any) => {
     const activeAlias = await getActiveAlias();
-    void logService.logException(event.reason?.message || String(event.reason), activeAlias);
+    void logService.logException(
+      event.reason?.message || String(event.reason),
+      activeAlias,
+      'background',
+    );
   });
 }
 
@@ -169,7 +189,7 @@ const getHostname = (origin: string) => {
 };
 
 interface ApprovalPromise {
-  resolve: (value: boolean) => void;
+  resolve: (value: { approved: boolean; duration: string }) => void;
   reject: (reason?: any) => void;
 }
 
@@ -177,10 +197,10 @@ let approvalPromise: ApprovalPromise | null = null;
 
 bridge.on(
   'nostr.approval.respond',
-  ({ payload: { approved } }: { payload: { approved: boolean } }) => {
-    console.log('[BEX] Received nostr.approval.respond:', approved);
+  ({ payload: { approved, duration } }: { payload: { approved: boolean; duration: string } }) => {
+    console.log('[BEX] Received nostr.approval.respond:', approved, duration);
     if (approvalPromise) {
-      approvalPromise.resolve(approved);
+      approvalPromise.resolve({ approved, duration });
       approvalPromise = null;
     } else {
       console.warn('[BEX] Received approval response but no approvalPromise was found');
@@ -223,6 +243,19 @@ bridge.on(
   },
 );
 
+bridge.on('vault.export', async () => {
+  return await exportVault();
+});
+
+bridge.on('vault.import', async ({ payload }: { payload: { encryptedData: string } }) => {
+  const { encryptedData } = payload;
+  const result = await importVault(encryptedData);
+  if (result.success) {
+    bridge.send('vault.lock-status-changed', { unlocked: false });
+  }
+  return result;
+});
+
 // Add direct chrome.runtime.onMessage listener as a fallback for the bridge
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'vault.isUnlocked') {
@@ -249,6 +282,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     updateVaultData(message.payload.vaultData).then(sendResponse);
     return true;
   }
+  if (message.type === 'vault.export') {
+    exportVault().then(sendResponse);
+    return true;
+  }
+  if (message.type === 'vault.import') {
+    importVault(message.payload.encryptedData).then((result) => {
+      if (result.success) {
+        bridge.send('vault.lock-status-changed', { unlocked: false });
+      }
+      sendResponse(result);
+    });
+    return true;
+  }
   if (message.type === 'ping') {
     sendResponse('pong');
     return true;
@@ -258,6 +304,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 async function requestApproval(origin: string): Promise<boolean> {
   console.log('[BEX] Requesting approval for:', origin);
+
+  const hostname = getHostname(origin);
+  const activeAlias = await getActiveAlias();
+  const PERMISSIONS_KEY = `permissions:${activeAlias || 'default'}`;
+
+  // Check existing permissions
+  const items = await chrome.storage.local.get([PERMISSIONS_KEY]);
+  const permissions = items[PERMISSIONS_KEY] || {};
+  const perm = permissions[hostname];
+
+  if (perm && perm.approved) {
+    if (perm.duration === 'always') {
+      console.log('[BEX] Valid "always" permission found for:', hostname);
+      return true;
+    }
+    if (perm.duration === '8h' && perm.timestamp) {
+      const eightHours = 8 * 60 * 60 * 1000;
+      if (Date.now() - perm.timestamp < eightHours) {
+        console.log('[BEX] Valid "8h" permission found for:', hostname);
+        return true;
+      }
+      console.log('[BEX] "8h" permission expired for:', hostname);
+    }
+  }
 
   // If vault is locked, open the unlock popup so the user can unlock the vault
   if (!isVaultUnlocked()) {
@@ -269,22 +339,44 @@ async function requestApproval(origin: string): Promise<boolean> {
     }
 
     try {
-      const loginUrl = chrome.runtime.getURL('www/index.html#/login');
-      await chrome.windows.create({
+      // Open login page with a redirect parameter to the approve page
+      const loginUrl = chrome.runtime.getURL(
+        `www/index.html#/login?redirect=/approve&origin=${encodeURIComponent(origin)}`,
+      );
+      const win = await chrome.windows.create({
         url: loginUrl,
         type: 'popup',
         width: 450,
         height: 700,
         focused: true,
       });
-    } catch (e) {
-      console.error('[BEX] Failed to open unlock popup:', e);
-      const alias = await getActiveAlias();
-      void logService.logException(`Failed to open unlock popup: ${String(e)}`, alias);
-    }
 
-    // Return false so the caller can surface a friendly message and/or retry after unlock
-    return false;
+      const windowId = win.id;
+
+      // Wait for the vault to be unlocked or window to be closed
+      return new Promise<boolean>((resolve) => {
+        const checkStatus = setInterval(async () => {
+          if (isVaultUnlocked()) {
+            clearInterval(checkStatus);
+            chrome.windows.onRemoved.removeListener(onRemoved);
+            // Once unlocked, we call requestApproval again which will now open the actual approval page
+            resolve(requestApproval(origin));
+          }
+        }, 1000);
+
+        const onRemoved = (closedWindowId: number) => {
+          if (closedWindowId === windowId) {
+            clearInterval(checkStatus);
+            chrome.windows.onRemoved.removeListener(onRemoved);
+            resolve(false);
+          }
+        };
+        chrome.windows.onRemoved.addListener(onRemoved);
+      });
+    } catch (e) {
+      console.error('[BEX] Failed to handle locked vault:', e);
+      return false;
+    }
   }
 
   // If there's already a pending approval, we might want to queue it or reject it.
@@ -297,7 +389,7 @@ async function requestApproval(origin: string): Promise<boolean> {
 
   let windowId: number | undefined;
 
-  const promise = new Promise<boolean>((resolve, reject) => {
+  const promise = new Promise<{ approved: boolean; duration: string }>((resolve, reject) => {
     approvalPromise = { resolve, reject };
 
     // Set a timeout to reject if no response
@@ -320,7 +412,7 @@ async function requestApproval(origin: string): Promise<boolean> {
       if (closedWindowId === windowId) {
         if (approvalPromise) {
           console.log('[BEX] Approval window closed manually');
-          approvalPromise.resolve(false);
+          approvalPromise.resolve({ approved: false, duration: 'once' });
           approvalPromise = null;
         }
       }
@@ -328,10 +420,28 @@ async function requestApproval(origin: string): Promise<boolean> {
     chrome.windows.onRemoved.addListener(onRemovedHandler);
 
     if (approvalPromise) {
-      approvalPromise.resolve = (val) => {
+      approvalPromise.resolve = async (val) => {
         clearTimeout(timeout);
         chrome.windows.onRemoved.removeListener(onRemovedHandler);
-        originalResolve(val);
+
+        // Store permission if not "once"
+        if (val.approved && val.duration !== 'once') {
+          try {
+            const currentItems = await chrome.storage.local.get([PERMISSIONS_KEY]);
+            const currentPermissions = currentItems[PERMISSIONS_KEY] || {};
+            currentPermissions[hostname] = {
+              approved: true,
+              duration: val.duration,
+              timestamp: Date.now(),
+            };
+            await chrome.storage.local.set({ [PERMISSIONS_KEY]: currentPermissions });
+            console.log(`[BEX] Stored permission "${val.duration}" for:`, hostname);
+          } catch (e) {
+            console.error('[BEX] Failed to store permission:', e);
+          }
+        }
+
+        originalResolve(val as any);
       };
       approvalPromise.reject = (err) => {
         clearTimeout(timeout);
@@ -353,7 +463,11 @@ async function requestApproval(origin: string): Promise<boolean> {
   } catch (err) {
     console.error('[BEX] Failed to create approval window:', err);
     const alias = await getActiveAlias();
-    void logService.logException(`Failed to create approval window: ${String(err)}`, alias);
+    void logService.logException(
+      `Failed to create approval window: ${String(err)}`,
+      alias,
+      'background',
+    );
     const currentPromise = approvalPromise as ApprovalPromise | null;
     if (currentPromise) {
       currentPromise.reject(err);
@@ -361,7 +475,7 @@ async function requestApproval(origin: string): Promise<boolean> {
     }
   }
 
-  return promise;
+  return promise.then((res) => res.approved);
 }
 
 bridge.on(
@@ -399,7 +513,7 @@ bridge.on(
     console.log('[BEX] Approval result for signEvent:', approved);
     if (!approved) {
       if (!isVaultUnlocked()) {
-        throw new Error('Vault is locked. Please open the extension to unlock.');
+        throw new Error('Vault is locked. Open the extension to unlock.');
       }
       throw new Error('User rejected the request');
     }
@@ -473,7 +587,7 @@ bridge.on(
     const approved = await requestApproval(origin);
     if (!approved) {
       if (!isVaultUnlocked()) {
-        throw new Error('Vault is locked. Please open the extension to unlock.');
+        throw new Error('Vault is locked. Open the extension to unlock.');
       }
       throw new Error('User rejected the request');
     }
@@ -668,6 +782,7 @@ bridge.on(
         void logService.logException(
           `Error in blossom.upload: ${finalError?.message || String(finalError)}`,
           alias,
+          'background',
         );
         const errorMessage = finalError?.message || 'Upload failed';
         await chrome.storage.local.set({
