@@ -21,6 +21,8 @@ export default {
     save: 'Save',
   },
   account: {
+    noAccounts: 'No active account found',
+    noAccountDesc: "To create a new account, click the 'Create Account'.",
     profileName: 'Profile Name',
     aliasToolTip: "Enter a short name you'll use to identify these keys.",
     publicKey: 'Public Key',
