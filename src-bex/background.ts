@@ -52,9 +52,7 @@ async function checkAutoLock() {
   if (idleMs >= maxIdleMs) {
     console.log(`[BEX] Auto-locking vault after ${minutes} minutes of inactivity`);
     await lockVault();
-    if (bridge && bridge.send) {
-      void bridge.send('vault.lock-status-changed', { unlocked: false });
-    }
+    notifyLockStatusChanged(false);
     stopAutoLockTimer();
   }
 }
@@ -88,9 +86,7 @@ async function getActiveStoredKey() {
     console.warn('[BEX] Vault is locked, requesting internal unlock...');
     // When vault is locked, we want to notify the extension to show the login page
     // instead of opening a popup.
-    if (bridge && bridge.send) {
-      void bridge.send('vault.lock-status-changed', { unlocked: false });
-    }
+    notifyLockStatusChanged(false);
     // We can't automatically unlock without user interaction in the extension UI.
     return null;
   }
@@ -206,6 +202,20 @@ try {
   getActiveAlias().then((alias) => {
     void logService.logException(`Failed to create bridge: ${String(e)}`, alias, 'background');
   });
+}
+
+function notifyLockStatusChanged(unlocked: boolean) {
+  if (bridge && bridge.portList) {
+    bridge.portList.forEach((portName: string) => {
+      bridge.send({
+        event: 'vault.lock-status-changed',
+        to: portName,
+        payload: { unlocked },
+      }).catch(() => {
+        // Ignore errors if a port disconnected
+      });
+    });
+  }
 }
 
 // Global ping handler for diagnostics
@@ -339,7 +349,7 @@ bridge.on('vault.import', async ({ payload }: { payload: { encryptedData: string
   const { encryptedData } = payload;
   const result = await importVault(encryptedData);
   if (result.success) {
-    bridge.send('vault.lock-status-changed', { unlocked: false });
+    notifyLockStatusChanged(false);
   }
   return result;
 });
@@ -391,7 +401,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'vault.import') {
     importVault(message.payload.encryptedData).then((result) => {
       if (result.success) {
-        bridge.send('vault.lock-status-changed', { unlocked: false });
+        notifyLockStatusChanged(false);
       }
       sendResponse(result);
     });
@@ -436,9 +446,7 @@ async function requestApproval(origin: string): Promise<boolean> {
     console.warn('[BEX] Vault is locked, opening unlock popup');
 
     // Notify UI listeners of locked status
-    if (bridge && bridge.send) {
-      void bridge.send('vault.lock-status-changed', { unlocked: false });
-    }
+    notifyLockStatusChanged(false);
 
     try {
       // Open login page with a redirect parameter to the approve page

@@ -29,7 +29,7 @@ export function useVaultAutoLock() {
     // @ts-expect-error bex is not typed on window
     const bridge = window.bridge || window.$q?.bex;
     if (bridge) {
-      void bridge.send('activity.mark');
+      void bridge.send({ event: 'activity.mark', to: 'background' });
     } else if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
       // Fallback for direct messaging
       void chrome.runtime.sendMessage({ type: 'activity.mark' });
