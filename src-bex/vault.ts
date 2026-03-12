@@ -9,6 +9,60 @@ import { db } from 'src/services/database';
 let vaultKey: CryptoKey | null = null;
 let vaultSalt: Uint8Array | null = null;
 
+const SESSION_KEY = 'vault:session-key' as const;
+const SESSION_SALT = 'vault:session-salt' as const;
+
+async function saveKeyToSession() {
+  if (vaultKey && vaultSalt && typeof chrome !== 'undefined' && chrome.storage?.session) {
+    try {
+      const rawKey = await crypto.subtle.exportKey('raw', vaultKey);
+      const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
+      const saltBase64 = btoa(String.fromCharCode(...vaultSalt));
+
+      await chrome.storage.session.set({
+        [SESSION_KEY]: keyBase64,
+        [SESSION_SALT]: saltBase64,
+      });
+      console.log('[Vault] Session state saved');
+    } catch (e) {
+      console.error('[Vault] Failed to save key to session:', e);
+    }
+  }
+}
+
+async function clearSession() {
+  if (typeof chrome !== 'undefined' && chrome.storage?.session) {
+    await chrome.storage.session.remove([SESSION_KEY, SESSION_SALT]);
+    console.log('[Vault] Session state cleared');
+  }
+}
+
+export async function restoreVaultState() {
+  if (typeof chrome !== 'undefined' && chrome.storage?.session) {
+    try {
+      const items = await chrome.storage.session.get([SESSION_KEY, SESSION_SALT]);
+      if (items[SESSION_KEY] && items[SESSION_SALT]) {
+        const keyData = Uint8Array.from(atob(items[SESSION_KEY]), (c) => c.charCodeAt(0));
+        const saltData = Uint8Array.from(atob(items[SESSION_SALT]), (c) => c.charCodeAt(0));
+
+        vaultKey = await crypto.subtle.importKey(
+          'raw',
+          keyData.buffer,
+          'AES-GCM',
+          true,
+          ['encrypt', 'decrypt'],
+        );
+        vaultSalt = saltData;
+        console.log('[Vault] Session state restored');
+        return true;
+      }
+    } catch (e) {
+      console.error('[Vault] Failed to restore key from session:', e);
+    }
+  }
+  return false;
+}
+
 export function isVaultUnlocked() {
   return vaultKey !== null && vaultSalt !== null;
 }
@@ -30,6 +84,8 @@ export async function unlockVault(password: string) {
     vaultKey = key;
     vaultSalt = salt;
 
+    await saveKeyToSession();
+
     const vaultData = await decryptWithKey(vault.encryptedData, vaultKey);
 
     return { success: true, vaultData };
@@ -42,6 +98,7 @@ export async function unlockVault(password: string) {
 
 export async function lockVault() {
   clearVaultKey();
+  await clearSession();
 }
 
 export async function createNewVault(password: string, vaultData: unknown) {
@@ -49,6 +106,8 @@ export async function createNewVault(password: string, vaultData: unknown) {
     const { key, salt } = await deriveNewKey(password);
     vaultKey = key;
     vaultSalt = salt;
+
+    await saveKeyToSession();
 
     const encryptedVault = await encryptWithKey(vaultData, vaultKey, vaultSalt);
 
@@ -134,6 +193,7 @@ export async function importVault(encryptedData: string) {
 
     // When importing a vault, it's safer to clear the current session's key
     clearVaultKey();
+    await clearSession();
 
     return { success: true };
   } catch (err) {

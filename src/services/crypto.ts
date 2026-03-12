@@ -25,7 +25,7 @@ async function deriveKey(password: string, salt: Uint8Array): Promise<CryptoKey>
     },
     passwordKey,
     { name: 'AES-GCM', length: KEY_LENGTH },
-    false, // NON-EXTRACTABLE
+    true, // EXTRACTABLE to allow persistence in session storage for MV3
     ['encrypt', 'decrypt'],
   );
 }

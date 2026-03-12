@@ -1,5 +1,4 @@
-import { onBeforeUnmount, onMounted, watch } from 'vue';
-import useSettingsStore from 'src/stores/settings-store';
+import { onBeforeUnmount, onMounted } from 'vue';
 import useVaultStore from 'src/stores/vault-store';
 
 const ACTIVITY_EVENTS: Array<keyof WindowEventMap> = [
@@ -13,55 +12,28 @@ const ACTIVITY_EVENTS: Array<keyof WindowEventMap> = [
 ];
 
 export function useVaultAutoLock() {
-  const settingsStore = useSettingsStore();
   const vaultStore = useVaultStore();
 
-  let lastActivityAt = Date.now();
-  let intervalId: number | null = null;
-  let isLocking = false;
+  let lastActivitySentAt = 0;
+  const ACTIVITY_THROTTLE_MS = 10_000;
 
   const markActivity = () => {
-    if (vaultStore.isUnlocked) {
-      lastActivityAt = Date.now();
-    }
-  };
-
-  const stopMonitoring = () => {
-    if (intervalId !== null) {
-      window.clearInterval(intervalId);
-      intervalId = null;
-    }
-  };
-
-  const maybeLockForInactivity = async () => {
-    if (!vaultStore.isUnlocked || isLocking) return;
-
-    const minutes = settingsStore.vaultAutoLockMinutes;
-    if (minutes <= 0) return;
-
-    const idleMs = Date.now() - lastActivityAt;
-    const maxIdleMs = minutes * 60 * 1000;
-
-    if (idleMs < maxIdleMs) return;
-
-    isLocking = true;
-    try {
-      await vaultStore.lock('inactivity');
-    } finally {
-      isLocking = false;
-    }
-  };
-
-  const startMonitoring = () => {
-    stopMonitoring();
-
     if (!vaultStore.isUnlocked) return;
-    if (settingsStore.vaultAutoLockMinutes <= 0) return;
 
-    lastActivityAt = Date.now();
-    intervalId = window.setInterval(() => {
-      void maybeLockForInactivity();
-    }, 15_000);
+    const now = Date.now();
+    if (now - lastActivitySentAt < ACTIVITY_THROTTLE_MS) return;
+
+    lastActivitySentAt = now;
+
+    // Notify background script
+    // @ts-expect-error bex is not typed on window
+    const bridge = window.bridge || window.$q?.bex;
+    if (bridge) {
+      void bridge.send('activity.mark');
+    } else if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
+      // Fallback for direct messaging
+      void chrome.runtime.sendMessage({ type: 'activity.mark' });
+    }
   };
 
   onMounted(() => {
@@ -69,39 +41,18 @@ export function useVaultAutoLock() {
       window.addEventListener(eventName, markActivity, { passive: true });
     });
 
-    startMonitoring();
+    // Initial activity mark
+    markActivity();
   });
 
   onBeforeUnmount(() => {
-    stopMonitoring();
-
     ACTIVITY_EVENTS.forEach((eventName) => {
       window.removeEventListener(eventName, markActivity);
     });
   });
 
-  watch(
-    () => vaultStore.isUnlocked,
-    (isUnlocked) => {
-      if (isUnlocked) {
-        lastActivityAt = Date.now();
-        startMonitoring();
-      } else {
-        stopMonitoring();
-      }
-    },
-    { immediate: true },
-  );
-
-  watch(
-    () => settingsStore.vaultAutoLockMinutes,
-    () => {
-      if (vaultStore.isUnlocked) {
-        lastActivityAt = Date.now();
-      }
-      startMonitoring();
-    },
-  );
+  // We no longer manage the timer or locking here.
+  // The background script handles the single source of truth for inactivity.
 
   return {
     markActivity,
