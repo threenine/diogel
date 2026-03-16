@@ -17,7 +17,7 @@ async function sendBexMessage(type: string, payload?: unknown): Promise<unknown>
   if (bridge) {
     try {
       const response = (await Promise.race([
-        bridge.send(type, payload),
+        bridge.send({ event: type, to: 'background', payload }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Bridge timeout')), 5000)),
       ])) as { data: unknown };
       return response.data;

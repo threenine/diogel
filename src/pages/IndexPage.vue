@@ -2,13 +2,13 @@
   <q-page>
     <div v-if="activeStoredKey" class="full-width">
       <ProfileView :stored-key="activeStoredKey" />
-
     </div>
     <div v-else class="q-pa-md">
       <div class="text-center">
         <q-icon color="grey-5" name="account_circle" size="4em" />
-        <div class="text-h6 text-grey-7 q-mt-md">No active account</div>
-        <p class="text-grey-6">Please select or create an account in the Accounts tab.</p>
+        <div class="text-h6 text-grey-7 q-mt-md">{{ $t('account.noAccounts') }}</div>
+        <p class="text-grey-6">{{ $t('account.noAccountDesc')}} </p>
+        <q-btn class="q-mt-md" color="primary" label="Create Account" outline to="/create-account" />
       </div>
     </div>
   </q-page>

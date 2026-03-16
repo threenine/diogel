@@ -21,7 +21,56 @@ import {
   lockVault,
   unlockVault,
   updateVaultData,
+  restoreVaultState,
 } from './vault';
+
+// Auto-lock state
+let lastActivityAt = Date.now();
+let autoLockTimer: any = null;
+
+function updateLastActivity() {
+  lastActivityAt = Date.now();
+  void chrome.storage.local.set({ 'vault:last-activity': lastActivityAt });
+}
+
+async function checkAutoLock() {
+  if (!isVaultUnlocked()) {
+    stopAutoLockTimer();
+    return;
+  }
+
+  const items = await chrome.storage.local.get(['vault:auto-lock-minutes']);
+  const minutes = Number(items['vault:auto-lock-minutes'] ?? 15);
+
+  if (minutes <= 0) {
+    return;
+  }
+
+  const idleMs = Date.now() - lastActivityAt;
+  const maxIdleMs = minutes * 60 * 1000;
+
+  if (idleMs >= maxIdleMs) {
+    console.log(`[BEX] Auto-locking vault after ${minutes} minutes of inactivity`);
+    await lockVault();
+    notifyLockStatusChanged(false);
+    stopAutoLockTimer();
+  }
+}
+
+function startAutoLockTimer() {
+  if (autoLockTimer) return;
+  console.log('[BEX] Starting auto-lock timer');
+  autoLockTimer = setInterval(() => {
+    void checkAutoLock();
+  }, 15000);
+}
+
+function stopAutoLockTimer() {
+  if (autoLockTimer) {
+    clearInterval(autoLockTimer);
+    autoLockTimer = null;
+  }
+}
 
 const NOSTR_ACTIVE = 'nostr:active';
 const BLOSSOM_UPLOAD_STATUS = 'blossom:upload_status';
@@ -37,9 +86,7 @@ async function getActiveStoredKey() {
     console.warn('[BEX] Vault is locked, requesting internal unlock...');
     // When vault is locked, we want to notify the extension to show the login page
     // instead of opening a popup.
-    if (bridge && bridge.send) {
-      void bridge.send('vault.lock-status-changed', { unlocked: false });
-    }
+    notifyLockStatusChanged(false);
     // We can't automatically unlock without user interaction in the extension UI.
     return null;
   }
@@ -157,6 +204,20 @@ try {
   });
 }
 
+function notifyLockStatusChanged(unlocked: boolean) {
+  if (bridge && bridge.portList) {
+    bridge.portList.forEach((portName: string) => {
+      bridge.send({
+        event: 'vault.lock-status-changed',
+        to: portName,
+        payload: { unlocked },
+      }).catch(() => {
+        // Ignore errors if a port disconnected
+      });
+    });
+  }
+}
+
 // Global ping handler for diagnostics
 bridge.on('ping', () => {
   console.log('[BEX] Received ping');
@@ -210,11 +271,17 @@ bridge.on(
 );
 
 bridge.on('vault.unlock', async ({ payload: { password } }: { payload: { password: string } }) => {
-  return await unlockVault(password);
+  const result = await unlockVault(password);
+  if (result.success) {
+    updateLastActivity();
+    startAutoLockTimer();
+  }
+  return result;
 });
 
 bridge.on('vault.lock', async () => {
   await lockVault();
+  stopAutoLockTimer();
 });
 
 bridge.on(
@@ -232,6 +299,10 @@ bridge.on('vault.isUnlocked', () => {
   return isVaultUnlocked();
 });
 
+bridge.on('activity.mark', () => {
+  updateLastActivity();
+});
+
 bridge.on('vault.getData', async () => {
   return await getVaultData();
 });
@@ -243,6 +314,33 @@ bridge.on(
   },
 );
 
+// Restore vault state from session storage on startup
+async function initialize() {
+  console.log('[BEX] Service worker initializing...');
+  try {
+    const items = await chrome.storage.local.get(['vault:last-activity']);
+    if (items['vault:last-activity']) {
+      lastActivityAt = Number(items['vault:last-activity']);
+      console.log(
+        '[BEX] Restored last activity:',
+        new Date(lastActivityAt).toLocaleTimeString(),
+      );
+    }
+
+    const restored = await restoreVaultState();
+    if (restored) {
+      console.log('[BEX] Vault state restored from session');
+      startAutoLockTimer();
+      // Force a check immediately in case we were inactive for a long time
+      void checkAutoLock();
+    }
+  } catch (e) {
+    console.error('[BEX] Initialization error:', e);
+  }
+}
+
+void initialize();
+
 bridge.on('vault.export', async () => {
   return await exportVault();
 });
@@ -251,7 +349,7 @@ bridge.on('vault.import', async ({ payload }: { payload: { encryptedData: string
   const { encryptedData } = payload;
   const result = await importVault(encryptedData);
   if (result.success) {
-    bridge.send('vault.lock-status-changed', { unlocked: false });
+    notifyLockStatusChanged(false);
   }
   return result;
 });
@@ -263,11 +361,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message.type === 'vault.unlock') {
-    unlockVault(message.payload.password).then(sendResponse);
+    unlockVault(message.payload.password).then((result) => {
+      if (result.success) {
+        updateLastActivity();
+        startAutoLockTimer();
+      }
+      sendResponse(result);
+    });
     return true;
   }
   if (message.type === 'vault.lock') {
-    lockVault().then(() => sendResponse(true));
+    lockVault().then(() => {
+      stopAutoLockTimer();
+      sendResponse(true);
+    });
+    return true;
+  }
+  if (message.type === 'activity.mark') {
+    updateLastActivity();
+    sendResponse(true);
     return true;
   }
   if (message.type === 'vault.create') {
@@ -289,7 +401,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'vault.import') {
     importVault(message.payload.encryptedData).then((result) => {
       if (result.success) {
-        bridge.send('vault.lock-status-changed', { unlocked: false });
+        notifyLockStatusChanged(false);
       }
       sendResponse(result);
     });
@@ -334,9 +446,7 @@ async function requestApproval(origin: string): Promise<boolean> {
     console.warn('[BEX] Vault is locked, opening unlock popup');
 
     // Notify UI listeners of locked status
-    if (bridge && bridge.send) {
-      void bridge.send('vault.lock-status-changed', { unlocked: false });
-    }
+    notifyLockStatusChanged(false);
 
     try {
       // Open login page with a redirect parameter to the approve page
@@ -481,6 +591,7 @@ async function requestApproval(origin: string): Promise<boolean> {
 bridge.on(
   'nostr.getPublicKey',
   async ({ payload: { origin } }: { payload: { origin: string } }) => {
+    updateLastActivity();
     console.log('[BEX] Handling nostr.getPublicKey for:', origin);
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('get_public_key', getHostname(origin), activeStoredKey?.alias);
@@ -505,6 +616,7 @@ bridge.on(
 bridge.on(
   'nostr.signEvent',
   async ({ payload: { event, origin } }: { payload: { event: any; origin: string } }) => {
+    updateLastActivity();
     console.log('[BEX] Handling nostr.signEvent for:', origin, event);
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
@@ -533,6 +645,7 @@ bridge.on(
 );
 
 bridge.on('nostr.getRelays', async ({ payload: { origin } }: { payload: { origin: string } }) => {
+  updateLastActivity();
   const activeStoredKey = await getActiveStoredKey();
   void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
   const approved = await requestApproval(origin);
@@ -560,6 +673,7 @@ bridge.on(
   }: {
     payload: { pubkey: string; plaintext: string; origin: string };
   }) => {
+    updateLastActivity();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_encrypt', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin);
@@ -582,6 +696,7 @@ bridge.on(
   }: {
     payload: { pubkey: string; ciphertext: string; origin: string };
   }) => {
+    updateLastActivity();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_decrypt', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin);
@@ -603,6 +718,7 @@ bridge.on(
   }: {
     payload: { base64Data: string; fileType: string; blossomServer: string; uploadId?: string };
   }) => {
+    updateLastActivity();
     console.log('[BEX] Handling blossom.upload, server:', blossomServer, 'uploadId:', uploadId);
 
     const UPLOAD_STATUS_KEY = uploadId
