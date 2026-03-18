@@ -6,6 +6,7 @@
  *   If you don't need createBridge(), leave it as "import '#q-app/bex/content'".
  */
 import { createBridge } from '#q-app/bex/content';
+import { MESSAGE_TYPE_PING, MESSAGE_TYPE_REQUEST } from './constants';
 
 // The use of the bridge is optional.
 const bridge = createBridge({ debug: false });
@@ -74,14 +75,14 @@ window.addEventListener('message', async (event) => {
   }
 
   // Valid message types we handle
-  const VALID_MESSAGE_TYPES = new Set(['diogel-request', 'diogel-ping']);
+  const VALID_MESSAGE_TYPES = new Set([MESSAGE_TYPE_REQUEST, MESSAGE_TYPE_PING]);
 
   // Filter messages. We only want 'diogel-request' or 'diogel-ping' from the current window.
   if (event.source !== window || !event.data || !VALID_MESSAGE_TYPES.has(event.data.type)) {
     return;
   }
 
-  if (event.data.type === 'diogel-ping') {
+  if (event.data.type === MESSAGE_TYPE_PING) {
     console.log(`[BEX] Content script received ping (${event.data.type}) from page`);
     window.postMessage({ id: event.data.id, response: true, result: 'pong' }, '*');
     return;

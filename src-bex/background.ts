@@ -13,6 +13,11 @@ import { hexToBytes } from '@noble/hashes/utils';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { logService } from 'src/services/log-service';
 import {
+  REQUEST_TIMEOUT_MS,
+  AUTO_LOCK_CHECK_INTERVAL_MS,
+  AUTO_LOCK_DEFAULT_MINUTES,
+} from './constants';
+import {
   createNewVault,
   exportVault,
   getVaultData,
@@ -40,7 +45,7 @@ async function checkAutoLock() {
   }
 
   const items = await chrome.storage.local.get(['vault:auto-lock-minutes']);
-  const minutes = Number(items['vault:auto-lock-minutes'] ?? 15);
+  const minutes = Number(items['vault:auto-lock-minutes'] ?? AUTO_LOCK_DEFAULT_MINUTES);
 
   if (minutes <= 0) {
     return;
@@ -62,7 +67,7 @@ function startAutoLockTimer() {
   console.log('[BEX] Starting auto-lock timer');
   autoLockTimer = setInterval(() => {
     void checkAutoLock();
-  }, 15000);
+  }, AUTO_LOCK_CHECK_INTERVAL_MS);
 }
 
 function stopAutoLockTimer() {
@@ -511,7 +516,7 @@ async function requestApproval(origin: string): Promise<boolean> {
           void chrome.windows.remove(windowId);
         }
       }
-    }, 60000); // 1 minute timeout
+    }, REQUEST_TIMEOUT_MS);
 
     // Wrap resolve/reject to clear timeout and listener
     const originalResolve = approvalPromise!.resolve;
