@@ -73,22 +73,15 @@ window.addEventListener('message', async (event) => {
     console.log('[BEX] Content script received potential diogel message:', event.data);
   }
 
-  // Filter messages. We only want 'diogel-request', 'diogel-request', 'diogel-ping', or 'diogel-ping' from the current window.
-  if (event.source !== window || !event.data) {
+  // Valid message types we handle
+  const VALID_MESSAGE_TYPES = new Set(['diogel-request', 'diogel-ping']);
+
+  // Filter messages. We only want 'diogel-request' or 'diogel-ping' from the current window.
+  if (event.source !== window || !event.data || !VALID_MESSAGE_TYPES.has(event.data.type)) {
     return;
   }
 
-  // Handle both our internal ping and external requests
-  if (
-    event.data.type !== 'diogel-request' &&
-    event.data.type !== 'diogel-request' &&
-    event.data.type !== 'diogel-ping' &&
-    event.data.type !== 'diogel-ping'
-  ) {
-    return;
-  }
-
-  if (event.data.type === 'diogel-ping' || event.data.type === 'diogel-ping') {
+  if (event.data.type === 'diogel-ping') {
     console.log(`[BEX] Content script received ping (${event.data.type}) from page`);
     window.postMessage({ id: event.data.id, response: true, result: 'pong' }, '*');
     return;
