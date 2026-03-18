@@ -7,6 +7,13 @@
  */
 import { createBridge } from '#q-app/bex/content';
 import { MESSAGE_TYPE_PING, MESSAGE_TYPE_REQUEST } from './constants';
+import type {
+  GetPublicKeyRequest,
+  GetPublicKeyResponse,
+  SignEventRequest,
+  SignEventResponse,
+  UnsignedNostrEvent,
+} from './types/bridge';
 
 // The use of the bridge is optional.
 const bridge = createBridge({ debug: false });
@@ -22,8 +29,8 @@ declare module '@quasar/app-vite' {
   interface BexEventMap {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     'some.event': [{ someProp: string }, void];
-    'nostr.getPublicKey': [{ origin: string }, any];
-    'nostr.signEvent': [{ event: any; origin: string }, any];
+    'nostr.getPublicKey': [GetPublicKeyRequest, GetPublicKeyResponse];
+    'nostr.signEvent': [SignEventRequest, SignEventResponse];
     'nostr.getRelays': [{ origin: string }, any];
     'nostr.nip04.encrypt': [{ pubkey: string; plaintext: string; origin: string }, any];
     'nostr.nip04.decrypt': [{ pubkey: string; ciphertext: string; origin: string }, any];
@@ -120,9 +127,9 @@ window.addEventListener('message', async (event) => {
 
   try {
     const result = await bridge.send({
-      event: `nostr.${method}`,
+      event: `nostr.${method}` as any,
       to: 'background',
-      payload: { ...payload, origin },
+      payload: { ...payload, origin } as any,
     });
     console.log(`[BEX] Content script received response from background for ID ${id}:`, result);
     window.postMessage(
