@@ -13,6 +13,12 @@ import { hexToBytes } from '@noble/hashes/utils';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { logService } from 'src/services/log-service';
 import {
+  REQUEST_TIMEOUT_MS,
+  AUTO_LOCK_CHECK_INTERVAL_MS,
+  AUTO_LOCK_DEFAULT_MINUTES,
+} from './constants';
+import type { BridgeError } from './types/bridge';
+import {
   createNewVault,
   exportVault,
   getVaultData,
@@ -40,7 +46,7 @@ async function checkAutoLock() {
   }
 
   const items = await chrome.storage.local.get(['vault:auto-lock-minutes']);
-  const minutes = Number(items['vault:auto-lock-minutes'] ?? 15);
+  const minutes = Number(items['vault:auto-lock-minutes'] ?? AUTO_LOCK_DEFAULT_MINUTES);
 
   if (minutes <= 0) {
     return;
@@ -62,7 +68,7 @@ function startAutoLockTimer() {
   console.log('[BEX] Starting auto-lock timer');
   autoLockTimer = setInterval(() => {
     void checkAutoLock();
-  }, 15000);
+  }, AUTO_LOCK_CHECK_INTERVAL_MS);
 }
 
 function stopAutoLockTimer() {
@@ -145,11 +151,18 @@ async function getActiveStoredKey() {
   return storedKey;
 }
 
+import type {
+  GetPublicKeyRequest,
+  GetPublicKeyResponse,
+  SignEventRequest,
+  SignEventResponse,
+} from './types/bridge';
+
 declare module '@quasar/app-vite' {
   interface BexEventMap {
     /* eslint-disable @typescript-eslint/no-explicit-any */
-    'nostr.getPublicKey': [{ origin: string }, any];
-    'nostr.signEvent': [{ event: any; origin: string }, any];
+    'nostr.getPublicKey': [GetPublicKeyRequest, GetPublicKeyResponse];
+    'nostr.signEvent': [SignEventRequest, SignEventResponse];
     'nostr.getRelays': [{ origin: string }, any];
     'nostr.nip04.encrypt': [{ pubkey: string; plaintext: string; origin: string }, any];
     'nostr.nip04.decrypt': [{ pubkey: string; ciphertext: string; origin: string }, any];
@@ -511,7 +524,7 @@ async function requestApproval(origin: string): Promise<boolean> {
           void chrome.windows.remove(windowId);
         }
       }
-    }, 60000); // 1 minute timeout
+    }, REQUEST_TIMEOUT_MS);
 
     // Wrap resolve/reject to clear timeout and listener
     const originalResolve = approvalPromise!.resolve;
@@ -590,7 +603,7 @@ async function requestApproval(origin: string): Promise<boolean> {
 
 bridge.on(
   'nostr.getPublicKey',
-  async ({ payload: { origin } }: { payload: { origin: string } }) => {
+  async ({ payload: { origin } }: { payload: GetPublicKeyRequest }) => {
     updateLastActivity();
     console.log('[BEX] Handling nostr.getPublicKey for:', origin);
     const activeStoredKey = await getActiveStoredKey();
@@ -600,13 +613,25 @@ bridge.on(
     console.log('[BEX] Approval result for getPublicKey:', approved);
     if (!approved) {
       if (!isVaultUnlocked()) {
-        throw new Error('Vault is locked. Please open the extension to unlock.');
+        const error: BridgeError = {
+          code: 'VAULT_LOCKED',
+          message: 'Vault is locked. Please open the extension to unlock.',
+        };
+        throw error;
       }
-      throw new Error('User rejected the request');
+      const error: BridgeError = {
+        code: 'PERMISSION_DENIED',
+        message: 'User rejected the request',
+      };
+      throw error;
     }
 
     if (!activeStoredKey) {
-      throw new Error('No active account found');
+      const error: BridgeError = {
+        code: 'NOT_FOUND',
+        message: 'No active account found',
+      };
+      throw error;
     }
     console.log('[BEX] Returning pubkey:', activeStoredKey.id);
     return activeStoredKey.id;
@@ -615,7 +640,7 @@ bridge.on(
 
 bridge.on(
   'nostr.signEvent',
-  async ({ payload: { event, origin } }: { payload: { event: any; origin: string } }) => {
+  async ({ payload: { event, origin } }: { payload: SignEventRequest }) => {
     updateLastActivity();
     console.log('[BEX] Handling nostr.signEvent for:', origin, event);
     const activeStoredKey = await getActiveStoredKey();
@@ -625,22 +650,42 @@ bridge.on(
     console.log('[BEX] Approval result for signEvent:', approved);
     if (!approved) {
       if (!isVaultUnlocked()) {
-        throw new Error('Vault is locked. Open the extension to unlock.');
+        const error: BridgeError = {
+          code: 'VAULT_LOCKED',
+          message: 'Vault is locked. Open the extension to unlock.',
+        };
+        throw error;
       }
-      throw new Error('User rejected the request');
+      const error: BridgeError = {
+        code: 'PERMISSION_DENIED',
+        message: 'User rejected the request',
+      };
+      throw error;
     }
 
     if (!activeStoredKey) {
-      throw new Error('No active account found');
+      const error: BridgeError = {
+        code: 'NOT_FOUND',
+        message: 'No active account found',
+      };
+      throw error;
     }
     // Ensure the event has the correct pubkey
     event.pubkey = activeStoredKey.id;
 
-    // finalizeEvent from nostr-tools v2
-    const sk = hexToBytes(activeStoredKey.account.privkey);
-    const signedEvent = finalizeEvent(event, sk);
-    console.log('[BEX] Returning signed event:', signedEvent);
-    return signedEvent;
+    try {
+      // finalizeEvent from nostr-tools v2
+      const sk = hexToBytes(activeStoredKey.account.privkey);
+      const signedEvent = finalizeEvent(event, sk);
+      console.log('[BEX] Returning signed event:', signedEvent);
+      return signedEvent;
+    } catch (e: any) {
+      const error: BridgeError = {
+        code: 'SIGNING_FAILED',
+        message: e.message || String(e),
+      };
+      throw error;
+    }
   },
 );
 

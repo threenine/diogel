@@ -6,6 +6,14 @@
  *   If you don't need createBridge(), leave it as "import '#q-app/bex/content'".
  */
 import { createBridge } from '#q-app/bex/content';
+import { MESSAGE_TYPE_PING, MESSAGE_TYPE_REQUEST } from './constants';
+import type {
+  GetPublicKeyRequest,
+  GetPublicKeyResponse,
+  SignEventRequest,
+  SignEventResponse,
+  UnsignedNostrEvent,
+} from './types/bridge';
 
 // The use of the bridge is optional.
 const bridge = createBridge({ debug: false });
@@ -21,8 +29,8 @@ declare module '@quasar/app-vite' {
   interface BexEventMap {
     /* eslint-disable @typescript-eslint/no-explicit-any */
     'some.event': [{ someProp: string }, void];
-    'nostr.getPublicKey': [{ origin: string }, any];
-    'nostr.signEvent': [{ event: any; origin: string }, any];
+    'nostr.getPublicKey': [GetPublicKeyRequest, GetPublicKeyResponse];
+    'nostr.signEvent': [SignEventRequest, SignEventResponse];
     'nostr.getRelays': [{ origin: string }, any];
     'nostr.nip04.encrypt': [{ pubkey: string; plaintext: string; origin: string }, any];
     'nostr.nip04.decrypt': [{ pubkey: string; ciphertext: string; origin: string }, any];
@@ -73,22 +81,15 @@ window.addEventListener('message', async (event) => {
     console.log('[BEX] Content script received potential diogel message:', event.data);
   }
 
-  // Filter messages. We only want 'diogel-request', 'diogel-request', 'diogel-ping', or 'diogel-ping' from the current window.
-  if (event.source !== window || !event.data) {
+  // Valid message types we handle
+  const VALID_MESSAGE_TYPES = new Set([MESSAGE_TYPE_REQUEST, MESSAGE_TYPE_PING]);
+
+  // Filter messages. We only want 'diogel-request' or 'diogel-ping' from the current window.
+  if (event.source !== window || !event.data || !VALID_MESSAGE_TYPES.has(event.data.type)) {
     return;
   }
 
-  // Handle both our internal ping and external requests
-  if (
-    event.data.type !== 'diogel-request' &&
-    event.data.type !== 'diogel-request' &&
-    event.data.type !== 'diogel-ping' &&
-    event.data.type !== 'diogel-ping'
-  ) {
-    return;
-  }
-
-  if (event.data.type === 'diogel-ping' || event.data.type === 'diogel-ping') {
+  if (event.data.type === MESSAGE_TYPE_PING) {
     console.log(`[BEX] Content script received ping (${event.data.type}) from page`);
     window.postMessage({ id: event.data.id, response: true, result: 'pong' }, '*');
     return;
@@ -126,9 +127,9 @@ window.addEventListener('message', async (event) => {
 
   try {
     const result = await bridge.send({
-      event: `nostr.${method}`,
+      event: `nostr.${method}` as any,
       to: 'background',
-      payload: { ...payload, origin },
+      payload: { ...payload, origin } as any,
     });
     console.log(`[BEX] Content script received response from background for ID ${id}:`, result);
     window.postMessage(
