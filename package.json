@@ -11,6 +11,7 @@
     "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
     "test": "vitest",
     "test:run": "vitest run",
+    "typecheck": "vue-tsc --noEmit",
     "dev": "quasar dev",
     "build": "quasar build",
     "postinstall": "quasar prepare",
