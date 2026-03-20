@@ -1,5 +1,35 @@
 # Changelog
 
+## v0.0.16
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.15...v0.0.16)
+
+### 🚀 Enhancements
+
+- Define explicit TypeScript interfaces for bridge requests, responses, and errors related to `nostr` event handling ([0d4212a](https://github.com/threenine/diogel/commit/0d4212a))
+
+### 💅 Refactors
+
+- Use constants for message types and timing values across content and background scripts ([8dcb918](https://github.com/threenine/diogel/commit/8dcb918))
+- Replace `any` types with explicit bridge request/response types and enhance error handling for `nostr` event methods ([7279250](https://github.com/threenine/diogel/commit/7279250))
+
+### 📖 Documentation
+
+- Add PRIVACY.md detailing privacy policy and terms of service ([3344414](https://github.com/threenine/diogel/commit/3344414))
+
+### 🏡 Chore
+
+- Add `typecheck` script to package.json using `vue-tsc` for type safety ([079b087](https://github.com/threenine/diogel/commit/079b087))
+
+### ✅ Tests
+
+- Include `tests/**/*.test.{ts,js}` in Vitest configuration ([0c85ffe](https://github.com/threenine/diogel/commit/0c85ffe))
+- Add unit tests for vault operations and introduce constants for message types and timing values ([9181c04](https://github.com/threenine/diogel/commit/9181c04))
+
+### ❤️ Contributors
+
+- Gary Woodfine <lnb0l9dc@duck.com>
+
 ## v0.0.15
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.14...v0.0.15)
