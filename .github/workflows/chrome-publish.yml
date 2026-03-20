@@ -29,6 +29,18 @@ jobs:
       - name: Build extension (Quasar BEX)
         run: npx quasar build -m bex -T chrome
 
+      - name: Validate build output
+        run: |
+          if [ ! -d "dist/bex-chrome" ]; then
+            echo "Error: Build output directory dist/bex-chrome not found!"
+            exit 1
+          fi
+          if [ ! -f "dist/bex-chrome/manifest.json" ]; then
+            echo "Error: manifest.json not found in build output!"
+            exit 1
+          fi
+          echo "Build output validated successfully"
+
       - name: Package zip
         id: package
         run: |
@@ -64,12 +76,11 @@ jobs:
             --clobber
 
       - name: Upload & Publish to Chrome Web Store
-        uses: mnao305/chrome-extension-upload@v5.0.0
+        uses: mnao305/chrome-extension-upload@v5.1.0
         with:
           file-path: diogel.zip
           extension-id: ${{ secrets.CWS_EXTENSION_ID }}
           client-id: ${{ secrets.CWS_CLIENT_ID }}
           client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
           refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}
-          # publish: "true" publishes to the default target (usually "default")
-          publish: "true"
+          publish: true

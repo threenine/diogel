@@ -29,6 +29,18 @@ jobs:
       - name: Build extension (Quasar BEX)
         run: npx quasar build -m bex -T firefox
 
+      - name: Validate build output
+        run: |
+          if [ ! -d "dist/bex-firefox" ]; then
+            echo "Error: Build output directory dist/bex-firefox not found!"
+            exit 1
+          fi
+          if [ ! -f "dist/bex-firefox/manifest.json" ]; then
+            echo "Error: manifest.json not found in build output!"
+            exit 1
+          fi
+          echo "Build output validated successfully"
+
       - name: Package zip
         id: package
         run: |
@@ -61,13 +73,12 @@ jobs:
             "diogel-firefox-${tag}.zip" \
             --clobber
       - name: Publish to AMO (Firefox Add-ons)
-        uses: browser-actions/release-firefox-addon@latest
+        uses: browser-actions/release-firefox-addon@v0.2.1
         with:
           addon-id: ${{ secrets.AMO_ADDON_ID }}
           addon-path: diogel.zip
           auth-api-issuer: ${{ secrets.AMO_API_ISSUER }}
           auth-api-secret: ${{ secrets.AMO_API_SECRET }}
-          # Set this to "listed" to publish publicly, or "unlisted" for self-distribution.
           channel: listed
 
 
