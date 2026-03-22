@@ -147,9 +147,7 @@ function handleFileImport(event: Event) {
                 map-options
                 dense
                 outlined
-                @update:model-value="
-                  (val) => settingsStore.setVaultAutoLockMinutes(Number(val))
-                "
+                @update:model-value="(val) => settingsStore.setVaultAutoLockMinutes(Number(val))"
               />
             </q-item-section>
           </q-item>

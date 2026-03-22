@@ -325,9 +325,9 @@ describe('Vault Operations', () => {
     });
 
     it('should remain locked if createNewVault fails', async () => {
-       vaultsMock.put.mockRejectedValueOnce(new Error('DB Error'));
-       await createNewVault(password, vaultData);
-       expect(isVaultUnlocked()).toBe(false);
+      vaultsMock.put.mockRejectedValueOnce(new Error('DB Error'));
+      await createNewVault(password, vaultData);
+      expect(isVaultUnlocked()).toBe(false);
     });
 
     it('should clear vault key on unlock failure', async () => {

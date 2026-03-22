@@ -29,22 +29,14 @@ export class LogService {
 
   async getExceptions(account?: string | null) {
     if (account) {
-      return await db.exceptions
-        .where('account')
-        .equals(account)
-        .reverse()
-        .sortBy('dateTime');
+      return await db.exceptions.where('account').equals(account).reverse().sortBy('dateTime');
     }
     return await db.exceptions.orderBy('dateTime').reverse().toArray();
   }
 
   async getApprovals(account?: string | null) {
     if (account) {
-      return await db.approvals
-        .where('account')
-        .equals(account)
-        .reverse()
-        .sortBy('dateTime');
+      return await db.approvals.where('account').equals(account).reverse().sortBy('dateTime');
     }
     return await db.approvals.orderBy('dateTime').reverse().toArray();
   }
