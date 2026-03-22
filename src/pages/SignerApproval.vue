@@ -90,7 +90,7 @@ async function reject() {
         <div class="text-h6">{{ t('approval.title') }}</div>
       </q-card-section>
 
-      <q-card-section class="q-pt-none overflow-auto" style="max-height: 200px">
+      <q-card-section class="q-pt-none">
         <div class="row items-center q-mb-md">
           <q-avatar size="48px" class="q-mr-md" bordered>
             <q-img v-if="faviconUrl" :src="faviconUrl">
@@ -137,13 +137,16 @@ async function reject() {
 .approval-card {
   width: 90%;
   max-width: 400px;
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+}
+
+.approval-card > .q-card__actions {
+  margin-top: auto;
 }
 
 .break-word {
   word-break: break-all;
-}
-
-.overflow-auto {
-  overflow: auto;
 }
 </style>

@@ -101,11 +101,56 @@ html.extension-popup body::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
 
+// Apply page background & base text color from theme variables
 #q-app {
-  // Apply page background & base text color from theme variables
   background-color: var(--page-bg);
   color: var(--text-color);
   height: 100%;
+}
+
+// Base card improvements
+.q-card {
+  border-radius: 12px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+
+  &.q-card--flat {
+    background: var(--card-bg);
+    box-shadow: none;
+    border: 1px solid var(--border-color);
+  }
+}
+
+// Card sections
+.q-card__section {
+  padding: 16px;
+}
+
+// Card actions
+.q-card__actions {
+  padding: 12px 16px;
+}
+
+// Interactive card class
+.interactive-card {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
 }
 
 .extension-window {
