@@ -194,6 +194,52 @@ html.extension-popup body::-webkit-scrollbar {
   }
 }
 
+// Standardized input field styling
+.diogel-input {
+  // Base field styling
+  .q-field__control {
+    border-radius: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+    min-height: 44px;
+
+    &:hover {
+      border-color: $primary-light;
+    }
+
+    &.q-field--focused {
+      border-color: $primary; // Threenine Orange
+      box-shadow: 0 0 0 3px rgba($primary, 0.15); // Orange glow
+    }
+  }
+
+  // Label styling
+  .q-field__label {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.875rem;
+    top: 12px;
+  }
+
+  // Float label when focused/filled - Threenine Orange
+  &.q-field--float .q-field__label {
+    transform: translateY(-50%) scale(0.75);
+    color: $primary; // Orange label on focus
+  }
+
+  // Remove default Quasar bottom space
+  &.q-field--dense .q-field__control {
+    min-height: 40px;
+  }
+
+  // Textarea specific
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+}
+
 .q-field--filled .q-field__control {
   border-radius: 8px 8px 0 0;
 }
@@ -272,4 +318,11 @@ html.extension-popup body::-webkit-scrollbar {
 
 .warning-card {
   width: 100%;
+}
+
+// Form Spacing
+.q-form {
+  .q-gutter-md > * {
+    margin-bottom: 16px;
+  }
 }
