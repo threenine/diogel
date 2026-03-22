@@ -34,6 +34,7 @@ $dark-header: #353e43;
   // Surfaces & text
   --page-bg: #f6f8fb;
   --text-color: #0b1220;
+  --text-muted: #64748b; // slate-500
   --border-color: rgba(0, 0, 0, 0.12);
 
   // App chrome (header/toolbars)
@@ -48,6 +49,7 @@ $dark-header: #353e43;
   // Surfaces & text
   --page-bg: #121212; // equals $dark-page
   --text-color: rgba(255, 255, 255, 0.87);
+  --text-muted: #94a3b8; // slate-400
   --border-color: rgba(255, 255, 255, 0.16);
 
   // App chrome (header/toolbars)
