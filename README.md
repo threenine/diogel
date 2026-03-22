@@ -1,9 +1,7 @@
 <a href="https://threenine.io/products/diogel" target="_blank"> <img alt="Diogel" src="https://res.cloudinary.com/threenine-co-uk/image/upload/v1733252921/github-banner_rtnvqv.png" width="800"/></a>
 
-
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/inhkmeiabnknligdjngmoocohdonoboa?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/nostrame/inhkmeiabnknligdjngmoocohdonoboa)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
 
 A Nostr Account and Signer browser extension, enabling you to manage and switch between multiple identities while
 interacting with Nostr apps.
@@ -42,11 +40,12 @@ web applications.
 
 The project has been bootstrapped with Quasar Framework. [Learn More](https://quasar.dev/introduction-to-quasar)
 
-### Installation 
+### Installation
+
 To install a browser extension from the GitHub repository, follow these steps:
 
 1. Download the extension code
-   Go to the e[releases page](https://github.com/threenine/diogel/releases) , select the latest release, and  expand the "Assets" section.
+   Go to the e[releases page](https://github.com/threenine/diogel/releases) , select the latest release, and expand the "Assets" section.
    Select "Download ZIP" to get the source files.
 
 2. Extract the ZIP file
@@ -56,14 +55,10 @@ To install a browser extension from the GitHub repository, follow these steps:
    Open Chrome and go to chrome://extensions. Toggle on "Developer mode" in the top right corner.
 
 4. Load the extension
-   Click "Load unpacked", then navigate to the folder where you extracted the files.  Select it and click "Open".
+   Click "Load unpacked", then navigate to the folder where you extracted the files. Select it and click "Open".
 
 The extension will now appear in your extensions list and be active.
 
 > [!WARNING]
-> Although extensions from GitHub are not vetted like those in the Chrome Web Store, they can access   
+> Although extensions from GitHub are not vetted like those in the Chrome Web Store, they can access  
 > your browsing data, including passwords and personal information. Only install extensions from trusted sources.
-
-
-
-

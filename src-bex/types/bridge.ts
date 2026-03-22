@@ -23,11 +23,7 @@ export interface SignEventResponse {
   sig: string;
 }
 
-export type BridgeErrorCode =
-  | 'VAULT_LOCKED'
-  | 'PERMISSION_DENIED'
-  | 'SIGNING_FAILED'
-  | 'NOT_FOUND';
+export type BridgeErrorCode = 'VAULT_LOCKED' | 'PERMISSION_DENIED' | 'SIGNING_FAILED' | 'NOT_FOUND';
 
 export interface BridgeError {
   code: BridgeErrorCode;

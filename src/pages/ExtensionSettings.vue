@@ -147,9 +147,7 @@ function handleFileImport(event: Event) {
                 map-options
                 dense
                 outlined
-                @update:model-value="
-                  (val) => settingsStore.setVaultAutoLockMinutes(Number(val))
-                "
+                @update:model-value="(val) => settingsStore.setVaultAutoLockMinutes(Number(val))"
               />
             </q-item-section>
           </q-item>
@@ -185,8 +183,7 @@ function handleFileImport(event: Event) {
             </q-item-section>
             <q-item-section side>
               <q-btn
-                color="primary"
-                flat
+                class="diogel-btn-ghost"
                 icon="download"
                 label="Export"
                 @click="handleExportVault"
@@ -200,7 +197,7 @@ function handleFileImport(event: Event) {
               <q-item-label caption>{{ t('settings.importVaultCaption') }}</q-item-label>
             </q-item-section>
             <q-item-section side>
-              <q-btn color="primary" flat icon="upload" label="Import" @click="triggerImport" />
+              <q-btn class="diogel-btn-ghost" icon="upload" label="Import" @click="triggerImport" />
               <input
                 ref="fileInput"
                 accept=".json"

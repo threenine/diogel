@@ -22,7 +22,8 @@ export default {
   },
   account: {
     noAccounts: 'No active account found or selected',
-    noAccountDesc: "Select an account in the Account dropdown or to create a new account, click the 'Create Account'.",
+    noAccountDesc:
+      "Select an account in the Account dropdown or to create a new account, click the 'Create Account'.",
     profileName: 'Profile Name',
     aliasToolTip: "Enter a short name you'll use to identify these keys.",
     publicKey: 'Public Key',

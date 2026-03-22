@@ -1,7 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
 // app global css in SCSS form
 html,
 body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   overflow-y: auto;
+}
+
+// Match threenine.io website: bold orange headings
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-weight: 600;
+  color: $primary; // #f97316 - Threenine orange
+  line-height: 1.2;
+}
+
+// Typography Scale Classes
+// Display - for major headings
+.text-display {
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  color: $primary; // Threenine orange
+}
+
+// Heading - for section titles
+.text-heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  letter-spacing: -0.0125em;
+  line-height: 1.3;
+  color: $primary; // Threenine orange
+}
+
+// Title - for card headers, form sections
+.text-title {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-color);
+}
+
+// Body - standard text
+.text-body {
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--text-color);
+}
+
+// Caption - for labels, metadata
+.text-caption {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+// Quasar Component Typography Overrides
+// Match Threenine style in Quasar components
+.q-item__label {
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.q-field__label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.q-btn__content {
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+.q-card__title {
+  font-weight: 600;
+  color: $primary; // Threenine orange for card titles
 }
 
 html.extension-popup,
@@ -17,11 +101,56 @@ html.extension-popup body::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
 }
 
+// Apply page background & base text color from theme variables
 #q-app {
-  // Apply page background & base text color from theme variables
   background-color: var(--page-bg);
   color: var(--text-color);
   height: 100%;
+}
+
+// Base card improvements
+.q-card {
+  border-radius: 12px;
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    0 1px 2px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--border-color);
+  overflow: hidden;
+
+  &.q-card--flat {
+    background: var(--card-bg);
+    box-shadow: none;
+    border: 1px solid var(--border-color);
+  }
+}
+
+// Card sections
+.q-card__section {
+  padding: 16px;
+}
+
+// Card actions
+.q-card__actions {
+  padding: 12px 16px;
+}
+
+// Interactive card class
+.interactive-card {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  cursor: pointer;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow:
+      0 4px 6px -1px rgba(0, 0, 0, 0.1),
+      0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
 }
 
 .extension-window {
@@ -44,7 +173,116 @@ html.extension-popup body::-webkit-scrollbar {
 
 .q-btn {
   border-radius: 8px;
-  text-transform: none;
+  text-transform: none !important; // Remove Quasar uppercase
+  font-weight: 500;
+  letter-spacing: 0;
+  font-size: 0.875rem; // 14px
+  min-height: 36px;
+  padding: 0 16px;
+
+  &:focus-visible {
+    outline: 2px solid $primary; // Orange focus ring
+    outline-offset: 2px;
+  }
+}
+
+.q-btn--round {
+  border-radius: 50%;
+
+  &.diogel-btn-ghost {
+    border-radius: 50%;
+  }
+}
+
+// Threenine Brand Buttons
+.diogel-btn-primary {
+  background: $primary !important; // #f97316
+  color: white !important;
+  box-shadow: 0 1px 2px rgba(249, 115, 22, 0.3);
+
+  &:hover {
+    background: $primary-light !important; // #fb923c
+    box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.4);
+  }
+
+  &:active {
+    background: $primary-dark !important; // #ea580c
+    box-shadow: 0 1px 2px rgba(249, 115, 22, 0.3);
+    transform: translateY(1px);
+  }
+}
+
+.diogel-btn-ghost {
+  background: transparent !important;
+  color: $secondary !important; // #475569
+  border: 1px solid var(--border-color) !important; // slate-200
+
+  &:hover {
+    background: rgba(71, 85, 105, 0.05) !important;
+    border-color: $secondary-light !important; // #64748b
+    color: $secondary-light !important;
+  }
+
+  &:active {
+    background: rgba(71, 85, 105, 0.1) !important;
+  }
+}
+
+.diogel-btn-danger {
+  color: #ef4444 !important; // red-500
+  background: rgba(239, 68, 68, 0.1) !important;
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+  }
+}
+
+// Standardized input field styling
+.diogel-input {
+  // Base field styling
+  .q-field__control {
+    border-radius: 8px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+    min-height: 44px;
+
+    &:hover {
+      border-color: $primary-light;
+    }
+
+    &.q-field--focused {
+      border-color: $primary; // Threenine Orange
+      box-shadow: 0 0 0 3px rgba($primary, 0.15); // Orange glow
+    }
+  }
+
+  // Label styling
+  .q-field__label {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 0.875rem;
+    top: 12px;
+  }
+
+  // Float label when focused/filled - Threenine Orange
+  &.q-field--float .q-field__label {
+    transform: translateY(-50%) scale(0.75);
+    color: $primary; // Orange label on focus
+  }
+
+  // Remove default Quasar bottom space
+  &.q-field--dense .q-field__control {
+    min-height: 40px;
+  }
+
+  // Textarea specific
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
 }
 
 .q-field--filled .q-field__control {
@@ -125,4 +363,11 @@ html.extension-popup body::-webkit-scrollbar {
 
 .warning-card {
   width: 100%;
+}
+
+// Form Spacing
+.q-form {
+  .q-gutter-md > * {
+    margin-bottom: 16px;
+  }
 }

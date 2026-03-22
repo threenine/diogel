@@ -13,8 +13,11 @@
 // Tip: Use the "Theme Builder" on Quasar's documentation website.
 
 // Brand tokens (shared across light/dark)
-$primary: #ffa500; // Orange
-$secondary: #26a69a; // Teal
+$primary: #f97316; // Threenine orange-500
+$primary-light: #fb923c; // Threenine orange-400
+$primary-dark: #ea580c; // Threenine orange-600
+$secondary: #475569; // slate-600
+$secondary-light: #64748b; // slate-500
 $accent: #9c27b0; // Purple
 
 // Dark palette base
@@ -34,6 +37,7 @@ $dark-header: #353e43;
   // Surfaces & text
   --page-bg: #f6f8fb;
   --text-color: #0b1220;
+  --text-muted: #64748b; // slate-500
   --border-color: rgba(0, 0, 0, 0.12);
 
   // App chrome (header/toolbars)
@@ -42,12 +46,16 @@ $dark-header: #353e43;
 
   // Configuration forms
   --settings-form-bg: #efefef;
+
+  // Cards
+  --card-bg: #ffffff;
 }
 
 .body--dark {
   // Surfaces & text
   --page-bg: #121212; // equals $dark-page
   --text-color: rgba(255, 255, 255, 0.87);
+  --text-muted: #94a3b8; // slate-400
   --border-color: rgba(255, 255, 255, 0.16);
 
   // App chrome (header/toolbars)
@@ -56,4 +64,7 @@ $dark-header: #353e43;
 
   // Configuration forms
   --settings-form-bg: #242424;
+
+  // Cards
+  --card-bg: #1d1d1d;
 }

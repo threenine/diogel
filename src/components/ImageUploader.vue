@@ -205,7 +205,7 @@ function triggerUpload() {
   <div class="inline-block" style="pointer-events: auto">
     <q-btn
       :loading="uploading"
-      flat
+      class="diogel-btn-ghost"
       icon="cloud_upload"
       round
       type="button"

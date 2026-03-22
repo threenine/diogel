@@ -45,13 +45,10 @@ export async function restoreVaultState() {
         const keyData = Uint8Array.from(atob(items[SESSION_KEY]), (c) => c.charCodeAt(0));
         const saltData = Uint8Array.from(atob(items[SESSION_SALT]), (c) => c.charCodeAt(0));
 
-        vaultKey = await crypto.subtle.importKey(
-          'raw',
-          keyData.buffer,
-          'AES-GCM',
-          true,
-          ['encrypt', 'decrypt'],
-        );
+        vaultKey = await crypto.subtle.importKey('raw', keyData.buffer, 'AES-GCM', true, [
+          'encrypt',
+          'decrypt',
+        ]);
         vaultSalt = saltData;
         console.log('[Vault] Session state restored');
         return true;

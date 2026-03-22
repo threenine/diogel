@@ -44,7 +44,7 @@ async function onExportConfirm(payload: ExportPayload) {
 </script>
 
 <template>
-  <q-btn color="primary" dense label="Export" @click="onExportClick" />
+  <q-btn class="diogel-btn-primary" dense label="Export" @click="onExportClick" />
 
   <ExportDialog
     v-model="showExportDialog"

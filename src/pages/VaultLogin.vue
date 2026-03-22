@@ -10,7 +10,9 @@
         </q-card-section>
 
         <q-card-section>
-          <div class="text-h6 text-center">{{ vaultStore.vaultExists ? 'Unlock Vault' : 'Create Vault' }}</div>
+          <div class="text-h6 text-center">
+            {{ vaultStore.vaultExists ? 'Unlock Vault' : 'Create Vault' }}
+          </div>
           <div
             v-if="vaultStore.vaultExists && vaultStore.lastLockReason === 'inactivity'"
             class="q-mt-sm text-center text-orange-8 text-weight-medium"
@@ -19,46 +21,46 @@
           </div>
         </q-card-section>
 
-      <q-card-section v-if="!vaultStore.vaultExists">
-        <p>Set a password for your new vault.</p>
+        <q-card-section v-if="!vaultStore.vaultExists">
+          <p>Set a password for your new vault.</p>
 
-        <q-input
-          v-model="password"
-          :rules="[(val) => val.length >= 8 || 'Minimum 8 characters']"
-          class="q-mb-md"
-          filled
-          label="Password"
-          type="password"
-        />
-        <q-input
-          v-model="confirmPassword"
-          :rules="[(val) => val === password || 'Passwords must match']"
-          filled
-          label="Confirm Password"
-          type="password"
-        />
-      </q-card-section>
+          <q-input
+            v-model="password"
+            :rules="[(val) => val.length >= 8 || 'Minimum 8 characters']"
+            class="q-mb-md"
+            filled
+            label="Password"
+            type="password"
+          />
+          <q-input
+            v-model="confirmPassword"
+            :rules="[(val) => val === password || 'Passwords must match']"
+            filled
+            label="Confirm Password"
+            type="password"
+          />
+        </q-card-section>
 
-      <q-card-section v-else>
-        <q-input
-          v-model="password"
-          filled
-          label="Password"
-          type="password"
-          @keyup.enter="handleUnlock"
-        />
-      </q-card-section>
+        <q-card-section v-else>
+          <q-input
+            v-model="password"
+            filled
+            label="Password"
+            type="password"
+            @keyup.enter="handleUnlock"
+          />
+        </q-card-section>
 
-      <q-card-actions align="right">
-        <q-btn
-          v-if="!vaultStore.vaultExists"
-          :loading="loading"
-          color="primary"
-          label="Create"
-          @click="handleCreate"
-        />
-        <q-btn v-else :loading="loading" color="primary" label="Unlock" @click="handleUnlock" />
-      </q-card-actions>
+        <q-card-actions align="right">
+          <q-btn
+            v-if="!vaultStore.vaultExists"
+            :loading="loading"
+            class="diogel-btn-primary"
+            label="Create"
+            @click="handleCreate"
+          />
+          <q-btn v-else :loading="loading" class="diogel-btn-primary" label="Unlock" @click="handleUnlock" />
+        </q-card-actions>
       </q-card>
     </div>
   </q-page>
@@ -129,8 +131,6 @@ watch(
     }
   },
 );
-
-
 
 async function handleCreate() {
   if (password.value.length < 8 || password.value !== confirmPassword.value) {

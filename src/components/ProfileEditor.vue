@@ -106,15 +106,64 @@ watch(
       <q-spinner color="primary" size="3em" />
     </div>
     <q-form v-else class="q-gutter-md" @submit="saveProfile">
-      <q-input v-model="profile.name" :label="t('profile.name')" dense outlined />
-      <q-input v-model="profile.display_name" :label="t('profile.displayName')" dense outlined />
-      <q-input v-model="profile.about" :label="t('profile.about')" dense outlined type="textarea" />
-      <q-input v-model="profile.website" :label="t('profile.website')" dense outlined />
-      <q-input v-model="profile.nip05" :label="t('profile.nip05')" dense outlined />
-      <q-input v-model="profile.lud16" :label="t('profile.lud16')" dense outlined />
+      <q-input
+        v-model="profile.name"
+        :label="t('profile.name')"
+        outlined
+        dense
+        class="diogel-input"
+        hide-bottom-space
+      />
+      <q-input
+        v-model="profile.display_name"
+        :label="t('profile.displayName')"
+        outlined
+        dense
+        class="diogel-input"
+        hide-bottom-space
+      />
+      <q-input
+        v-model="profile.about"
+        :label="t('profile.about')"
+        outlined
+        dense
+        class="diogel-input"
+        type="textarea"
+        hide-bottom-space
+      />
+      <q-input
+        v-model="profile.website"
+        :label="t('profile.website')"
+        outlined
+        dense
+        class="diogel-input"
+        hide-bottom-space
+      />
+      <q-input
+        v-model="profile.nip05"
+        :label="t('profile.nip05')"
+        outlined
+        dense
+        class="diogel-input"
+        hide-bottom-space
+      />
+      <q-input
+        v-model="profile.lud16"
+        :label="t('profile.lud16')"
+        outlined
+        dense
+        class="diogel-input"
+        hide-bottom-space
+      />
 
-      <div class="row justify-end q-mt-md">
-        <q-btn :label="t('profile.save')" :loading="saving" color="primary" type="submit" />
+      <div class="row justify-end q-mt-md q-pt-sm">
+        <q-btn
+          :label="t('profile.save')"
+          :loading="saving"
+          color="primary"
+          type="submit"
+          class="diogel-btn-primary"
+        />
       </div>
     </q-form>
   </div>

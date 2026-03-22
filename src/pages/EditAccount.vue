@@ -46,12 +46,7 @@ function loadStoredKeys() {
           <q-item v-ripple tag="label">
             <q-item-section>
               <div class="q-gutter-lg">
-                <q-input
-                  v-model="storedKey.alias"
-                  class="text-input"
-                  label="Profile Name"
-                  readonly
-                >
+                <q-input v-model="storedKey.alias" class="text-input" label="Profile Name" readonly>
                   <template v-slot:prepend>
                     <q-icon name="person" />
                   </template>

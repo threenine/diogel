@@ -210,7 +210,7 @@ try {
   if (typeof window !== 'undefined' && (window as any).$q) {
     (window as any).$q.bex = bridge;
   }
-  } catch (e) {
+} catch (e) {
   console.error('[BEX] Failed to create bridge:', e);
   getActiveAlias().then((alias) => {
     void logService.logException(`Failed to create bridge: ${String(e)}`, alias, 'background');
@@ -220,13 +220,15 @@ try {
 function notifyLockStatusChanged(unlocked: boolean) {
   if (bridge && bridge.portList) {
     bridge.portList.forEach((portName: string) => {
-      bridge.send({
-        event: 'vault.lock-status-changed',
-        to: portName,
-        payload: { unlocked },
-      }).catch(() => {
-        // Ignore errors if a port disconnected
-      });
+      bridge
+        .send({
+          event: 'vault.lock-status-changed',
+          to: portName,
+          payload: { unlocked },
+        })
+        .catch(() => {
+          // Ignore errors if a port disconnected
+        });
     });
   }
 }
@@ -334,10 +336,7 @@ async function initialize() {
     const items = await chrome.storage.local.get(['vault:last-activity']);
     if (items['vault:last-activity']) {
       lastActivityAt = Number(items['vault:last-activity']);
-      console.log(
-        '[BEX] Restored last activity:',
-        new Date(lastActivityAt).toLocaleTimeString(),
-      );
+      console.log('[BEX] Restored last activity:', new Date(lastActivityAt).toLocaleTimeString());
     }
 
     const restored = await restoreVaultState();
