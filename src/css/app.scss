@@ -128,7 +128,70 @@ html.extension-popup body::-webkit-scrollbar {
 
 .q-btn {
   border-radius: 8px;
-  text-transform: none;
+  text-transform: none !important; // Remove Quasar uppercase
+  font-weight: 500;
+  letter-spacing: 0;
+  font-size: 0.875rem; // 14px
+  min-height: 36px;
+  padding: 0 16px;
+
+  &:focus-visible {
+    outline: 2px solid $primary; // Orange focus ring
+    outline-offset: 2px;
+  }
+}
+
+.q-btn--round {
+  border-radius: 50%;
+
+  &.diogel-btn-ghost {
+    border-radius: 50%;
+  }
+}
+
+// Threenine Brand Buttons
+.diogel-btn-primary {
+  background: $primary !important; // #f97316
+  color: white !important;
+  box-shadow: 0 1px 2px rgba(249, 115, 22, 0.3);
+
+  &:hover {
+    background: $primary-light !important; // #fb923c
+    box-shadow: 0 4px 6px -1px rgba(249, 115, 22, 0.4);
+  }
+
+  &:active {
+    background: $primary-dark !important; // #ea580c
+    box-shadow: 0 1px 2px rgba(249, 115, 22, 0.3);
+    transform: translateY(1px);
+  }
+}
+
+.diogel-btn-ghost {
+  background: transparent !important;
+  color: $secondary !important; // #475569
+  border: 1px solid var(--border-color) !important; // slate-200
+
+  &:hover {
+    background: rgba(71, 85, 105, 0.05) !important;
+    border-color: $secondary-light !important; // #64748b
+    color: $secondary-light !important;
+  }
+
+  &:active {
+    background: rgba(71, 85, 105, 0.1) !important;
+  }
+}
+
+.diogel-btn-danger {
+  color: #ef4444 !important; // red-500
+  background: rgba(239, 68, 68, 0.1) !important;
+  border: 1px solid rgba(239, 68, 68, 0.2) !important;
+
+  &:hover {
+    background: rgba(239, 68, 68, 0.2) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+  }
 }
 
 .q-field--filled .q-field__control {

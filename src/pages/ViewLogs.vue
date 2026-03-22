@@ -82,7 +82,7 @@ const formatDateTime = (val: string) => {
   <q-page padding>
     <div class="q-mb-md flex justify-between items-center">
       <div class="text-h6">{{ t('logs.title') }}</div>
-      <q-btn flat round icon="refresh" @click="fetchLogs" />
+      <q-btn class="diogel-btn-ghost" round icon="refresh" @click="fetchLogs" />
     </div>
 
     <q-tabs

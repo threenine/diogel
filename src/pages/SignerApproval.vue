@@ -126,8 +126,8 @@ async function reject() {
       </q-card-section>
 
       <q-card-actions align="right" class="q-pb-md q-pr-md">
-        <q-btn :label="t('approval.reject')" color="negative" flat @click="reject" />
-        <q-btn :label="t('approval.approve')" color="primary" unelevated @click="approve" />
+        <q-btn :label="t('approval.reject')" class="diogel-btn-danger" @click="reject" />
+        <q-btn :label="t('approval.approve')" class="diogel-btn-primary" @click="approve" />
       </q-card-actions>
     </q-card>
   </q-page>

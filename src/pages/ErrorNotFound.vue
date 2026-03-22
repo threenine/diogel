@@ -6,10 +6,7 @@
       <div class="text-h2" style="opacity: 0.4">Oops. Nothing here...</div>
 
       <q-btn
-        class="q-mt-xl"
-        color="white"
-        text-color="blue"
-        unelevated
+        class="q-mt-xl diogel-btn-primary"
         to="/"
         label="Go Home"
         no-caps

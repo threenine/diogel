@@ -110,10 +110,8 @@ onMounted(async () => {
             <div class="text-h6 text-grey-7 q-mt-md">No active account selected</div>
             <p class="text-grey-6">Please select or create an account to manage your profile.</p>
             <q-btn
-              class="q-mt-md"
-              color="primary"
+              class="q-mt-md diogel-btn-primary"
               label="Create Account"
-              outline
               to="/create-account"
             />
           </div>

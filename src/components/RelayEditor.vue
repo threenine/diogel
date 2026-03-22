@@ -176,7 +176,7 @@ watch(
             <q-checkbox v-model="newRelayWrite" :label="$t('relays.write')" dense />
           </div>
           <div class="col-auto">
-            <q-btn color="primary" icon="add" round @click="addRelay" />
+            <q-btn class="diogel-btn-primary" icon="add" round @click="addRelay" />
           </div>
         </div>
       </div>
@@ -198,7 +198,7 @@ watch(
           </q-item-section>
           <q-item-section side>
             <div class="row q-gutter-xs">
-              <q-btn flat icon="delete" round size="sm" @click="removeRelay(index)" />
+              <q-btn class="diogel-btn-ghost" icon="delete" round size="sm" @click="removeRelay(index)" />
             </div>
           </q-item-section>
         </q-item>
@@ -216,7 +216,7 @@ watch(
         <q-btn
           :label="$t('relays.save')"
           :loading="saving"
-          color="primary"
+          class="diogel-btn-primary"
           @click="saveRelayList"
         />
       </div>

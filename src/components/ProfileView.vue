@@ -148,13 +148,11 @@ watch(
           </q-card-section>
           <q-card-actions class="q-px-md q-pt-none q-pb-md justify-end">
             <q-btn
-              round
+              class="diogel-btn-ghost"
               icon="edit"
-              class="edit-profile-btn text-orange-5"
-              color="grey-9"
-              no-caps
-              @click="openInTab('/profile')"
+              round
               size="sm"
+              @click="openInTab('/profile')"
             >
               <q-tooltip class="text-capitalize">{{ t('profile.edit') }}</q-tooltip>
             </q-btn>

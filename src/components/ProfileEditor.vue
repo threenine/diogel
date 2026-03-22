@@ -114,7 +114,7 @@ watch(
       <q-input v-model="profile.lud16" :label="t('profile.lud16')" dense outlined />
 
       <div class="row justify-end q-mt-md">
-        <q-btn :label="t('profile.save')" :loading="saving" color="primary" type="submit" />
+        <q-btn :label="t('profile.save')" :loading="saving" class="diogel-btn-primary" type="submit" />
       </div>
     </q-form>
   </div>

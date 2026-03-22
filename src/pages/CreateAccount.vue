@@ -142,7 +142,7 @@ function validate() {
             >
               <q-btn
                 :label="$t('createAccount.generateKeys')"
-                color="primary"
+                class="diogel-btn-primary"
                 @click="onGenerateKeysClick"
               />
             </div>
@@ -189,8 +189,7 @@ function validate() {
                     <div class="row q-gutter-lg items-center q-mt-lg">
                       <q-btn
                         :label="$t('createAccount.save')"
-                        class="full-width"
-                        color="primary"
+                        class="full-width diogel-btn-primary"
                         dense
                         size="lg"
                         @click="saveKey"
@@ -216,7 +215,7 @@ function validate() {
                 <q-btn
                   :disable="!isValidNsec"
                   :label="$t('createAccount.importButton')"
-                  color="primary"
+                  class="diogel-btn-primary"
                   @click="onImportClick"
                 />
               </div>
@@ -260,8 +259,7 @@ function validate() {
                       <div class="row q-gutter-lg items-center q-mt-lg">
                         <q-btn
                           :label="$t('createAccount.save')"
-                          class="full-width"
-                          color="primary"
+                          class="full-width diogel-btn-primary"
                           dense
                           size="lg"
                           @click="saveKey"

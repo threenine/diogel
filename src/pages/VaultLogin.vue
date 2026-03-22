@@ -55,11 +55,11 @@
           <q-btn
             v-if="!vaultStore.vaultExists"
             :loading="loading"
-            color="primary"
+            class="diogel-btn-primary"
             label="Create"
             @click="handleCreate"
           />
-          <q-btn v-else :loading="loading" color="primary" label="Unlock" @click="handleUnlock" />
+          <q-btn v-else :loading="loading" class="diogel-btn-primary" label="Unlock" @click="handleUnlock" />
         </q-card-actions>
       </q-card>
     </div>
