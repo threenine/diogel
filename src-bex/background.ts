@@ -706,7 +706,7 @@ bridge.on(
 
     try {
       // finalizeEvent from nostr-tools v2
-      const sk = hexToBytes(activeStoredKey.account.privkey);
+      const sk = hexToBytes((activeStoredKey as any).privkey as string);
       const signedEvent = finalizeEvent(event, sk);
       console.log('[BEX] Returning signed event:', signedEvent);
       return signedEvent;
