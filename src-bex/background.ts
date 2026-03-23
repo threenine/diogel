@@ -39,6 +39,10 @@ import {
   handleVaultImport,
   restoreVaultState,
 } from './handlers/vault-handler';
+import {
+  checkPermission,
+  grantPermission,
+} from './handlers/permission-handler';
 
 const NOSTR_ACTIVE = 'nostr:active';
 const BLOSSOM_UPLOAD_STATUS = 'blossom:upload_status';
@@ -470,31 +474,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return false;
 });
 
-async function requestApproval(origin: string): Promise<boolean> {
-  console.log('[BEX] Requesting approval for:', origin);
+async function requestApproval(origin: string, eventKind: number): Promise<boolean> {
+  console.log('[BEX] Requesting approval for:', origin, 'kind:', eventKind);
 
-  const hostname = getHostname(origin);
-  const activeAlias = await getActiveAlias();
-  const PERMISSIONS_KEY = `permissions:${activeAlias || 'default'}`;
-
-  // Check existing permissions
-  const items = await chrome.storage.local.get([PERMISSIONS_KEY]);
-  const permissions = items[PERMISSIONS_KEY] || {};
-  const perm = permissions[hostname];
-
-  if (perm && perm.approved) {
-    if (perm.duration === 'always') {
-      console.log('[BEX] Valid "always" permission found for:', hostname);
-      return true;
-    }
-    if (perm.duration === '8h' && perm.timestamp) {
-      const eightHours = 8 * 60 * 60 * 1000;
-      if (Date.now() - perm.timestamp < eightHours) {
-        console.log('[BEX] Valid "8h" permission found for:', hostname);
-        return true;
-      }
-      console.log('[BEX] "8h" permission expired for:', hostname);
-    }
+  const permission = await checkPermission(origin, eventKind);
+  if (permission.granted) {
+    console.log('[BEX] Valid permission found for:', origin, 'kind:', eventKind);
+    return true;
   }
 
   // If vault is locked, open the unlock popup so the user can unlock the vault
@@ -508,7 +494,7 @@ async function requestApproval(origin: string): Promise<boolean> {
     try {
       // Open login page with a redirect parameter to the approve page
       const loginUrl = chrome.runtime.getURL(
-        `www/index.html#/login?redirect=/approve&origin=${encodeURIComponent(origin)}`,
+        `www/index.html#/login?redirect=/approve&origin=${encodeURIComponent(origin)}&kind=${eventKind}`,
       );
       const win = await chrome.windows.create({
         url: loginUrl,
@@ -528,7 +514,7 @@ async function requestApproval(origin: string): Promise<boolean> {
             clearInterval(checkStatus);
             chrome.windows.onRemoved.removeListener(onRemoved);
             // Once unlocked, we call requestApproval again which will now open the actual approval page
-            resolve(requestApproval(origin));
+            resolve(requestApproval(origin, eventKind));
           }
         }, 1000);
 
@@ -553,7 +539,9 @@ async function requestApproval(origin: string): Promise<boolean> {
     throw new Error('Another approval request is already pending');
   }
 
-  const url = chrome.runtime.getURL(`www/index.html#/approve?origin=${encodeURIComponent(origin)}`);
+  const url = chrome.runtime.getURL(
+    `www/index.html#/approve?origin=${encodeURIComponent(origin)}&kind=${eventKind}`,
+  );
 
   let windowId: number | undefined;
 
@@ -595,15 +583,9 @@ async function requestApproval(origin: string): Promise<boolean> {
         // Store permission if not "once"
         if (val.approved && val.duration !== 'once') {
           try {
-            const currentItems = await chrome.storage.local.get([PERMISSIONS_KEY]);
-            const currentPermissions = currentItems[PERMISSIONS_KEY] || {};
-            currentPermissions[hostname] = {
-              approved: true,
-              duration: val.duration,
-              timestamp: Date.now(),
-            };
-            await chrome.storage.local.set({ [PERMISSIONS_KEY]: currentPermissions });
-            console.log(`[BEX] Stored permission "${val.duration}" for:`, hostname);
+            const duration = val.duration === 'always' ? 'always' : 'session';
+            await grantPermission(origin, eventKind, duration);
+            console.log(`[BEX] Stored permission "${duration}" for:`, origin, 'kind:', eventKind);
           } catch (e) {
             console.error('[BEX] Failed to store permission:', e);
           }
@@ -657,7 +639,7 @@ bridge.on(
     console.log('[BEX] Handling nostr.getPublicKey for:', origin);
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('get_public_key', getHostname(origin), activeStoredKey?.alias);
-    const approved = await requestApproval(origin);
+    const approved = await requestApproval(origin, -1);
 
     console.log('[BEX] Approval result for getPublicKey:', approved);
     if (!approved) {
@@ -696,7 +678,7 @@ bridge.on(
     console.log('[BEX] Handling nostr.signEvent for:', origin, event);
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
-    const approved = await requestApproval(origin);
+    const approved = await requestApproval(origin, event.kind);
 
     console.log('[BEX] Approval result for signEvent:', approved);
     if (!approved) {
@@ -747,7 +729,7 @@ bridge.on(
   resetAutoLockTimer();
   const activeStoredKey = await getActiveStoredKey();
   void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
-  const approved = await requestApproval(origin);
+  const approved = await requestApproval(origin, -1);
   if (!approved) {
     const unlockedStatus = await handleVaultIsUnlocked({}, '');
     if (!unlockedStatus.success || !unlockedStatus.data) {
@@ -776,7 +758,7 @@ bridge.on(
     resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_encrypt', getHostname(origin), activeStoredKey?.alias);
-    const approved = await requestApproval(origin);
+    const approved = await requestApproval(origin, -1);
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
       if (!unlockedStatus.success || !unlockedStatus.data) {
@@ -800,7 +782,7 @@ bridge.on(
     resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_decrypt', getHostname(origin), activeStoredKey?.alias);
-    const approved = await requestApproval(origin);
+    const approved = await requestApproval(origin, -1);
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
       if (!unlockedStatus.success || !unlockedStatus.data) {
