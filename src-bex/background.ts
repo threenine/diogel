@@ -22,7 +22,7 @@ import type {
   BridgeRequest,
   BridgeResponsePayload,
   VaultData,
-} from 'src/types/bridge';
+} from '../src/types/bridge';
 import type { BridgeError } from './types/bridge';
 import {
   createNewVault,
