@@ -14,75 +14,35 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { logService } from 'src/services/log-service';
 import {
   REQUEST_TIMEOUT_MS,
-  AUTO_LOCK_CHECK_INTERVAL_MS,
-  AUTO_LOCK_DEFAULT_MINUTES,
 } from './constants';
+import {
+  startAutoLockTimer,
+  stopAutoLockTimer,
+  resetAutoLockTimer,
+  restoreLastActivity,
+  checkAutoLock,
+} from './services/auto-lock';
 import type {
-  BridgeAction,
   BridgeRequest,
   BridgeResponsePayload,
   VaultData,
 } from 'src/types/bridge';
 import type { BridgeError } from './types/bridge';
 import {
-  createNewVault,
-  exportVault,
-  getVaultData,
-  importVault,
-  isVaultUnlocked,
-  lockVault,
-  unlockVault,
-  updateVaultData,
+  handleVaultUnlock,
+  handleVaultLock,
+  handleVaultIsUnlocked,
+  handleVaultCreate,
+  handleVaultGetData,
+  handleVaultUpdateData,
+  handleVaultExport,
+  handleVaultImport,
   restoreVaultState,
-} from './vault';
-
-// Auto-lock state
-let lastActivityAt = Date.now();
-let autoLockTimer: ReturnType<typeof setInterval> | null = null;
-
-function updateLastActivity() {
-  lastActivityAt = Date.now();
-  void chrome.storage.local.set({ 'vault:last-activity': lastActivityAt });
-}
-
-async function checkAutoLock() {
-  if (!isVaultUnlocked()) {
-    stopAutoLockTimer();
-    return;
-  }
-
-  const items = await chrome.storage.local.get(['vault:auto-lock-minutes']);
-  const minutes = Number(items['vault:auto-lock-minutes'] ?? AUTO_LOCK_DEFAULT_MINUTES);
-
-  if (minutes <= 0) {
-    return;
-  }
-
-  const idleMs = Date.now() - lastActivityAt;
-  const maxIdleMs = minutes * 60 * 1000;
-
-  if (idleMs >= maxIdleMs) {
-    console.log(`[BEX] Auto-locking vault after ${minutes} minutes of inactivity`);
-    await lockVault();
-    notifyLockStatusChanged(false);
-    stopAutoLockTimer();
-  }
-}
-
-function startAutoLockTimer() {
-  if (autoLockTimer) return;
-  console.log('[BEX] Starting auto-lock timer');
-  autoLockTimer = setInterval(() => {
-    void checkAutoLock();
-  }, AUTO_LOCK_CHECK_INTERVAL_MS);
-}
-
-function stopAutoLockTimer() {
-  if (autoLockTimer) {
-    clearInterval(autoLockTimer);
-    autoLockTimer = null;
-  }
-}
+} from './handlers/vault-handler';
+import {
+  checkPermission,
+  grantPermission,
+} from './handlers/permission-handler';
 
 const NOSTR_ACTIVE = 'nostr:active';
 const BLOSSOM_UPLOAD_STATUS = 'blossom:upload_status';
@@ -94,7 +54,8 @@ async function getActiveAlias() {
 
 async function getActiveStoredKey() {
   console.log('[BEX] Getting active account...');
-  if (!isVaultUnlocked()) {
+  const isUnlockedResult = await handleVaultIsUnlocked({}, '');
+  if (!isUnlockedResult.success || !isUnlockedResult.data) {
     console.warn('[BEX] Vault is locked, requesting internal unlock...');
     // When vault is locked, we want to notify the extension to show the login page
     // instead of opening a popup.
@@ -115,9 +76,9 @@ async function getActiveStoredKey() {
       'background',
     );
     // If no active alias is set, try to pick the first one from the vault as a fallback
-    const vaultDataRes = await getVaultData();
-    if (vaultDataRes.success && vaultDataRes.vaultData) {
-      const vaultData = vaultDataRes.vaultData as VaultData;
+    const vaultDataRes = await handleVaultGetData({}, '');
+    if (vaultDataRes.success && vaultDataRes.data.vaultData) {
+      const vaultData = vaultDataRes.data.vaultData as VaultData;
       const accounts = vaultData.accounts || [];
       if (accounts.length > 0) {
         console.log('[BEX] Fallback: Using first account from vault');
@@ -131,8 +92,8 @@ async function getActiveStoredKey() {
     return null;
   }
 
-  const vaultRes = await getVaultData();
-  if (!vaultRes.success || !vaultRes.vaultData) {
+  const vaultRes = await handleVaultGetData({}, '');
+  if (!vaultRes.success || !vaultRes.data.vaultData) {
     console.error('[BEX] Failed to retrieve vault data from memory');
     void logService.logException(
       'Failed to retrieve vault data from memory',
@@ -142,7 +103,7 @@ async function getActiveStoredKey() {
     return null;
   }
 
-  const vaultData = vaultRes.vaultData as VaultData;
+  const vaultData = vaultRes.data.vaultData as VaultData;
   const storedKey = (vaultData.accounts || []).find((acc) => acc.alias === activeAlias);
 
   if (!storedKey) {
@@ -311,16 +272,18 @@ bridge.on(
   }: {
     payload: BridgeRequest<'vault.unlock'>;
   }): Promise<BridgeResponsePayload<'vault.unlock'>> => {
-  const result = await unlockVault(password);
-  if (result.success) {
-    updateLastActivity();
-    startAutoLockTimer();
-  }
-  return result as BridgeResponsePayload<'vault.unlock'>;
-});
+    const result = await handleVaultUnlock({ password }, '');
+    if (result.success) {
+      resetAutoLockTimer();
+      startAutoLockTimer();
+      return { success: true, vaultData: result.data.vaultData as VaultData };
+    }
+    return { success: false, error: result.error };
+  },
+);
 
 bridge.on('vault.lock', async (): Promise<BridgeResponsePayload<'vault.lock'>> => {
-  await lockVault();
+  await handleVaultLock({}, '');
   stopAutoLockTimer();
   return { success: true };
 });
@@ -332,20 +295,32 @@ bridge.on(
   }: {
     payload: BridgeRequest<'vault.create'>;
   }): Promise<BridgeResponsePayload<'vault.create'>> => {
-    return await createNewVault(password, vaultData);
+    const result = await handleVaultCreate({ password, vaultData }, '');
+    if (result.success) {
+      return {
+        success: true,
+        ...(result.data.encryptedVault ? { encryptedVault: result.data.encryptedVault } : {}),
+      };
+    }
+    return { success: false, error: result.error };
   },
 );
 
-bridge.on('vault.isUnlocked', (): BridgeResponsePayload<'vault.isUnlocked'> => {
-  return isVaultUnlocked();
+bridge.on('vault.isUnlocked', async (): Promise<BridgeResponsePayload<'vault.isUnlocked'>> => {
+  const result = await handleVaultIsUnlocked({}, '');
+  return result.success ? result.data : false;
 });
 
 bridge.on('activity.mark', (): BridgeResponsePayload<'activity.mark'> => {
-  updateLastActivity();
+  resetAutoLockTimer();
 });
 
 bridge.on('vault.getData', async (): Promise<BridgeResponsePayload<'vault.getData'>> => {
-  return (await getVaultData()) as BridgeResponsePayload<'vault.getData'>;
+  const result = await handleVaultGetData({}, '');
+  if (result.success) {
+    return { success: true, vaultData: result.data.vaultData as VaultData };
+  }
+  return { success: false, error: result.error };
 });
 
 bridge.on(
@@ -355,7 +330,11 @@ bridge.on(
   }: {
     payload: BridgeRequest<'vault.updateData'>;
   }): Promise<BridgeResponsePayload<'vault.updateData'>> => {
-    return await updateVaultData(vaultData);
+    const result = await handleVaultUpdateData({ vaultData }, '');
+    if (result.success) {
+      return { success: true };
+    }
+    return { success: false, error: result.error };
   },
 );
 
@@ -363,18 +342,11 @@ bridge.on(
 async function initialize() {
   console.log('[BEX] Service worker initializing...');
   try {
-    const items = await chrome.storage.local.get(['vault:last-activity']);
-    if (items['vault:last-activity']) {
-      lastActivityAt = Number(items['vault:last-activity']);
-      console.log('[BEX] Restored last activity:', new Date(lastActivityAt).toLocaleTimeString());
-    }
-
+    await restoreLastActivity();
     const restored = await restoreVaultState();
     if (restored) {
-      console.log('[BEX] Vault state restored from session');
       startAutoLockTimer();
-      // Force a check immediately in case we were inactive for a long time
-      void checkAutoLock();
+      checkAutoLock();
     }
   } catch (e) {
     console.error('[BEX] Initialization error:', e);
@@ -383,9 +355,16 @@ async function initialize() {
 
 void initialize();
 
-bridge.on('vault.export', async (): Promise<BridgeResponsePayload<'vault.export'>> => {
-  return await exportVault();
-});
+  bridge.on('vault.export', async (): Promise<BridgeResponsePayload<'vault.export'>> => {
+    const result = await handleVaultExport({}, '');
+    if (result.success) {
+      return {
+        success: true,
+        ...(result.data.encryptedData ? { encryptedData: result.data.encryptedData } : {}),
+      };
+    }
+    return { success: false, error: result.error };
+  });
 
 bridge.on(
   'vault.import',
@@ -395,64 +374,96 @@ bridge.on(
     payload: BridgeRequest<'vault.import'>;
   }): Promise<BridgeResponsePayload<'vault.import'>> => {
     const encryptedData = (payload as any).encryptedData || payload.payload.encryptedData;
-    const result = await importVault(encryptedData);
+    const result = await handleVaultImport({ encryptedData }, '');
     if (result.success) {
       notifyLockStatusChanged(false);
+      return { success: true };
     }
-    return result;
+    return { success: false, error: result.error };
   },
 );
 
 // Add direct chrome.runtime.onMessage listener as a fallback for the bridge
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'vault.isUnlocked') {
-    sendResponse(isVaultUnlocked());
+    handleVaultIsUnlocked({}, '').then((result) => {
+      sendResponse(result.success ? result.data : false);
+    });
     return true;
   }
   if (message.type === 'vault.unlock') {
-    unlockVault(message.payload.password).then((result) => {
+    handleVaultUnlock({ password: message.payload.password }, '').then((result) => {
       if (result.success) {
-        updateLastActivity();
+        // Reset auto-lock timer
+        resetAutoLockTimer();
         startAutoLockTimer();
+        sendResponse({ success: true, vaultData: result.data.vaultData });
+      } else {
+        sendResponse(result);
       }
-      sendResponse(result);
     });
     return true;
   }
   if (message.type === 'vault.lock') {
-    lockVault().then(() => {
+    handleVaultLock({}, '').then((result) => {
       stopAutoLockTimer();
-      sendResponse(true);
+      sendResponse(result.success);
     });
     return true;
   }
   if (message.type === 'activity.mark') {
-    updateLastActivity();
+    resetAutoLockTimer();
     sendResponse(true);
     return true;
   }
   if (message.type === 'vault.create') {
-    createNewVault(message.payload.password, message.payload.vaultData).then(sendResponse);
+    handleVaultCreate({ password: message.payload.password, vaultData: message.payload.vaultData }, '').then((result) => {
+      if (result.success) {
+        sendResponse({ success: true, encryptedVault: result.data.encryptedVault });
+      } else {
+        sendResponse(result);
+      }
+    });
     return true;
   }
   if (message.type === 'vault.getData') {
-    getVaultData().then(sendResponse);
+    handleVaultGetData({}, '').then((result) => {
+      if (result.success) {
+        sendResponse({ success: true, vaultData: result.data.vaultData });
+      } else {
+        sendResponse(result);
+      }
+    });
     return true;
   }
   if (message.type === 'vault.updateData') {
-    updateVaultData(message.payload.vaultData).then(sendResponse);
+    handleVaultUpdateData({ vaultData: message.payload.vaultData }, '').then((result) => {
+      if (result.success) {
+        sendResponse({ success: true });
+      } else {
+        sendResponse(result);
+      }
+    });
     return true;
   }
   if (message.type === 'vault.export') {
-    exportVault().then(sendResponse);
+    handleVaultExport({}, '').then((result) => {
+      if (result.success) {
+        sendResponse({ success: true, encryptedData: result.data.encryptedData });
+      } else {
+        sendResponse(result);
+      }
+    });
     return true;
   }
   if (message.type === 'vault.import') {
-    importVault(message.payload.encryptedData).then((result) => {
+    handleVaultImport({ encryptedData: message.payload.encryptedData }, '').then((result) => {
       if (result.success) {
         notifyLockStatusChanged(false);
+        sendResponse({ success: true });
+      } else {
+        sendResponse(result);
       }
-      sendResponse(result);
     });
     return true;
   }
@@ -463,35 +474,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   return false;
 });
 
-async function requestApproval(origin: string): Promise<boolean> {
-  console.log('[BEX] Requesting approval for:', origin);
+async function requestApproval(origin: string, eventKind: number): Promise<boolean> {
+  console.log('[BEX] Requesting approval for:', origin, 'kind:', eventKind);
 
-  const hostname = getHostname(origin);
-  const activeAlias = await getActiveAlias();
-  const PERMISSIONS_KEY = `permissions:${activeAlias || 'default'}`;
-
-  // Check existing permissions
-  const items = await chrome.storage.local.get([PERMISSIONS_KEY]);
-  const permissions = items[PERMISSIONS_KEY] || {};
-  const perm = permissions[hostname];
-
-  if (perm && perm.approved) {
-    if (perm.duration === 'always') {
-      console.log('[BEX] Valid "always" permission found for:', hostname);
-      return true;
-    }
-    if (perm.duration === '8h' && perm.timestamp) {
-      const eightHours = 8 * 60 * 60 * 1000;
-      if (Date.now() - perm.timestamp < eightHours) {
-        console.log('[BEX] Valid "8h" permission found for:', hostname);
-        return true;
-      }
-      console.log('[BEX] "8h" permission expired for:', hostname);
-    }
+  const permission = await checkPermission(origin, eventKind);
+  if (permission.granted) {
+    console.log('[BEX] Valid permission found for:', origin, 'kind:', eventKind);
+    return true;
   }
 
   // If vault is locked, open the unlock popup so the user can unlock the vault
-  if (!isVaultUnlocked()) {
+  const isUnlockedStatus = await handleVaultIsUnlocked({}, '');
+  if (!isUnlockedStatus.success || !isUnlockedStatus.data) {
     console.warn('[BEX] Vault is locked, opening unlock popup');
 
     // Notify UI listeners of locked status
@@ -500,7 +494,7 @@ async function requestApproval(origin: string): Promise<boolean> {
     try {
       // Open login page with a redirect parameter to the approve page
       const loginUrl = chrome.runtime.getURL(
-        `www/index.html#/login?redirect=/approve&origin=${encodeURIComponent(origin)}`,
+        `www/index.html#/login?redirect=/approve&origin=${encodeURIComponent(origin)}&kind=${eventKind}`,
       );
       const win = await chrome.windows.create({
         url: loginUrl,
@@ -515,11 +509,12 @@ async function requestApproval(origin: string): Promise<boolean> {
       // Wait for the vault to be unlocked or window to be closed
       return new Promise<boolean>((resolve) => {
         const checkStatus = setInterval(async () => {
-          if (isVaultUnlocked()) {
+          const status = await handleVaultIsUnlocked({}, '');
+          if (status.success && status.data) {
             clearInterval(checkStatus);
             chrome.windows.onRemoved.removeListener(onRemoved);
             // Once unlocked, we call requestApproval again which will now open the actual approval page
-            resolve(requestApproval(origin));
+            resolve(requestApproval(origin, eventKind));
           }
         }, 1000);
 
@@ -544,7 +539,9 @@ async function requestApproval(origin: string): Promise<boolean> {
     throw new Error('Another approval request is already pending');
   }
 
-  const url = chrome.runtime.getURL(`www/index.html#/approve?origin=${encodeURIComponent(origin)}`);
+  const url = chrome.runtime.getURL(
+    `www/index.html#/approve?origin=${encodeURIComponent(origin)}&kind=${eventKind}`,
+  );
 
   let windowId: number | undefined;
 
@@ -586,15 +583,9 @@ async function requestApproval(origin: string): Promise<boolean> {
         // Store permission if not "once"
         if (val.approved && val.duration !== 'once') {
           try {
-            const currentItems = await chrome.storage.local.get([PERMISSIONS_KEY]);
-            const currentPermissions = currentItems[PERMISSIONS_KEY] || {};
-            currentPermissions[hostname] = {
-              approved: true,
-              duration: val.duration,
-              timestamp: Date.now(),
-            };
-            await chrome.storage.local.set({ [PERMISSIONS_KEY]: currentPermissions });
-            console.log(`[BEX] Stored permission "${val.duration}" for:`, hostname);
+            const duration = val.duration === 'always' ? 'always' : 'session';
+            await grantPermission(origin, eventKind, duration);
+            console.log(`[BEX] Stored permission "${duration}" for:`, origin, 'kind:', eventKind);
           } catch (e) {
             console.error('[BEX] Failed to store permission:', e);
           }
@@ -644,34 +635,32 @@ bridge.on(
   }: {
     payload: BridgeRequest<'nostr.getPublicKey'>;
   }): Promise<BridgeResponsePayload<'nostr.getPublicKey'>> => {
-    updateLastActivity();
+    resetAutoLockTimer();
     console.log('[BEX] Handling nostr.getPublicKey for:', origin);
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('get_public_key', getHostname(origin), activeStoredKey?.alias);
-    const approved = await requestApproval(origin);
+    const approved = await requestApproval(origin, -1);
 
     console.log('[BEX] Approval result for getPublicKey:', approved);
     if (!approved) {
-      if (!isVaultUnlocked()) {
-        const error: BridgeError = {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) {
+        throw {
           code: 'VAULT_LOCKED',
           message: 'Vault is locked. Please open the extension to unlock.',
-        };
-        throw error;
+        } as BridgeError;
       }
-      const error: BridgeError = {
+      throw {
         code: 'PERMISSION_DENIED',
         message: 'User rejected the request',
-      };
-      throw error;
+      } as BridgeError;
     }
 
     if (!activeStoredKey) {
-      const error: BridgeError = {
+      throw {
         code: 'NOT_FOUND',
         message: 'No active account found',
-      };
-      throw error;
+      } as BridgeError;
     }
     console.log('[BEX] Returning pubkey:', activeStoredKey.id);
     return activeStoredKey.id;
@@ -685,34 +674,32 @@ bridge.on(
   }: {
     payload: BridgeRequest<'nostr.signEvent'>;
   }): Promise<BridgeResponsePayload<'nostr.signEvent'>> => {
-    updateLastActivity();
+    resetAutoLockTimer();
     console.log('[BEX] Handling nostr.signEvent for:', origin, event);
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
-    const approved = await requestApproval(origin);
+    const approved = await requestApproval(origin, event.kind);
 
     console.log('[BEX] Approval result for signEvent:', approved);
     if (!approved) {
-      if (!isVaultUnlocked()) {
-        const error: BridgeError = {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) {
+        throw {
           code: 'VAULT_LOCKED',
           message: 'Vault is locked. Open the extension to unlock.',
-        };
-        throw error;
+        } as BridgeError;
       }
-      const error: BridgeError = {
+      throw {
         code: 'PERMISSION_DENIED',
         message: 'User rejected the request',
-      };
-      throw error;
+      } as BridgeError;
     }
 
     if (!activeStoredKey) {
-      const error: BridgeError = {
+      throw {
         code: 'NOT_FOUND',
         message: 'No active account found',
-      };
-      throw error;
+      } as BridgeError;
     }
     // Ensure the event has the correct pubkey
     event.pubkey = activeStoredKey.id;
@@ -724,11 +711,10 @@ bridge.on(
       console.log('[BEX] Returning signed event:', signedEvent);
       return signedEvent;
     } catch (e: any) {
-      const error: BridgeError = {
+      throw {
         code: 'SIGNING_FAILED',
         message: e.message || String(e),
-      };
-      throw error;
+      } as BridgeError;
     }
   },
 );
@@ -740,12 +726,13 @@ bridge.on(
   }: {
     payload: BridgeRequest<'nostr.getRelays'>;
   }): Promise<BridgeResponsePayload<'nostr.getRelays'>> => {
-  updateLastActivity();
+  resetAutoLockTimer();
   const activeStoredKey = await getActiveStoredKey();
   void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
-  const approved = await requestApproval(origin);
+  const approved = await requestApproval(origin, -1);
   if (!approved) {
-    if (!isVaultUnlocked()) {
+    const unlockedStatus = await handleVaultIsUnlocked({}, '');
+    if (!unlockedStatus.success || !unlockedStatus.data) {
       throw new Error('Vault is locked. Please open the extension to unlock.');
     }
     throw new Error('User rejected the request');
@@ -768,12 +755,13 @@ bridge.on(
   }: {
     payload: BridgeRequest<'nostr.nip04.encrypt'>;
   }): Promise<BridgeResponsePayload<'nostr.nip04.encrypt'>> => {
-    updateLastActivity();
+    resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_encrypt', getHostname(origin), activeStoredKey?.alias);
-    const approved = await requestApproval(origin);
+    const approved = await requestApproval(origin, -1);
     if (!approved) {
-      if (!isVaultUnlocked()) {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) {
         throw new Error('Vault is locked. Please open the extension to unlock.');
       }
       throw new Error('User rejected the request');
@@ -791,12 +779,13 @@ bridge.on(
   }: {
     payload: BridgeRequest<'nostr.nip04.decrypt'>;
   }): Promise<BridgeResponsePayload<'nostr.nip04.decrypt'>> => {
-    updateLastActivity();
+    resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_decrypt', getHostname(origin), activeStoredKey?.alias);
-    const approved = await requestApproval(origin);
+    const approved = await requestApproval(origin, -1);
     if (!approved) {
-      if (!isVaultUnlocked()) {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) {
         throw new Error('Vault is locked. Open the extension to unlock.');
       }
       throw new Error('User rejected the request');
@@ -813,7 +802,7 @@ bridge.on(
   }: {
     payload: BridgeRequest<'blossom.upload'>;
   }): void => {
-    updateLastActivity();
+    resetAutoLockTimer();
     console.log('[BEX] Handling blossom.upload, server:', blossomServer, 'uploadId:', uploadId);
 
     const UPLOAD_STATUS_KEY = uploadId

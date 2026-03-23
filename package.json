@@ -16,6 +16,7 @@
     "build": "quasar build",
     "postinstall": "quasar prepare",
     "build:chrome": "quasar build -m bex -T chrome",
+    "build:firefox": "quasar build -m bex -T firefox",
     "release": "npm run build && npm run build:chrome && changelogen --release && git push --follow-tags"
   },
   "dependencies": {
