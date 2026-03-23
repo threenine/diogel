@@ -84,7 +84,7 @@ async function reject() {
 </script>
 
 <template>
-  <q-page v-if="origin" class="flex justify-center q-pa-md">
+  <q-page v-if="origin" class="flex flex-center q-pa-md" style="min-height: auto;">
     <q-card bordered class="approval-card" flat>
       <q-card-section>
         <div class="text-h6">{{ t('approval.title') }}</div>
@@ -135,15 +135,20 @@ async function reject() {
 
 <style scoped>
 .approval-card {
-  width: 90%;
-  max-width: 400px;
-  min-height: 350px;
+  width: 100%;
+  max-width: 360px;
   display: flex;
   flex-direction: column;
+  flex: 1;
 }
 
-.approval-card > .q-card__actions {
-  margin-top: auto;
+.approval-card :deep(.q-card__section) {
+  flex: 1;
+}
+
+.approval-card :deep(.q-card__actions) {
+  flex-shrink: 0;
+  padding: 16px;
 }
 
 .break-word {

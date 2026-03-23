@@ -5,23 +5,26 @@
     :clearable="clearable"
     :dense="dense"
     :disable="disable"
-    :dropdown-icon="dropdownIcon"
+    :dropdown-icon="dropdownIcon || 'expand_more'"
     :hint="hint"
     :loading="loading"
     :options="computedOptions"
     :outlined="outlined"
     :borderless="borderless"
     :use-chips="useChips"
+    class="diogel-select"
     emit-value
     map-options
     option-label="label"
     option-value="value"
+    menu-anchor="bottom left"
+    menu-self="top left"
   >
     <!-- Custom option rendering to support themable icon for the Create option -->
     <template #option="scope">
       <q-item class="no-wrap" v-bind="scope.itemProps">
         <q-item-section v-if="scope.opt.value === createValue" avatar>
-          <q-icon name="add_circle" />
+          <q-icon name="add_circle" color="primary" />
         </q-item-section>
         <q-item-section>
           <q-item-label class="text-no-wrap">
@@ -35,8 +38,13 @@
     <!-- Selected item chip/input rendering -->
     <template #selected-item="scope">
       <div class="row items-center no-wrap q-gutter-xs">
-        <q-icon v-if="scope.opt.value === createValue" name="add_circle" size="18px" />
-        <span>{{ scope.opt.value === createValue ? createLabel : scope.opt.label }}</span>
+        <q-icon
+          v-if="scope.opt.value === createValue"
+          name="add_circle"
+          size="18px"
+          color="primary"
+        />
+        <span class="text-body text-no-wrap">{{ scope.opt.label }}</span>
       </div>
     </template>
   </q-select>
@@ -163,6 +171,7 @@ watch(innerValue, (v, oldV) => {
       currentPath !== '/popup' &&
       currentPath !== '/login' &&
       currentPath !== '/create-account' &&
+      currentPath !== '/approve' &&
       !currentPath.startsWith('/edit-account')
     ) {
       router.push({ path: '/' }).catch(() => {});
