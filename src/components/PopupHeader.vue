@@ -1,17 +1,25 @@
 <script lang="ts" setup>
-import AccountList from 'components/AccountList.vue';
+import AccountDropdown from 'components/AccountDropdown/Index.vue';
 </script>
 
 <template>
-  <div class="q-pa-md q-gutter-sm">
-    <q-header class="row items-center">
-      <div class="text-h6">
-        <q-img src="/images/diogel.svg" style="width: 35px; height: 35px" />
-      </div>
-      <q-space />
-      <div class="q-pr-md"><account-list /></div>
-    </q-header>
+  <div class="popup-header-actions">
+    <AccountDropdown
+      dense
+      outlined
+      class="account-select"
+      dropdown-icon="expand_more"
+    />
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.popup-header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.account-select {
+  width: 160px;
+}
+</style>

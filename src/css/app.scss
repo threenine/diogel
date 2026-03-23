@@ -306,9 +306,26 @@ html.extension-popup body::-webkit-scrollbar {
   border-radius: 12px !important;
 }
 
+// Update extension popup styles
+html.extension-popup,
+html.extension-popup body {
+  width: 400px;
+  min-height: 580px;
+}
+
+.extension-window {
+  width: 400px;
+  height: 600px;
+  max-width: 100vw;
+  max-height: 100vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
+}
+
 .popup-root {
-  width: 500px;
-  height: 700px;
+  width: 400px;
+  height: 600px;
 }
 
 .popup-layout {
