@@ -388,3 +388,97 @@ html.extension-popup body {
     margin-bottom: 16px;
   }
 }
+
+
+// Standardized select dropdown
+.diogel-select {
+  width: 100%;
+
+  .q-field__control {
+    border-radius: 8px;
+    min-height: 36px;
+    padding: 0 12px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    transition: all 0.2s ease;
+
+    &:hover {
+      border-color: $secondary-light;  // Slate hover
+    }
+  }
+
+  &.q-field--focused .q-field__control {
+    border-color: $primary;  // Threenine Orange on focus
+    box-shadow: 0 0 0 3px rgba($primary, 0.15);  // Orange glow
+  }
+
+  .q-field__label {
+    top: 8px;
+    font-size: 0.875rem;
+    color: var(--text-muted);
+  }
+
+  &.q-field--float .q-field__label {
+    transform: translateY(-50%) scale(0.75);
+  }
+
+  .q-field__native {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+
+  // Dropdown icon
+  .q-select__dropdown-icon {
+    color: var(--text-muted);
+    transition: transform 0.2s ease;
+  }
+
+  &.q-field--focused .q-select__dropdown-icon {
+    color: $primary;  // Threenine Orange when focused
+    transform: rotate(180deg);
+  }
+}
+
+// Select menu styling
+.q-menu {
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1),
+              0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color);
+  animation: menuFadeIn 0.15s ease;
+
+  .q-item {
+    min-height: 40px;
+    padding: 8px 16px;
+
+    &:hover {
+      background: rgba($primary, 0.05);
+    }
+
+    &.q-item--active {
+      background: rgba($primary, 0.1);  // Light orange background
+      color: $primary;  // Threenine Orange text
+      font-weight: 500;
+    }
+  }
+
+  .q-item__label {
+    font-size: 0.875rem;
+  }
+
+  .q-item__section--avatar {
+    min-width: 32px;
+    padding-right: 12px;
+  }
+}
+
+@keyframes menuFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
