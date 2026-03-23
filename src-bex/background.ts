@@ -14,9 +14,14 @@ import { sha256 } from '@noble/hashes/sha2.js';
 import { logService } from 'src/services/log-service';
 import {
   REQUEST_TIMEOUT_MS,
-  AUTO_LOCK_CHECK_INTERVAL_MS,
-  AUTO_LOCK_DEFAULT_MINUTES,
 } from './constants';
+import {
+  startAutoLockTimer,
+  stopAutoLockTimer,
+  resetAutoLockTimer,
+  restoreLastActivity,
+  checkAutoLock,
+} from './services/auto-lock';
 import type {
   BridgeAction,
   BridgeRequest,
@@ -35,54 +40,6 @@ import {
   updateVaultData,
   restoreVaultState,
 } from './vault';
-
-// Auto-lock state
-let lastActivityAt = Date.now();
-let autoLockTimer: ReturnType<typeof setInterval> | null = null;
-
-function updateLastActivity() {
-  lastActivityAt = Date.now();
-  void chrome.storage.local.set({ 'vault:last-activity': lastActivityAt });
-}
-
-async function checkAutoLock() {
-  if (!isVaultUnlocked()) {
-    stopAutoLockTimer();
-    return;
-  }
-
-  const items = await chrome.storage.local.get(['vault:auto-lock-minutes']);
-  const minutes = Number(items['vault:auto-lock-minutes'] ?? AUTO_LOCK_DEFAULT_MINUTES);
-
-  if (minutes <= 0) {
-    return;
-  }
-
-  const idleMs = Date.now() - lastActivityAt;
-  const maxIdleMs = minutes * 60 * 1000;
-
-  if (idleMs >= maxIdleMs) {
-    console.log(`[BEX] Auto-locking vault after ${minutes} minutes of inactivity`);
-    await lockVault();
-    notifyLockStatusChanged(false);
-    stopAutoLockTimer();
-  }
-}
-
-function startAutoLockTimer() {
-  if (autoLockTimer) return;
-  console.log('[BEX] Starting auto-lock timer');
-  autoLockTimer = setInterval(() => {
-    void checkAutoLock();
-  }, AUTO_LOCK_CHECK_INTERVAL_MS);
-}
-
-function stopAutoLockTimer() {
-  if (autoLockTimer) {
-    clearInterval(autoLockTimer);
-    autoLockTimer = null;
-  }
-}
 
 const NOSTR_ACTIVE = 'nostr:active';
 const BLOSSOM_UPLOAD_STATUS = 'blossom:upload_status';
@@ -313,7 +270,7 @@ bridge.on(
   }): Promise<BridgeResponsePayload<'vault.unlock'>> => {
   const result = await unlockVault(password);
   if (result.success) {
-    updateLastActivity();
+    resetAutoLockTimer();
     startAutoLockTimer();
   }
   return result as BridgeResponsePayload<'vault.unlock'>;
@@ -341,7 +298,7 @@ bridge.on('vault.isUnlocked', (): BridgeResponsePayload<'vault.isUnlocked'> => {
 });
 
 bridge.on('activity.mark', (): BridgeResponsePayload<'activity.mark'> => {
-  updateLastActivity();
+  resetAutoLockTimer();
 });
 
 bridge.on('vault.getData', async (): Promise<BridgeResponsePayload<'vault.getData'>> => {
@@ -363,18 +320,11 @@ bridge.on(
 async function initialize() {
   console.log('[BEX] Service worker initializing...');
   try {
-    const items = await chrome.storage.local.get(['vault:last-activity']);
-    if (items['vault:last-activity']) {
-      lastActivityAt = Number(items['vault:last-activity']);
-      console.log('[BEX] Restored last activity:', new Date(lastActivityAt).toLocaleTimeString());
-    }
-
+    await restoreLastActivity();
     const restored = await restoreVaultState();
     if (restored) {
-      console.log('[BEX] Vault state restored from session');
       startAutoLockTimer();
-      // Force a check immediately in case we were inactive for a long time
-      void checkAutoLock();
+      checkAutoLock();
     }
   } catch (e) {
     console.error('[BEX] Initialization error:', e);
@@ -412,7 +362,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'vault.unlock') {
     unlockVault(message.payload.password).then((result) => {
       if (result.success) {
-        updateLastActivity();
+        resetAutoLockTimer();
         startAutoLockTimer();
       }
       sendResponse(result);
@@ -427,7 +377,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message.type === 'activity.mark') {
-    updateLastActivity();
+    resetAutoLockTimer();
     sendResponse(true);
     return true;
   }
@@ -644,7 +594,7 @@ bridge.on(
   }: {
     payload: BridgeRequest<'nostr.getPublicKey'>;
   }): Promise<BridgeResponsePayload<'nostr.getPublicKey'>> => {
-    updateLastActivity();
+    resetAutoLockTimer();
     console.log('[BEX] Handling nostr.getPublicKey for:', origin);
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('get_public_key', getHostname(origin), activeStoredKey?.alias);
@@ -685,7 +635,7 @@ bridge.on(
   }: {
     payload: BridgeRequest<'nostr.signEvent'>;
   }): Promise<BridgeResponsePayload<'nostr.signEvent'>> => {
-    updateLastActivity();
+    resetAutoLockTimer();
     console.log('[BEX] Handling nostr.signEvent for:', origin, event);
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
@@ -740,7 +690,7 @@ bridge.on(
   }: {
     payload: BridgeRequest<'nostr.getRelays'>;
   }): Promise<BridgeResponsePayload<'nostr.getRelays'>> => {
-  updateLastActivity();
+  resetAutoLockTimer();
   const activeStoredKey = await getActiveStoredKey();
   void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
   const approved = await requestApproval(origin);
@@ -768,7 +718,7 @@ bridge.on(
   }: {
     payload: BridgeRequest<'nostr.nip04.encrypt'>;
   }): Promise<BridgeResponsePayload<'nostr.nip04.encrypt'>> => {
-    updateLastActivity();
+    resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_encrypt', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin);
@@ -791,7 +741,7 @@ bridge.on(
   }: {
     payload: BridgeRequest<'nostr.nip04.decrypt'>;
   }): Promise<BridgeResponsePayload<'nostr.nip04.decrypt'>> => {
-    updateLastActivity();
+    resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_decrypt', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin);
@@ -813,7 +763,7 @@ bridge.on(
   }: {
     payload: BridgeRequest<'blossom.upload'>;
   }): void => {
-    updateLastActivity();
+    resetAutoLockTimer();
     console.log('[BEX] Handling blossom.upload, server:', blossomServer, 'uploadId:', uploadId);
 
     const UPLOAD_STATUS_KEY = uploadId
