@@ -43,6 +43,9 @@ import {
   checkPermission,
   grantPermission,
 } from './handlers/permission-handler';
+import {
+  handleGetPublicKey,
+} from './handlers/nip07';
 
 const NOSTR_ACTIVE = 'nostr:active';
 const BLOSSOM_UPLOAD_STATUS = 'blossom:upload_status';
@@ -637,33 +640,29 @@ bridge.on(
   }): Promise<BridgeResponsePayload<'nostr.getPublicKey'>> => {
     resetAutoLockTimer();
     console.log('[BEX] Handling nostr.getPublicKey for:', origin);
+
+    const result = await handleGetPublicKey({}, origin);
+
+    if (!result.success) {
+      throw {
+        code: result.error === 'Vault is locked' ? 'VAULT_LOCKED' : 'NOT_FOUND',
+        message: result.error,
+      } as BridgeError;
+    }
+
+    // Still need approval for getPublicKey
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('get_public_key', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin, -1);
 
-    console.log('[BEX] Approval result for getPublicKey:', approved);
     if (!approved) {
-      const unlockedStatus = await handleVaultIsUnlocked({}, '');
-      if (!unlockedStatus.success || !unlockedStatus.data) {
-        throw {
-          code: 'VAULT_LOCKED',
-          message: 'Vault is locked. Please open the extension to unlock.',
-        } as BridgeError;
-      }
       throw {
         code: 'PERMISSION_DENIED',
         message: 'User rejected the request',
       } as BridgeError;
     }
 
-    if (!activeStoredKey) {
-      throw {
-        code: 'NOT_FOUND',
-        message: 'No active account found',
-      } as BridgeError;
-    }
-    console.log('[BEX] Returning pubkey:', activeStoredKey.id);
-    return activeStoredKey.id;
+    return result.data;
   },
 );
 
