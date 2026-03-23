@@ -45,6 +45,7 @@ import {
 } from './handlers/permission-handler';
 import {
   handleGetPublicKey,
+  handleSignEvent,
 } from './handlers/nip07';
 
 const NOSTR_ACTIVE = 'nostr:active';
@@ -675,11 +676,15 @@ bridge.on(
   }): Promise<BridgeResponsePayload<'nostr.signEvent'>> => {
     resetAutoLockTimer();
     console.log('[BEX] Handling nostr.signEvent for:', origin, event);
+
+    // Get active key for logging
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
-    const approved = await requestApproval(origin, event.kind);
 
+    // Request approval
+    const approved = await requestApproval(origin, event.kind);
     console.log('[BEX] Approval result for signEvent:', approved);
+
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
       if (!unlockedStatus.success || !unlockedStatus.data) {
@@ -694,27 +699,20 @@ bridge.on(
       } as BridgeError;
     }
 
-    if (!activeStoredKey) {
-      throw {
-        code: 'NOT_FOUND',
-        message: 'No active account found',
-      } as BridgeError;
-    }
-    // Ensure the event has the correct pubkey
-    event.pubkey = activeStoredKey.id;
+    // Delegate to handler
+    const result = await handleSignEvent({ event }, origin);
 
-    try {
-      // finalizeEvent from nostr-tools v2
-      const sk = hexToBytes((activeStoredKey as any).privkey as string);
-      const signedEvent = finalizeEvent(event, sk);
-      console.log('[BEX] Returning signed event:', signedEvent);
-      return signedEvent;
-    } catch (e: any) {
+    if (!result.success) {
       throw {
-        code: 'SIGNING_FAILED',
-        message: e.message || String(e),
+        code: result.error === 'Vault is locked' ? 'VAULT_LOCKED' :
+              result.error === 'Permission denied' ? 'PERMISSION_DENIED' :
+              'SIGNING_FAILED',
+        message: result.error,
       } as BridgeError;
     }
+
+    console.log('[BEX] Returning signed event:', result.data);
+    return result.data;
   },
 );
 
