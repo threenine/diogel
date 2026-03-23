@@ -23,23 +23,22 @@ import {
   checkAutoLock,
 } from './services/auto-lock';
 import type {
-  BridgeAction,
   BridgeRequest,
   BridgeResponsePayload,
   VaultData,
-} from '../src/types/bridge';
+} from 'src/types/bridge';
 import type { BridgeError } from './types/bridge';
 import {
-  createNewVault,
-  exportVault,
-  getVaultData,
-  importVault,
-  isVaultUnlocked,
-  lockVault,
-  unlockVault,
-  updateVaultData,
+  handleVaultUnlock,
+  handleVaultLock,
+  handleVaultIsUnlocked,
+  handleVaultCreate,
+  handleVaultGetData,
+  handleVaultUpdateData,
+  handleVaultExport,
+  handleVaultImport,
   restoreVaultState,
-} from './vault';
+} from './handlers/vault-handler';
 
 const NOSTR_ACTIVE = 'nostr:active';
 const BLOSSOM_UPLOAD_STATUS = 'blossom:upload_status';
@@ -51,7 +50,8 @@ async function getActiveAlias() {
 
 async function getActiveStoredKey() {
   console.log('[BEX] Getting active account...');
-  if (!isVaultUnlocked()) {
+  const isUnlockedResult = await handleVaultIsUnlocked({}, '');
+  if (!isUnlockedResult.success || !isUnlockedResult.data) {
     console.warn('[BEX] Vault is locked, requesting internal unlock...');
     // When vault is locked, we want to notify the extension to show the login page
     // instead of opening a popup.
@@ -72,9 +72,9 @@ async function getActiveStoredKey() {
       'background',
     );
     // If no active alias is set, try to pick the first one from the vault as a fallback
-    const vaultDataRes = await getVaultData();
-    if (vaultDataRes.success && vaultDataRes.vaultData) {
-      const vaultData = vaultDataRes.vaultData as VaultData;
+    const vaultDataRes = await handleVaultGetData({}, '');
+    if (vaultDataRes.success && vaultDataRes.data.vaultData) {
+      const vaultData = vaultDataRes.data.vaultData as VaultData;
       const accounts = vaultData.accounts || [];
       if (accounts.length > 0) {
         console.log('[BEX] Fallback: Using first account from vault');
@@ -88,8 +88,8 @@ async function getActiveStoredKey() {
     return null;
   }
 
-  const vaultRes = await getVaultData();
-  if (!vaultRes.success || !vaultRes.vaultData) {
+  const vaultRes = await handleVaultGetData({}, '');
+  if (!vaultRes.success || !vaultRes.data.vaultData) {
     console.error('[BEX] Failed to retrieve vault data from memory');
     void logService.logException(
       'Failed to retrieve vault data from memory',
@@ -99,7 +99,7 @@ async function getActiveStoredKey() {
     return null;
   }
 
-  const vaultData = vaultRes.vaultData as VaultData;
+  const vaultData = vaultRes.data.vaultData as VaultData;
   const storedKey = (vaultData.accounts || []).find((acc) => acc.alias === activeAlias);
 
   if (!storedKey) {
@@ -268,16 +268,18 @@ bridge.on(
   }: {
     payload: BridgeRequest<'vault.unlock'>;
   }): Promise<BridgeResponsePayload<'vault.unlock'>> => {
-  const result = await unlockVault(password);
-  if (result.success) {
-    resetAutoLockTimer();
-    startAutoLockTimer();
-  }
-  return result as BridgeResponsePayload<'vault.unlock'>;
-});
+    const result = await handleVaultUnlock({ password }, '');
+    if (result.success) {
+      resetAutoLockTimer();
+      startAutoLockTimer();
+      return { success: true, vaultData: result.data.vaultData as VaultData };
+    }
+    return { success: false, error: result.error };
+  },
+);
 
 bridge.on('vault.lock', async (): Promise<BridgeResponsePayload<'vault.lock'>> => {
-  await lockVault();
+  await handleVaultLock({}, '');
   stopAutoLockTimer();
   return { success: true };
 });
@@ -289,12 +291,20 @@ bridge.on(
   }: {
     payload: BridgeRequest<'vault.create'>;
   }): Promise<BridgeResponsePayload<'vault.create'>> => {
-    return await createNewVault(password, vaultData);
+    const result = await handleVaultCreate({ password, vaultData }, '');
+    if (result.success) {
+      return {
+        success: true,
+        ...(result.data.encryptedVault ? { encryptedVault: result.data.encryptedVault } : {}),
+      };
+    }
+    return { success: false, error: result.error };
   },
 );
 
-bridge.on('vault.isUnlocked', (): BridgeResponsePayload<'vault.isUnlocked'> => {
-  return isVaultUnlocked();
+bridge.on('vault.isUnlocked', async (): Promise<BridgeResponsePayload<'vault.isUnlocked'>> => {
+  const result = await handleVaultIsUnlocked({}, '');
+  return result.success ? result.data : false;
 });
 
 bridge.on('activity.mark', (): BridgeResponsePayload<'activity.mark'> => {
@@ -302,7 +312,11 @@ bridge.on('activity.mark', (): BridgeResponsePayload<'activity.mark'> => {
 });
 
 bridge.on('vault.getData', async (): Promise<BridgeResponsePayload<'vault.getData'>> => {
-  return (await getVaultData()) as BridgeResponsePayload<'vault.getData'>;
+  const result = await handleVaultGetData({}, '');
+  if (result.success) {
+    return { success: true, vaultData: result.data.vaultData as VaultData };
+  }
+  return { success: false, error: result.error };
 });
 
 bridge.on(
@@ -312,7 +326,11 @@ bridge.on(
   }: {
     payload: BridgeRequest<'vault.updateData'>;
   }): Promise<BridgeResponsePayload<'vault.updateData'>> => {
-    return await updateVaultData(vaultData);
+    const result = await handleVaultUpdateData({ vaultData }, '');
+    if (result.success) {
+      return { success: true };
+    }
+    return { success: false, error: result.error };
   },
 );
 
@@ -333,9 +351,16 @@ async function initialize() {
 
 void initialize();
 
-bridge.on('vault.export', async (): Promise<BridgeResponsePayload<'vault.export'>> => {
-  return await exportVault();
-});
+  bridge.on('vault.export', async (): Promise<BridgeResponsePayload<'vault.export'>> => {
+    const result = await handleVaultExport({}, '');
+    if (result.success) {
+      return {
+        success: true,
+        ...(result.data.encryptedData ? { encryptedData: result.data.encryptedData } : {}),
+      };
+    }
+    return { success: false, error: result.error };
+  });
 
 bridge.on(
   'vault.import',
@@ -345,34 +370,40 @@ bridge.on(
     payload: BridgeRequest<'vault.import'>;
   }): Promise<BridgeResponsePayload<'vault.import'>> => {
     const encryptedData = (payload as any).encryptedData || payload.payload.encryptedData;
-    const result = await importVault(encryptedData);
+    const result = await handleVaultImport({ encryptedData }, '');
     if (result.success) {
       notifyLockStatusChanged(false);
+      return { success: true };
     }
-    return result;
+    return { success: false, error: result.error };
   },
 );
 
 // Add direct chrome.runtime.onMessage listener as a fallback for the bridge
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'vault.isUnlocked') {
-    sendResponse(isVaultUnlocked());
+    handleVaultIsUnlocked({}, '').then((result) => {
+      sendResponse(result.success ? result.data : false);
+    });
     return true;
   }
   if (message.type === 'vault.unlock') {
-    unlockVault(message.payload.password).then((result) => {
+    handleVaultUnlock({ password: message.payload.password }, '').then((result) => {
       if (result.success) {
+        // Reset auto-lock timer
         resetAutoLockTimer();
         startAutoLockTimer();
+        sendResponse({ success: true, vaultData: result.data.vaultData });
+      } else {
+        sendResponse(result);
       }
-      sendResponse(result);
     });
     return true;
   }
   if (message.type === 'vault.lock') {
-    lockVault().then(() => {
+    handleVaultLock({}, '').then((result) => {
       stopAutoLockTimer();
-      sendResponse(true);
+      sendResponse(result.success);
     });
     return true;
   }
@@ -382,27 +413,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
   if (message.type === 'vault.create') {
-    createNewVault(message.payload.password, message.payload.vaultData).then(sendResponse);
+    handleVaultCreate({ password: message.payload.password, vaultData: message.payload.vaultData }, '').then((result) => {
+      if (result.success) {
+        sendResponse({ success: true, encryptedVault: result.data.encryptedVault });
+      } else {
+        sendResponse(result);
+      }
+    });
     return true;
   }
   if (message.type === 'vault.getData') {
-    getVaultData().then(sendResponse);
+    handleVaultGetData({}, '').then((result) => {
+      if (result.success) {
+        sendResponse({ success: true, vaultData: result.data.vaultData });
+      } else {
+        sendResponse(result);
+      }
+    });
     return true;
   }
   if (message.type === 'vault.updateData') {
-    updateVaultData(message.payload.vaultData).then(sendResponse);
+    handleVaultUpdateData({ vaultData: message.payload.vaultData }, '').then((result) => {
+      if (result.success) {
+        sendResponse({ success: true });
+      } else {
+        sendResponse(result);
+      }
+    });
     return true;
   }
   if (message.type === 'vault.export') {
-    exportVault().then(sendResponse);
+    handleVaultExport({}, '').then((result) => {
+      if (result.success) {
+        sendResponse({ success: true, encryptedData: result.data.encryptedData });
+      } else {
+        sendResponse(result);
+      }
+    });
     return true;
   }
   if (message.type === 'vault.import') {
-    importVault(message.payload.encryptedData).then((result) => {
+    handleVaultImport({ encryptedData: message.payload.encryptedData }, '').then((result) => {
       if (result.success) {
         notifyLockStatusChanged(false);
+        sendResponse({ success: true });
+      } else {
+        sendResponse(result);
       }
-      sendResponse(result);
     });
     return true;
   }
@@ -441,7 +498,8 @@ async function requestApproval(origin: string): Promise<boolean> {
   }
 
   // If vault is locked, open the unlock popup so the user can unlock the vault
-  if (!isVaultUnlocked()) {
+  const isUnlockedStatus = await handleVaultIsUnlocked({}, '');
+  if (!isUnlockedStatus.success || !isUnlockedStatus.data) {
     console.warn('[BEX] Vault is locked, opening unlock popup');
 
     // Notify UI listeners of locked status
@@ -465,7 +523,8 @@ async function requestApproval(origin: string): Promise<boolean> {
       // Wait for the vault to be unlocked or window to be closed
       return new Promise<boolean>((resolve) => {
         const checkStatus = setInterval(async () => {
-          if (isVaultUnlocked()) {
+          const status = await handleVaultIsUnlocked({}, '');
+          if (status.success && status.data) {
             clearInterval(checkStatus);
             chrome.windows.onRemoved.removeListener(onRemoved);
             // Once unlocked, we call requestApproval again which will now open the actual approval page
@@ -602,26 +661,24 @@ bridge.on(
 
     console.log('[BEX] Approval result for getPublicKey:', approved);
     if (!approved) {
-      if (!isVaultUnlocked()) {
-        const error: BridgeError = {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) {
+        throw {
           code: 'VAULT_LOCKED',
           message: 'Vault is locked. Please open the extension to unlock.',
-        };
-        throw error;
+        } as BridgeError;
       }
-      const error: BridgeError = {
+      throw {
         code: 'PERMISSION_DENIED',
         message: 'User rejected the request',
-      };
-      throw error;
+      } as BridgeError;
     }
 
     if (!activeStoredKey) {
-      const error: BridgeError = {
+      throw {
         code: 'NOT_FOUND',
         message: 'No active account found',
-      };
-      throw error;
+      } as BridgeError;
     }
     console.log('[BEX] Returning pubkey:', activeStoredKey.id);
     return activeStoredKey.id;
@@ -643,26 +700,24 @@ bridge.on(
 
     console.log('[BEX] Approval result for signEvent:', approved);
     if (!approved) {
-      if (!isVaultUnlocked()) {
-        const error: BridgeError = {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) {
+        throw {
           code: 'VAULT_LOCKED',
           message: 'Vault is locked. Open the extension to unlock.',
-        };
-        throw error;
+        } as BridgeError;
       }
-      const error: BridgeError = {
+      throw {
         code: 'PERMISSION_DENIED',
         message: 'User rejected the request',
-      };
-      throw error;
+      } as BridgeError;
     }
 
     if (!activeStoredKey) {
-      const error: BridgeError = {
+      throw {
         code: 'NOT_FOUND',
         message: 'No active account found',
-      };
-      throw error;
+      } as BridgeError;
     }
     // Ensure the event has the correct pubkey
     event.pubkey = activeStoredKey.id;
@@ -674,11 +729,10 @@ bridge.on(
       console.log('[BEX] Returning signed event:', signedEvent);
       return signedEvent;
     } catch (e: any) {
-      const error: BridgeError = {
+      throw {
         code: 'SIGNING_FAILED',
         message: e.message || String(e),
-      };
-      throw error;
+      } as BridgeError;
     }
   },
 );
@@ -695,7 +749,8 @@ bridge.on(
   void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
   const approved = await requestApproval(origin);
   if (!approved) {
-    if (!isVaultUnlocked()) {
+    const unlockedStatus = await handleVaultIsUnlocked({}, '');
+    if (!unlockedStatus.success || !unlockedStatus.data) {
       throw new Error('Vault is locked. Please open the extension to unlock.');
     }
     throw new Error('User rejected the request');
@@ -723,7 +778,8 @@ bridge.on(
     void logService.logApproval('nip04_encrypt', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin);
     if (!approved) {
-      if (!isVaultUnlocked()) {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) {
         throw new Error('Vault is locked. Please open the extension to unlock.');
       }
       throw new Error('User rejected the request');
@@ -746,7 +802,8 @@ bridge.on(
     void logService.logApproval('nip04_decrypt', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin);
     if (!approved) {
-      if (!isVaultUnlocked()) {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) {
         throw new Error('Vault is locked. Open the extension to unlock.');
       }
       throw new Error('User rejected the request');
