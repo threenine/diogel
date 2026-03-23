@@ -7,12 +7,13 @@
  */
 import { createBridge } from '#q-app/bex/content';
 import { MESSAGE_TYPE_PING, MESSAGE_TYPE_REQUEST } from './constants';
+import type { BridgeAction, BridgeResponse, BridgeResponsePayload, VaultData } from 'src/types/bridge';
+import { createBridgeRequest } from 'src/types/bridge';
 import type {
   GetPublicKeyRequest,
   GetPublicKeyResponse,
   SignEventRequest,
   SignEventResponse,
-  UnsignedNostrEvent,
 } from './types/bridge';
 
 // The use of the bridge is optional.
@@ -27,13 +28,18 @@ const bridge = createBridge({ debug: false });
 
 declare module '@quasar/app-vite' {
   interface BexEventMap {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
     'some.event': [{ someProp: string }, void];
     'nostr.getPublicKey': [GetPublicKeyRequest, GetPublicKeyResponse];
     'nostr.signEvent': [SignEventRequest, SignEventResponse];
-    'nostr.getRelays': [{ origin: string }, any];
-    'nostr.nip04.encrypt': [{ pubkey: string; plaintext: string; origin: string }, any];
-    'nostr.nip04.decrypt': [{ pubkey: string; ciphertext: string; origin: string }, any];
+    'nostr.getRelays': [{ origin: string }, BridgeResponsePayload<'nostr.getRelays'>];
+    'nostr.nip04.encrypt': [
+      { pubkey: string; plaintext: string; origin: string },
+      BridgeResponsePayload<'nostr.nip04.encrypt'>,
+    ];
+    'nostr.nip04.decrypt': [
+      { pubkey: string; ciphertext: string; origin: string },
+      BridgeResponsePayload<'nostr.nip04.decrypt'>,
+    ];
     'blossom.upload': [
       {
         base64Data: string;
@@ -41,9 +47,8 @@ declare module '@quasar/app-vite' {
         blossomServer: string;
         uploadId?: string;
       },
-      any,
+      BridgeResponsePayload<'blossom.upload'>,
     ];
-    /* eslint-enable @typescript-eslint/no-explicit-any */
   }
 }
 
@@ -75,7 +80,7 @@ if (document.readyState === 'loading') {
   injectProvider();
 }
 
-window.addEventListener('message', async (event) => {
+window.addEventListener('message', async (event: MessageEvent) => {
   // Broad logging for debugging
   if (event.data && event.data.type && event.data.type.startsWith('diogel')) {
     console.log('[BEX] Content script received potential diogel message:', event.data);
@@ -126,8 +131,9 @@ window.addEventListener('message', async (event) => {
   }
 
   try {
+    const methodAction = `nostr.${method}` as BridgeAction;
     const result = await bridge.send({
-      event: `nostr.${method}` as any,
+      event: methodAction as any,
       to: 'background',
       payload: { ...payload, origin } as any,
     });

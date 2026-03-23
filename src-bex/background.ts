@@ -17,6 +17,12 @@ import {
   AUTO_LOCK_CHECK_INTERVAL_MS,
   AUTO_LOCK_DEFAULT_MINUTES,
 } from './constants';
+import type {
+  BridgeAction,
+  BridgeRequest,
+  BridgeResponsePayload,
+  VaultData,
+} from 'src/types/bridge';
 import type { BridgeError } from './types/bridge';
 import {
   createNewVault,
@@ -32,7 +38,7 @@ import {
 
 // Auto-lock state
 let lastActivityAt = Date.now();
-let autoLockTimer: any = null;
+let autoLockTimer: ReturnType<typeof setInterval> | null = null;
 
 function updateLastActivity() {
   lastActivityAt = Date.now();
@@ -105,19 +111,21 @@ async function getActiveStoredKey() {
     console.error('[BEX] No active account alias found in storage');
     void logService.logException(
       'No active account alias found in storage',
-      activeAlias,
+      String(activeAlias),
       'background',
     );
     // If no active alias is set, try to pick the first one from the vault as a fallback
     const vaultDataRes = await getVaultData();
     if (vaultDataRes.success && vaultDataRes.vaultData) {
-      const vaultData = vaultDataRes.vaultData as { accounts?: any[] };
+      const vaultData = vaultDataRes.vaultData as VaultData;
       const accounts = vaultData.accounts || [];
       if (accounts.length > 0) {
         console.log('[BEX] Fallback: Using first account from vault');
         const fallbackAccount = accounts[0];
-        await chrome.storage.local.set({ [NOSTR_ACTIVE]: fallbackAccount.alias });
-        return fallbackAccount;
+        if (fallbackAccount) {
+          await chrome.storage.local.set({ [NOSTR_ACTIVE]: fallbackAccount.alias });
+          return fallbackAccount;
+        }
       }
     }
     return null;
@@ -134,7 +142,7 @@ async function getActiveStoredKey() {
     return null;
   }
 
-  const vaultData = vaultRes.vaultData as { accounts?: any[] };
+  const vaultData = vaultRes.vaultData as VaultData;
   const storedKey = (vaultData.accounts || []).find((acc) => acc.alias === activeAlias);
 
   if (!storedKey) {
@@ -160,21 +168,29 @@ import type {
 
 declare module '@quasar/app-vite' {
   interface BexEventMap {
-    /* eslint-disable @typescript-eslint/no-explicit-any */
     'nostr.getPublicKey': [GetPublicKeyRequest, GetPublicKeyResponse];
     'nostr.signEvent': [SignEventRequest, SignEventResponse];
-    'nostr.getRelays': [{ origin: string }, any];
-    'nostr.nip04.encrypt': [{ pubkey: string; plaintext: string; origin: string }, any];
-    'nostr.nip04.decrypt': [{ pubkey: string; ciphertext: string; origin: string }, any];
+    'nostr.getRelays': [{ origin: string }, BridgeResponsePayload<'nostr.getRelays'>];
+    'nostr.nip04.encrypt': [
+      { pubkey: string; plaintext: string; origin: string },
+      BridgeResponsePayload<'nostr.nip04.encrypt'>,
+    ];
+    'nostr.nip04.decrypt': [
+      { pubkey: string; ciphertext: string; origin: string },
+      BridgeResponsePayload<'nostr.nip04.decrypt'>,
+    ];
     'nostr.approval.respond': [{ approved: boolean; duration: string }, void];
-    'vault.unlock': [{ password: string }, any];
-    'vault.lock': [undefined, void];
-    'vault.create': [{ password: string; vaultData: any }, any];
+    'vault.unlock': [{ password: string }, BridgeResponsePayload<'vault.unlock'>];
+    'vault.lock': [undefined, BridgeResponsePayload<'vault.lock'>];
+    'vault.create': [
+      { password: string; vaultData: VaultData },
+      BridgeResponsePayload<'vault.create'>,
+    ];
     'vault.isUnlocked': [undefined, boolean];
-    'vault.getData': [undefined, any];
-    'vault.updateData': [{ vaultData: any }, any];
-    'vault.export': [undefined, any];
-    'vault.import': [{ encryptedData: string }, any];
+    'vault.getData': [undefined, BridgeResponsePayload<'vault.getData'>];
+    'vault.updateData': [{ vaultData: VaultData }, BridgeResponsePayload<'vault.updateData'>];
+    'vault.export': [undefined, BridgeResponsePayload<'vault.export'>];
+    'vault.import': [{ encryptedData: string }, BridgeResponsePayload<'vault.import'>];
     'blossom.upload': [
       {
         base64Data: string;
@@ -182,9 +198,8 @@ declare module '@quasar/app-vite' {
         blossomServer: string;
         uploadId?: string;
       },
-      any,
+      BridgeResponsePayload<'blossom.upload'>,
     ];
-    /* eslint-enable @typescript-eslint/no-explicit-any */
   }
 }
 
@@ -234,7 +249,7 @@ function notifyLockStatusChanged(unlocked: boolean) {
 }
 
 // Global ping handler for diagnostics
-bridge.on('ping', () => {
+bridge.on('ping', (): BridgeResponsePayload<'ping'> => {
   console.log('[BEX] Received ping');
   return 'pong';
 });
@@ -273,7 +288,11 @@ let approvalPromise: ApprovalPromise | null = null;
 
 bridge.on(
   'nostr.approval.respond',
-  ({ payload: { approved, duration } }: { payload: { approved: boolean; duration: string } }) => {
+  ({
+    payload: { approved, duration },
+  }: {
+    payload: BridgeRequest<'nostr.approval.respond'>;
+  }): BridgeResponsePayload<'nostr.approval.respond'> => {
     console.log('[BEX] Received nostr.approval.respond:', approved, duration);
     if (approvalPromise) {
       approvalPromise.resolve({ approved, duration });
@@ -285,18 +304,25 @@ bridge.on(
   },
 );
 
-bridge.on('vault.unlock', async ({ payload: { password } }: { payload: { password: string } }) => {
+bridge.on(
+  'vault.unlock',
+  async ({
+    payload: { password },
+  }: {
+    payload: BridgeRequest<'vault.unlock'>;
+  }): Promise<BridgeResponsePayload<'vault.unlock'>> => {
   const result = await unlockVault(password);
   if (result.success) {
     updateLastActivity();
     startAutoLockTimer();
   }
-  return result;
+  return result as BridgeResponsePayload<'vault.unlock'>;
 });
 
-bridge.on('vault.lock', async () => {
+bridge.on('vault.lock', async (): Promise<BridgeResponsePayload<'vault.lock'>> => {
   await lockVault();
   stopAutoLockTimer();
+  return { success: true };
 });
 
 bridge.on(
@@ -304,27 +330,31 @@ bridge.on(
   async ({
     payload: { password, vaultData },
   }: {
-    payload: { password: string; vaultData: any };
-  }) => {
+    payload: BridgeRequest<'vault.create'>;
+  }): Promise<BridgeResponsePayload<'vault.create'>> => {
     return await createNewVault(password, vaultData);
   },
 );
 
-bridge.on('vault.isUnlocked', () => {
+bridge.on('vault.isUnlocked', (): BridgeResponsePayload<'vault.isUnlocked'> => {
   return isVaultUnlocked();
 });
 
-bridge.on('activity.mark', () => {
+bridge.on('activity.mark', (): BridgeResponsePayload<'activity.mark'> => {
   updateLastActivity();
 });
 
-bridge.on('vault.getData', async () => {
-  return await getVaultData();
+bridge.on('vault.getData', async (): Promise<BridgeResponsePayload<'vault.getData'>> => {
+  return (await getVaultData()) as BridgeResponsePayload<'vault.getData'>;
 });
 
 bridge.on(
   'vault.updateData',
-  async ({ payload: { vaultData } }: { payload: { vaultData: any } }) => {
+  async ({
+    payload: { vaultData },
+  }: {
+    payload: BridgeRequest<'vault.updateData'>;
+  }): Promise<BridgeResponsePayload<'vault.updateData'>> => {
     return await updateVaultData(vaultData);
   },
 );
@@ -353,18 +383,25 @@ async function initialize() {
 
 void initialize();
 
-bridge.on('vault.export', async () => {
+bridge.on('vault.export', async (): Promise<BridgeResponsePayload<'vault.export'>> => {
   return await exportVault();
 });
 
-bridge.on('vault.import', async ({ payload }: { payload: { encryptedData: string } }) => {
-  const { encryptedData } = payload;
-  const result = await importVault(encryptedData);
-  if (result.success) {
-    notifyLockStatusChanged(false);
-  }
-  return result;
-});
+bridge.on(
+  'vault.import',
+  async ({
+    payload,
+  }: {
+    payload: BridgeRequest<'vault.import'>;
+  }): Promise<BridgeResponsePayload<'vault.import'>> => {
+    const encryptedData = (payload as any).encryptedData || payload.payload.encryptedData;
+    const result = await importVault(encryptedData);
+    if (result.success) {
+      notifyLockStatusChanged(false);
+    }
+    return result;
+  },
+);
 
 // Add direct chrome.runtime.onMessage listener as a fallback for the bridge
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -602,7 +639,11 @@ async function requestApproval(origin: string): Promise<boolean> {
 
 bridge.on(
   'nostr.getPublicKey',
-  async ({ payload: { origin } }: { payload: GetPublicKeyRequest }) => {
+  async ({
+    payload: { origin },
+  }: {
+    payload: BridgeRequest<'nostr.getPublicKey'>;
+  }): Promise<BridgeResponsePayload<'nostr.getPublicKey'>> => {
     updateLastActivity();
     console.log('[BEX] Handling nostr.getPublicKey for:', origin);
     const activeStoredKey = await getActiveStoredKey();
@@ -639,7 +680,11 @@ bridge.on(
 
 bridge.on(
   'nostr.signEvent',
-  async ({ payload: { event, origin } }: { payload: SignEventRequest }) => {
+  async ({
+    payload: { event, origin },
+  }: {
+    payload: BridgeRequest<'nostr.signEvent'>;
+  }): Promise<BridgeResponsePayload<'nostr.signEvent'>> => {
     updateLastActivity();
     console.log('[BEX] Handling nostr.signEvent for:', origin, event);
     const activeStoredKey = await getActiveStoredKey();
@@ -688,7 +733,13 @@ bridge.on(
   },
 );
 
-bridge.on('nostr.getRelays', async ({ payload: { origin } }: { payload: { origin: string } }) => {
+bridge.on(
+  'nostr.getRelays',
+  async ({
+    payload: { origin },
+  }: {
+    payload: BridgeRequest<'nostr.getRelays'>;
+  }): Promise<BridgeResponsePayload<'nostr.getRelays'>> => {
   updateLastActivity();
   const activeStoredKey = await getActiveStoredKey();
   void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
@@ -715,8 +766,8 @@ bridge.on(
   async ({
     payload: { pubkey, plaintext, origin },
   }: {
-    payload: { pubkey: string; plaintext: string; origin: string };
-  }) => {
+    payload: BridgeRequest<'nostr.nip04.encrypt'>;
+  }): Promise<BridgeResponsePayload<'nostr.nip04.encrypt'>> => {
     updateLastActivity();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_encrypt', getHostname(origin), activeStoredKey?.alias);
@@ -738,8 +789,8 @@ bridge.on(
   async ({
     payload: { pubkey, ciphertext, origin },
   }: {
-    payload: { pubkey: string; ciphertext: string; origin: string };
-  }) => {
+    payload: BridgeRequest<'nostr.nip04.decrypt'>;
+  }): Promise<BridgeResponsePayload<'nostr.nip04.decrypt'>> => {
     updateLastActivity();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_decrypt', getHostname(origin), activeStoredKey?.alias);
@@ -760,8 +811,8 @@ bridge.on(
   ({
     payload: { base64Data, fileType, blossomServer, uploadId },
   }: {
-    payload: { base64Data: string; fileType: string; blossomServer: string; uploadId?: string };
-  }) => {
+    payload: BridgeRequest<'blossom.upload'>;
+  }): void => {
     updateLastActivity();
     console.log('[BEX] Handling blossom.upload, server:', blossomServer, 'uploadId:', uploadId);
 
@@ -956,6 +1007,6 @@ bridge.on(
       }
     };
 
-    return processUpload();
+    void processUpload();
   },
 );
