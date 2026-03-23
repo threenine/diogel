@@ -5,6 +5,7 @@
  *   Do not remove the import statement below. It is required for the extension to work.
  *   If you don't need createBridge(), leave it as "import '#q-app/bex/content'".
  */
+import type { BridgeAction } from 'src/types/bridge';
 import { createBridge } from '#q-app/bex/content';
 import { MESSAGE_TYPE_PING, MESSAGE_TYPE_REQUEST } from './constants';
 // Note: Bridge types are in src-bex/types, not src/types
