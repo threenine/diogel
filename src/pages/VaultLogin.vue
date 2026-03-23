@@ -75,6 +75,7 @@ import useVaultStore from 'src/stores/vault-store';
 import * as nip06 from 'nostr-tools/nip06';
 import { getPublicKey } from 'nostr-tools';
 import { bytesToHex } from '@noble/hashes/utils';
+import { formatErrorForUser } from 'src/types/error-codes';
 
 const vaultStore = useVaultStore();
 const router = useRouter();
@@ -168,7 +169,10 @@ async function handleCreate() {
     await router.push({ name: 'home' });
   } else {
     console.error('[VaultLogin] Failed to create vault:', result.error);
-    $q.notify({ type: 'negative', message: result.error || 'Failed to create vault' });
+    $q.notify({
+      type: 'negative',
+      message: formatErrorForUser(result.error, result.errorCode),
+    });
   }
 }
 
@@ -189,7 +193,10 @@ async function handleUnlock() {
     }
   } else {
     console.error('[VaultLogin] Failed to unlock vault:', result.error);
-    $q.notify({ type: 'negative', message: result.error || 'Invalid password' });
+    $q.notify({
+      type: 'negative',
+      message: formatErrorForUser(result.error, result.errorCode),
+    });
   }
 }
 </script>
