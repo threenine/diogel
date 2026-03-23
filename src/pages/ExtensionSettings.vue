@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 import { exportVault, importVault } from 'src/services/vault-service';
 import { useQuasar, exportFile } from 'quasar';
 import { useRouter } from 'vue-router';
+import { formatErrorForUser } from 'src/types/error-codes';
 
 const { t } = useI18n();
 const settingsStore = useSettingsStore();
@@ -41,7 +42,7 @@ async function handleExportVault() {
   } else {
     $q.notify({
       type: 'negative',
-      message: result.error || 'Failed to export vault',
+      message: formatErrorForUser(result.error, result.errorCode),
     });
   }
 }
@@ -68,7 +69,11 @@ function handleFileImport(event: Event) {
         const backup = JSON.parse(content);
 
         if (!backup.encryptedData) {
-          throw new Error('Invalid backup file format');
+          $q.notify({
+            type: 'negative',
+            message: 'Invalid backup file format',
+          });
+          return;
         }
 
         importVault(backup.encryptedData)
@@ -82,7 +87,7 @@ function handleFileImport(event: Event) {
             } else {
               $q.notify({
                 type: 'negative',
-                message: result.error || t('settings.importError'),
+                message: formatErrorForUser(result.error, result.errorCode),
               });
             }
           })

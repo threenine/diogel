@@ -62,7 +62,11 @@ const useVaultStore = defineStore('vault', {
         this.lastLockReason = null;
         return { success: true };
       }
-      return { success: false, error: result.error };
+      return {
+        success: false,
+        error: result.error,
+        errorCode: result.errorCode
+      };
     },
 
     async lock(reason: 'manual' | 'inactivity' = 'manual') {
@@ -89,7 +93,11 @@ const useVaultStore = defineStore('vault', {
         this.isUnlocked = true;
         return { success: true };
       }
-      return { success: false, error: result.error };
+      return {
+        success: false,
+        error: result.error,
+        errorCode: result.errorCode
+      };
     },
   },
 });

@@ -1,4 +1,5 @@
 import { db } from './database';
+import { ErrorCode } from 'src/types/error-codes';
 
 /**
  * Robust messaging for BEX environment.
@@ -42,18 +43,25 @@ async function sendBexMessage(type: string, payload?: unknown): Promise<unknown>
   throw new Error('No communication channel available (bridge or chrome.runtime)');
 }
 
-export async function unlockVault(password: string): Promise<{ success: boolean; error?: string }> {
+export async function unlockVault(
+  password: string,
+): Promise<{ success: boolean; error?: string; errorCode?: ErrorCode }> {
   try {
     const data = await sendBexMessage('vault.unlock', { password });
     return (
-      (data as { success: boolean; error?: string }) || {
+      (data as { success: boolean; error?: string; errorCode?: ErrorCode }) || {
         success: false,
         error: 'No response from background',
+        errorCode: ErrorCode.GEN_UNKNOWN,
       }
     );
   } catch (e) {
     console.error('[VaultService] Failed to unlock vault', e);
-    return { success: false, error: (e as Error).message };
+    return {
+      success: false,
+      error: (e as Error).message,
+      errorCode: ErrorCode.GEN_UNKNOWN,
+    };
   }
 }
 
@@ -68,18 +76,33 @@ export async function lockVault() {
 export async function createVault(
   password: string,
   vaultData: unknown,
-): Promise<{ success: boolean; error?: string; encryptedVault?: string }> {
+): Promise<{
+  success: boolean;
+  error?: string;
+  errorCode?: ErrorCode;
+  encryptedVault?: string;
+}> {
   try {
     const data = await sendBexMessage('vault.create', { password, vaultData });
     return (
-      (data as { success: boolean; error?: string; encryptedVault?: string }) || {
+      (data as {
+        success: boolean;
+        error?: string;
+        errorCode?: ErrorCode;
+        encryptedVault?: string;
+      }) || {
         success: false,
         error: 'No response from background',
+        errorCode: ErrorCode.GEN_UNKNOWN,
       }
     );
   } catch (e) {
     console.error('[VaultService] Failed to create vault', e);
-    return { success: false, error: (e as Error).message };
+    return {
+      success: false,
+      error: (e as Error).message,
+      errorCode: ErrorCode.GEN_UNKNOWN,
+    };
   }
 }
 
@@ -97,35 +120,51 @@ export async function getVaultData(): Promise<{
   success: boolean;
   vaultData?: unknown;
   error?: string;
+  errorCode?: ErrorCode;
 }> {
   try {
     const data = await sendBexMessage('vault.getData');
     return (
-      (data as { success: boolean; vaultData?: unknown; error?: string }) || {
+      (data as {
+        success: boolean;
+        vaultData?: unknown;
+        error?: string;
+        errorCode?: ErrorCode;
+      }) || {
         success: false,
         error: 'No response from background',
+        errorCode: ErrorCode.GEN_UNKNOWN,
       }
     );
   } catch (e) {
     console.error('[VaultService] Failed to get vault data', e);
-    return { success: false, error: (e as Error).message };
+    return {
+      success: false,
+      error: (e as Error).message,
+      errorCode: ErrorCode.GEN_UNKNOWN,
+    };
   }
 }
 
 export async function updateVaultData(
   vaultData: unknown,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; errorCode?: ErrorCode }> {
   try {
     const data = await sendBexMessage('vault.updateData', { vaultData });
     return (
-      (data as { success: boolean; error?: string }) || {
+      (data as { success: boolean; error?: string; errorCode?: ErrorCode }) || {
         success: false,
         error: 'No response from background',
+        errorCode: ErrorCode.GEN_UNKNOWN,
       }
     );
   } catch (e) {
     console.error('[VaultService] Failed to update vault data', e);
-    return { success: false, error: (e as Error).message };
+    return {
+      success: false,
+      error: (e as Error).message,
+      errorCode: ErrorCode.GEN_UNKNOWN,
+    };
   }
 }
 
@@ -148,34 +187,50 @@ export async function exportVault(): Promise<{
   success: boolean;
   encryptedData?: string;
   error?: string;
+  errorCode?: ErrorCode;
 }> {
   try {
     const data = await sendBexMessage('vault.export');
     return (
-      (data as { success: boolean; encryptedData?: string; error?: string }) || {
+      (data as {
+        success: boolean;
+        encryptedData?: string;
+        error?: string;
+        errorCode?: ErrorCode;
+      }) || {
         success: false,
         error: 'No response from background',
+        errorCode: ErrorCode.GEN_UNKNOWN,
       }
     );
   } catch (e) {
     console.error('[VaultService] Failed to export vault', e);
-    return { success: false, error: (e as Error).message };
+    return {
+      success: false,
+      error: (e as Error).message,
+      errorCode: ErrorCode.GEN_UNKNOWN,
+    };
   }
 }
 
 export async function importVault(
   encryptedData: string,
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; errorCode?: ErrorCode }> {
   try {
     const data = await sendBexMessage('vault.import', { encryptedData });
     return (
-      (data as { success: boolean; error?: string }) || {
+      (data as { success: boolean; error?: string; errorCode?: ErrorCode }) || {
         success: false,
         error: 'No response from background',
+        errorCode: ErrorCode.GEN_UNKNOWN,
       }
     );
   } catch (e) {
     console.error('[VaultService] Failed to import vault', e);
-    return { success: false, error: (e as Error).message };
+    return {
+      success: false,
+      error: (e as Error).message,
+      errorCode: ErrorCode.GEN_UNKNOWN,
+    };
   }
 }

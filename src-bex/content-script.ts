@@ -105,10 +105,11 @@ window.addEventListener('message', async (event: MessageEvent) => {
   }
 
   try {
+    const methodAction = `nostr.${method}` as BridgeAction;
     const result = await bridge.send({
-      event: `nostr.${method}`,
+      event: methodAction as any,
       to: 'background',
-      payload: { ...payload, origin },
+      payload: { ...payload, origin } as any,
     });
     console.log(`[BEX] Content script received response from background for ID ${id}:`, result);
     window.postMessage(
