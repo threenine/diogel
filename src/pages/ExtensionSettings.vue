@@ -122,8 +122,8 @@ function handleFileImport(event: Event) {
         <q-list dividers>
           <q-item v-ripple tag="label">
             <q-item-section>
-              <q-item-label>Theme</q-item-label>
-              <q-item-label caption lines="2">Use light or dark mode</q-item-label>
+              <q-item-label>{{ t('profile.theme')}}</q-item-label>
+              <q-item-label caption lines="2">{{ t('profile.themeCaption') }}</q-item-label>
             </q-item-section>
             <q-item-section side top>
               <theme-switch size="xl" />
@@ -132,9 +132,9 @@ function handleFileImport(event: Event) {
 
           <q-item>
             <q-item-section>
-              <q-item-label>Vault auto-lock</q-item-label>
+              <q-item-label>{{ t('settings.autoLockVault') }}</q-item-label>
               <q-item-label caption lines="2">
-                Automatically lock the vault after inactivity. Set to 0 to disable.
+               {{ t('settings.autoLockVaultCaption')}}
               </q-item-label>
             </q-item-section>
             <q-item-section side style="min-width: 140px">
@@ -163,7 +163,7 @@ function handleFileImport(event: Event) {
           <q-item>
             <q-item-section>
               <q-item-label>{{ t('profile.blossomServer') }}</q-item-label>
-              <q-item-label caption> URL of the Blossom server for image uploads </q-item-label>
+              <q-item-label caption> {{ t('profile.blossomServerCaption')}}</q-item-label>
               <q-input
                 v-model="settingsStore.blossomServer"
                 class="q-mt-sm"
