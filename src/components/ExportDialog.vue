@@ -38,8 +38,8 @@
       <q-separator />
 
       <q-card-actions align="right">
-        <q-btn color="primary" flat label="Cancel" @click="onCancel" />
-        <q-btn color="primary" flat label="Export" @click="onConfirm" />
+        <q-btn class="diogel-btn-ghost" label="Cancel" @click="onCancel" />
+        <q-btn class="diogel-btn-primary" label="Export" @click="onConfirm" />
       </q-card-actions>
     </q-card>
   </q-dialog>

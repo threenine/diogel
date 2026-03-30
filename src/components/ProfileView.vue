@@ -69,141 +69,142 @@ watch(
 </script>
 
 <template>
-  <div class="">
+  <div class="profile-wrapper">
     <div v-if="loading" class="flex flex-center q-pa-xl">
       <q-spinner color="primary" size="2em" />
     </div>
-    <q-card v-else class="profile-view q-pa-md-md" flat square style="max-height: 500px; margin-top: 2px;padding-top: 5px;">
-      <q-card-section class="q-px-md q-pt-none">
-        <q-card>
-          <q-card-section>
-            <div class="banner-container">
-              <q-img
-                v-if="profile.banner"
-                :src="profile.banner"
-                class="banner-image"
-                fit="contain"
-                ratio="12/7"
-              />
-              <div v-else class="banner-placeholder bg-grey-9" />
-            </div>
-          </q-card-section>
-          <q-card-section
-            class="q-px-md q-pb-md content-section"
-            style="margin-top: -45px; position: relative; z-index: 1"
-          >
-            <!-- Avatar - partially overlapping banner -->
-            <div class="row items-end justify-between">
-              <q-avatar
-                size="50px"
-                style="border: 4px solid var(--q-dark-page); background-color: var(--q-dark-page)"
-              >
-                <q-img v-if="profile.picture" :src="profile.picture" />
-                <q-icon
-                  v-else
-                  class="bg-grey-3 full-width full-height"
-                  color="grey-7"
-                  name="person"
-                />
-              </q-avatar>
 
-              <!-- Edit Profile Button -->
-            </div>
-
-            <div class="profile-info q-mt-sm">
-              <div class="row justify-between items-start">
-                <div>
-                  <div class="text-h6 text-weight-bold">
-                    {{ profile.display_name || profile.name || 'Anonymous' }}
-                  </div>
-                  <div
-                    v-if="profile.name && profile.display_name"
-                    class="text-subtitle2 text-orange-5"
-                  >
-                    @{{ profile.name }}
-                  </div>
-                </div>
-              </div>
-
-              <div v-if="profile.about" class="text-body2 q-mt-sm about-text">
-                {{ profile.about }}
-              </div>
-
-              <div v-if="profile.website" class="q-mt-xs">
-                <a
-                  :href="profile.website"
-                  class="text-orange-5 text-body2 text-decoration-none"
-                  target="_blank"
-                >
-                  {{ profile.website }}
-                </a>
-              </div>
-            </div>
-          </q-card-section>
-          <q-card-actions class="q-px-md q-pt-none q-pb-md justify-end">
-            <q-btn
-              round
-              icon="edit"
-              class="edit-profile-btn text-orange-5"
-              color="grey-9"
-              no-caps
-              @click="openInTab('/profile')"
-              size="sm"
-            >
-              <q-tooltip class="text-capitalize">{{ t('profile.edit') }}</q-tooltip>
-            </q-btn>
-          </q-card-actions>
-        </q-card>
+    <q-card v-else class="profile-card" flat bordered>
+      <!-- Banner Section -->
+      <q-card-section class="q-pa-none">
+        <div class="banner-container">
+          <q-img
+            v-if="profile.banner"
+            :src="profile.banner"
+            class="banner-image"
+            fit="contain"
+            ratio="3"
+            height="120px"
+          />
+          <div v-else class="banner-placeholder" />
+        </div>
       </q-card-section>
+
+      <!-- Avatar & Info Section -->
+      <q-card-section class="content-section">
+        <div class="avatar-wrapper">
+          <q-avatar size="60px" class="profile-avatar">
+            <q-img v-if="profile.picture" :src="profile.picture" />
+            <q-icon v-else name="person" color="grey-7" />
+          </q-avatar>
+        </div>
+
+        <div class="profile-info q-mt-sm">
+          <div class="text-heading text-weight-bold">
+            {{ profile.display_name || profile.name || 'Anonymous' }}
+          </div>
+          <div v-if="profile.name && profile.display_name" class="text-caption text-primary">
+            @{{ profile.name }}
+          </div>
+
+          <div v-if="profile.about" class="text-body q-mt-sm about-text">
+            {{ profile.about }}
+          </div>
+
+          <div v-if="profile.website" class="q-mt-xs">
+            <a :href="profile.website" target="_blank" class="website-link">
+              {{ profile.website }}
+            </a>
+          </div>
+        </div>
+      </q-card-section>
+
+      <!-- Actions -->
+      <q-card-actions align="right">
+        <q-btn
+          round
+          icon="edit"
+          size="sm"
+          class="diogel-btn-ghost"
+          @click="openInTab('/profile')"
+        >
+          <q-tooltip>{{ t('profile.edit') }}</q-tooltip>
+        </q-btn>
+      </q-card-actions>
     </q-card>
-    <div v-if="!loading" class="text-center q-pb-md text-orange-5 text-caption">
+
+    <div v-if="!loading" class="text-center q-pa-md text-caption text-warning">
       {{ $t('warning.exportKeys') }}
     </div>
   </div>
 </template>
 
-<style scoped>
-.profile-view {
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
+<style scoped lang="scss">
+.profile-wrapper {
+  padding: 16px;
 }
 
-.banner-container {
-  position: relative;
-  height: 80px;
-}
+.profile-card {
+  .banner-container {
+    position: relative;
+    height: 120px;
+    overflow: hidden;
+    background: var(--page-bg);
 
-.banner-image {
-  height: 100%;
-  width: 100%;
-  display: block;
-}
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 40px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.3), transparent);
+    }
+  }
 
-.banner-placeholder {
-  height: 100%;
-  width: 100%;
-}
+  .banner-image {
+    width: 100%;
+    height: 100%;
+  }
 
-.edit-profile-btn {
-  border: 1px solid;
-  font-size: 0.8rem;
-}
+  .banner-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, $primary-light, $primary); // Threenine Orange gradient
+    opacity: 0.2;
+  }
 
-.content-section {
-  position: relative;
-}
+  .content-section {
+    position: relative;
+    padding-top: 0;
+  }
 
-.about-text {
-  white-space: pre-wrap;
-  word-break: break-word;
-}
+  .avatar-wrapper {
+    margin-top: -30px;
+    margin-bottom: 8px;
+  }
 
-.text-decoration-none {
-  text-decoration: none;
-}
+  .profile-avatar {
+    border: 4px solid var(--card-bg);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    background: var(--card-bg);
+  }
 
-.text-decoration-none:hover {
-  text-decoration: underline;
+  .about-text {
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: var(--text-muted);
+  }
+
+  .website-link {
+    color: $primary; // Threenine Orange
+    text-decoration: none;
+    font-size: 0.875rem;
+
+    &:hover {
+      text-decoration: underline;
+      color: $primary-light;
+    }
+  }
 }
 </style>

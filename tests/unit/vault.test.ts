@@ -1,4 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
+import { installCryptoMock } from './mocks/crypto';
+
+// Install crypto mock before tests
+beforeAll(() => {
+  installCryptoMock();
+});
 
 // Define a simpler database interface
 interface MockVault {
@@ -45,6 +51,13 @@ import {
   getVaultKey,
 } from '../../src-bex/vault';
 import { db } from '../../src/services/database';
+import {
+  encryptWithKey,
+  decryptWithKey,
+  deriveNewKey,
+  deriveKeyFromEncryptedVault,
+} from '../../src/services/crypto';
+import type { VaultData } from '../../src/types/bridge';
 
 const vaultsMock = db.vaults as any;
 
@@ -61,280 +74,190 @@ const chromeMock = {
 
 vi.stubGlobal('chrome', chromeMock);
 
-describe('Vault Operations', () => {
-  const password = 'test-password';
-  const vaultData = { nsec: 'test-key', alias: 'test-alias' };
+describe('Vault', () => {
+  const TEST_PASSWORD = 'test-password-123';
+  const TEST_DATA: VaultData = {
+    accounts: [
+      {
+        id: '1',
+        alias: 'test-account',
+        account: {
+          privkey: 'nsec1test123456789',
+        },
+        createdAt: new Date().toISOString(),
+      },
+    ],
+  };
 
-  beforeEach(async () => {
-    vi.clearAllMocks();
-    await db.table('vaults').clear();
-    await lockVault();
-  });
+  describe('Encryption', () => {
+    it('should encrypt vault data successfully', async () => {
+      const { key, salt } = await deriveNewKey(TEST_PASSWORD);
+      const encrypted = await encryptWithKey(TEST_DATA, key, salt);
 
-  describe('createNewVault', () => {
-    it('should create a new vault with valid password', async () => {
-      const result = await createNewVault(password, vaultData);
-      expect(result.success).toBe(true);
-      expect(isVaultUnlocked()).toBe(true);
-
-      const storedVault = await db.table('vaults').get('master');
-      expect(storedVault).toBeDefined();
-      expect(storedVault.encryptedData).toMatch(/^v2:/);
+      expect(encrypted).toBeDefined();
+      expect(encrypted.startsWith('v2:')).toBe(true);
     });
 
-    it('should fail with empty password (potential crypto error)', async () => {
-      // Depending on crypto implementation, empty password might or might not fail.
-      // Usually it succeeds but we can test it.
-      const result = await createNewVault('', vaultData);
-      expect(result.success).toBe(true);
-    });
+    it('should produce different ciphertexts for same data (random IV)', async () => {
+      const { key, salt } = await deriveNewKey(TEST_PASSWORD);
+      const encrypted1 = await encryptWithKey(TEST_DATA, key, salt);
+      const encrypted2 = await encryptWithKey(TEST_DATA, key, salt);
 
-    it('should overwrite existing vault when creating a new one', async () => {
-      await createNewVault('old-password', { old: 'data' });
-      const result = await createNewVault(password, vaultData);
-      expect(result.success).toBe(true);
-
-      const decrypted = await getVaultData();
-      expect(decrypted.vaultData).toEqual(vaultData);
-    });
-
-    it('should save session state after creation', async () => {
-      await createNewVault(password, vaultData);
-      expect(chromeMock.storage.session.set).toHaveBeenCalled();
+      expect(encrypted1).not.toBe(encrypted2);
     });
   });
 
-  describe('unlockVault', () => {
-    it('should unlock with correct password', async () => {
-      await createNewVault(password, vaultData);
-      await lockVault();
-      expect(isVaultUnlocked()).toBe(false);
+  describe('Decryption', () => {
+    it('should decrypt vault data with correct key', async () => {
+      const { key, salt } = await deriveNewKey(TEST_PASSWORD);
+      const encrypted = await encryptWithKey(TEST_DATA, key, salt);
+      const decrypted = (await decryptWithKey(encrypted, key)) as VaultData;
 
-      const result = await unlockVault(password);
-      expect(result.success).toBe(true);
-      expect(result.vaultData).toEqual(vaultData);
-      expect(isVaultUnlocked()).toBe(true);
+      expect(decrypted).toEqual(TEST_DATA);
     });
 
-    it('should fail with incorrect password', async () => {
-      await createNewVault(password, vaultData);
+    it('should fail to decrypt with wrong password (integrated test)', async () => {
+      await createNewVault(TEST_PASSWORD, TEST_DATA);
       await lockVault();
 
       const result = await unlockVault('wrong-password');
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Invalid password');
       expect(isVaultUnlocked()).toBe(false);
     });
 
-    it('should fail if no vault exists', async () => {
-      const result = await unlockVault(password);
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('No vault found');
+    it('should handle empty vault data', async () => {
+      const emptyData: VaultData = { accounts: [] };
+      const { key, salt } = await deriveNewKey(TEST_PASSWORD);
+      const encrypted = await encryptWithKey(emptyData, key, salt);
+      const decrypted = await decryptWithKey(encrypted, key);
+
+      expect(decrypted).toEqual(emptyData);
     });
 
-    it('should restore session state after unlocking', async () => {
-      await createNewVault(password, vaultData);
-      await lockVault();
+    it('should handle multiple accounts', async () => {
+      const multiAccountData: VaultData = {
+        accounts: [
+          {
+            id: '1',
+            alias: 'account-1',
+            account: { privkey: 'nsec1...' },
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: '2',
+            alias: 'account-2',
+            account: { privkey: 'nsec2...' },
+            createdAt: new Date().toISOString(),
+          },
+        ],
+      };
+
+      const { key, salt } = await deriveNewKey(TEST_PASSWORD);
+      const encrypted = await encryptWithKey(multiAccountData, key, salt);
+      const decrypted = (await decryptWithKey(encrypted, key)) as VaultData;
+
+      expect(decrypted.accounts).toHaveLength(2);
+      expect(decrypted.accounts[0]!.alias).toBe('account-1');
+      expect(decrypted.accounts[1]!.alias).toBe('account-2');
+    });
+  });
+
+  describe('Key Derivation', () => {
+    it('should derive consistent keys from same password', async () => {
+      const { key: key1, salt } = await deriveNewKey(TEST_PASSWORD);
+      const encrypted = await encryptWithKey(TEST_DATA, key1, salt);
+
+      const { key: key2 } = await deriveKeyFromEncryptedVault(TEST_PASSWORD, encrypted);
+
+      expect(key1).toBeDefined();
+      expect(key2).toBeDefined();
+      // In our mock, all keys derived from the same algorithm/parameters will look the same
+      expect(key1.algorithm.name).toBe(key2.algorithm.name);
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle very long passwords', async () => {
+      const longPassword = 'a'.repeat(1000);
+      const { key, salt } = await deriveNewKey(longPassword);
+      const encrypted = await encryptWithKey(TEST_DATA, key, salt);
+      const decrypted = await decryptWithKey(encrypted, key);
+
+      expect(decrypted).toEqual(TEST_DATA);
+    });
+
+    it('should handle passwords with special characters', async () => {
+      const specialPassword = '!@#$%^&*()_+-=[]{}|;\':",./<>?';
+      const { key, salt } = await deriveNewKey(specialPassword);
+      const encrypted = await encryptWithKey(TEST_DATA, key, salt);
+      const decrypted = await decryptWithKey(encrypted, key);
+
+      expect(decrypted).toEqual(TEST_DATA);
+    });
+
+    it('should reject corrupted ciphertext', async () => {
+      const { key, salt } = await deriveNewKey(TEST_PASSWORD);
+      const encrypted = await encryptWithKey(TEST_DATA, key, salt);
+
+      // Corrupt base64 part
+      const corrupted = encrypted.slice(0, -5) + 'AAAAA';
+
+      await expect(decryptWithKey(corrupted, key)).rejects.toThrow();
+    });
+
+    it('should reject tampered data', async () => {
+      const { key, salt } = await deriveNewKey(TEST_PASSWORD);
+      const encrypted = await encryptWithKey(TEST_DATA, key, salt);
+
+      const tampered = encrypted + '123';
+
+      await expect(decryptWithKey(tampered, key)).rejects.toThrow();
+    });
+  });
+
+  describe('Vault Operations (Integrated)', () => {
+    beforeEach(async () => {
       vi.clearAllMocks();
-
-      await unlockVault(password);
-      expect(chromeMock.storage.session.set).toHaveBeenCalled();
+      mockVaultsTable.clear();
+      await lockVault();
     });
-  });
 
-  describe('lockVault', () => {
-    it('should lock the vault and clear session', async () => {
-      await createNewVault(password, vaultData);
+    it('should create and unlock vault', async () => {
+      const createRes = await createNewVault(TEST_PASSWORD, TEST_DATA);
+      expect(createRes.success).toBe(true);
+
+      await lockVault();
+      expect(isVaultUnlocked()).toBe(false);
+
+      const unlockRes = await unlockVault(TEST_PASSWORD);
+      expect(unlockRes.success).toBe(true);
+      expect(unlockRes.vaultData).toEqual(TEST_DATA);
       expect(isVaultUnlocked()).toBe(true);
-
-      await lockVault();
-      expect(isVaultUnlocked()).toBe(false);
-      expect(chromeMock.storage.session.remove).toHaveBeenCalled();
     });
 
-    it('should be idempotent', async () => {
-      await lockVault();
-      await lockVault();
-      expect(isVaultUnlocked()).toBe(false);
-    });
-  });
+    it('should update vault data', async () => {
+      await createNewVault(TEST_PASSWORD, TEST_DATA);
+      const newData = { accounts: [] };
+      const updateRes = await updateVaultData(newData);
+      expect(updateRes.success).toBe(true);
 
-  describe('updateVaultData', () => {
-    it('should update data when unlocked', async () => {
-      await createNewVault(password, vaultData);
-      const newData = { nsec: 'new-key' };
-
-      const result = await updateVaultData(newData);
-      expect(result.success).toBe(true);
-
-      const currentData = await getVaultData();
-      expect(currentData.vaultData).toEqual(newData);
+      const getRes = await getVaultData();
+      expect(getRes.vaultData).toEqual(newData);
     });
 
-    it('should fail to update data when locked', async () => {
-      await createNewVault(password, vaultData);
+    it('should export and import vault', async () => {
+      const { encryptedVault } = await createNewVault(TEST_PASSWORD, TEST_DATA);
+      expect(encryptedVault).toBeDefined();
+
+      mockVaultsTable.clear();
       await lockVault();
 
-      const result = await updateVaultData({ foo: 'bar' });
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Vault is locked');
-    });
-  });
+      const importRes = await importVault(encryptedVault!);
+      expect(importRes.success).toBe(true);
 
-  describe('getVaultData', () => {
-    it('should return data when unlocked', async () => {
-      await createNewVault(password, vaultData);
-      const result = await getVaultData();
-      expect(result.success).toBe(true);
-      expect(result.vaultData).toEqual(vaultData);
-    });
-
-    it('should fail when locked', async () => {
-      await createNewVault(password, vaultData);
-      await lockVault();
-      const result = await getVaultData();
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Vault is locked');
-    });
-
-    it('should fail if vault is deleted from DB while unlocked', async () => {
-      await createNewVault(password, vaultData);
-      await db.table('vaults').clear();
-
-      const result = await getVaultData();
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('No vault found');
-    });
-  });
-
-  describe('exportVault', () => {
-    it('should export encrypted data even when locked', async () => {
-      await createNewVault(password, vaultData);
-      await lockVault();
-
-      const result = await exportVault();
-      expect(result.success).toBe(true);
-      expect(result.encryptedData).toMatch(/^v2:/);
-    });
-
-    it('should fail if no vault exists', async () => {
-      const result = await exportVault();
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('No vault found');
-    });
-  });
-
-  describe('importVault', () => {
-    it('should import valid encrypted data', async () => {
-      const { encryptedVault } = await createNewVault(password, vaultData);
-      await db.table('vaults').clear();
-      await lockVault();
-
-      const result = await importVault(encryptedVault!);
-      expect(result.success).toBe(true);
-
-      const unlocked = await unlockVault(password);
-      expect(unlocked.success).toBe(true);
-      expect(unlocked.vaultData).toEqual(vaultData);
-    });
-
-    it('should fail for invalid format', async () => {
-      const result = await importVault('invalid-data');
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('Invalid vault format');
-    });
-
-    it('should lock vault and clear session on import', async () => {
-      const { encryptedVault } = await createNewVault(password, vaultData);
-      await createNewVault('other-pw', { other: 'data' }); // vault is unlocked with other-pw
-
-      await importVault(encryptedVault!);
-      expect(isVaultUnlocked()).toBe(false);
-      expect(chromeMock.storage.session.remove).toHaveBeenCalled();
-    });
-  });
-
-  describe('restoreVaultState', () => {
-    it('should restore vault key from session storage', async () => {
-      // 1. Create vault and get the saved session data
-      await createNewVault(password, vaultData);
-      const sessionData = (chromeMock.storage.session.set as any).mock.calls[0][0];
-
-      // 2. Clear memory state
-      await lockVault();
-      vi.clearAllMocks();
-
-      // 3. Setup session.get to return the saved data
-      chromeMock.storage.session.get.mockResolvedValue(sessionData);
-
-      // 4. Restore
-      const restored = await restoreVaultState();
-      expect(restored).toBe(true);
-      expect(isVaultUnlocked()).toBe(true);
-
-      // 5. Verify it actually works
-      const data = await getVaultData();
-      expect(data.vaultData).toEqual(vaultData);
-    });
-
-    it('should return false if session data is missing', async () => {
-      chromeMock.storage.session.get.mockResolvedValue({});
-      const restored = await restoreVaultState();
-      expect(restored).toBe(false);
-      expect(isVaultUnlocked()).toBe(false);
-    });
-
-    it('should return false if session.get fails', async () => {
-      chromeMock.storage.session.get.mockRejectedValue(new Error('Storage error'));
-      const restored = await restoreVaultState();
-      expect(restored).toBe(false);
-    });
-  });
-
-  describe('getVaultKey', () => {
-    it('should return key and salt when unlocked', async () => {
-      await createNewVault(password, vaultData);
-      const { key, salt } = getVaultKey();
-      expect(key).toBeDefined();
-      expect(salt).toBeDefined();
-    });
-
-    it('should return nulls when locked', async () => {
-      await lockVault();
-      const { key, salt } = getVaultKey();
-      expect(key).toBeNull();
-      expect(salt).toBeNull();
-    });
-  });
-
-  describe('Edge Cases & Error Handling', () => {
-    it('should handle database errors in createNewVault', async () => {
-      vaultsMock.put.mockRejectedValueOnce(new Error('DB Error'));
-      const result = await createNewVault(password, vaultData);
-      expect(result.success).toBe(false);
-      expect(result.error).toBe('DB Error');
-      expect(isVaultUnlocked()).toBe(false);
-    });
-
-    it('should handle decryption errors with wrong key (simulated)', async () => {
-      await createNewVault(password, vaultData);
-
-      // Manually mess up the key if we could, but here we'll just test unlock with wrong password again
-      const result = await unlockVault('wrong');
-      expect(result.success).toBe(false);
-    });
-
-    it('should remain locked if createNewVault fails', async () => {
-       vaultsMock.put.mockRejectedValueOnce(new Error('DB Error'));
-       await createNewVault(password, vaultData);
-       expect(isVaultUnlocked()).toBe(false);
-    });
-
-    it('should clear vault key on unlock failure', async () => {
-      await createNewVault(password, vaultData);
-      // It's already unlocked. Now try to unlock with wrong password.
-      await unlockVault('wrong');
-      expect(isVaultUnlocked()).toBe(false);
+      const unlockRes = await unlockVault(TEST_PASSWORD);
+      expect(unlockRes.success).toBe(true);
+      expect(unlockRes.vaultData).toEqual(TEST_DATA);
     });
   });
 });

@@ -30,9 +30,7 @@ watch(model, async (newValue) => {
 
 <template>
   <div class="q-mr-sm q-pa-sm">
-    <q-select v-model="model"
-              :options="items" behavior="menu"
-              filled style="width: 200px">
+    <q-select v-model="model" :options="items" behavior="menu" filled style="width: 200px">
     </q-select>
   </div>
 </template>

@@ -17,7 +17,7 @@ async function handleLogout() {
 </script>
 
 <template>
-  <q-btn dense flat icon="menu" round>
+  <q-btn class="diogel-btn-ghost" dense icon="menu" round>
     <q-menu anchor="bottom left" self="top left">
       <q-list style="max-width: 300px">
         <q-item v-ripple clickable @click="openInTab('profile')">

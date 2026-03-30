@@ -17,24 +17,21 @@ const useSettingsStore = defineStore('settings', {
   actions: {
     async getSettings(): Promise<void> {
       return new Promise((resolve) => {
-        chrome.storage.local.get(
-          [BLOSSOM_SERVER, DARK_MODE, VAULT_AUTO_LOCK_MINUTES],
-          (result) => {
-            if (result[BLOSSOM_SERVER]) {
-              this.blossomServer = result[BLOSSOM_SERVER];
-            }
-            if (Object.prototype.hasOwnProperty.call(result, DARK_MODE)) {
-              this.darkMode = result[DARK_MODE];
-            }
-            if (Object.prototype.hasOwnProperty.call(result, VAULT_AUTO_LOCK_MINUTES)) {
-              const value = Number(result[VAULT_AUTO_LOCK_MINUTES]);
-              this.vaultAutoLockMinutes = Number.isFinite(value)
-                ? Math.max(0, Math.floor(value))
-                : DEFAULT_VAULT_AUTO_LOCK_MINUTES;
-            }
-            resolve();
-          },
-        );
+        chrome.storage.local.get([BLOSSOM_SERVER, DARK_MODE, VAULT_AUTO_LOCK_MINUTES], (result) => {
+          if (result[BLOSSOM_SERVER]) {
+            this.blossomServer = result[BLOSSOM_SERVER];
+          }
+          if (Object.prototype.hasOwnProperty.call(result, DARK_MODE)) {
+            this.darkMode = result[DARK_MODE];
+          }
+          if (Object.prototype.hasOwnProperty.call(result, VAULT_AUTO_LOCK_MINUTES)) {
+            const value = Number(result[VAULT_AUTO_LOCK_MINUTES]);
+            this.vaultAutoLockMinutes = Number.isFinite(value)
+              ? Math.max(0, Math.floor(value))
+              : DEFAULT_VAULT_AUTO_LOCK_MINUTES;
+          }
+          resolve();
+        });
       });
     },
 

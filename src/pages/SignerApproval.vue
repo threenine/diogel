@@ -84,13 +84,13 @@ async function reject() {
 </script>
 
 <template>
-  <q-page v-if="origin" class="flex justify-center q-pa-md">
+  <q-page v-if="origin" class="flex flex-center q-pa-md" style="min-height: auto;">
     <q-card bordered class="approval-card" flat>
       <q-card-section>
         <div class="text-h6">{{ t('approval.title') }}</div>
       </q-card-section>
 
-      <q-card-section class="q-pt-none overflow-auto" style="max-height: 200px">
+      <q-card-section class="q-pt-none">
         <div class="row items-center q-mb-md">
           <q-avatar size="48px" class="q-mr-md" bordered>
             <q-img v-if="faviconUrl" :src="faviconUrl">
@@ -126,8 +126,8 @@ async function reject() {
       </q-card-section>
 
       <q-card-actions align="right" class="q-pb-md q-pr-md">
-        <q-btn :label="t('approval.reject')" color="negative" flat @click="reject" />
-        <q-btn :label="t('approval.approve')" color="primary" unelevated @click="approve" />
+        <q-btn :label="t('approval.reject')" class="diogel-btn-danger" @click="reject" />
+        <q-btn :label="t('approval.approve')" class="diogel-btn-primary" @click="approve" />
       </q-card-actions>
     </q-card>
   </q-page>
@@ -135,15 +135,23 @@ async function reject() {
 
 <style scoped>
 .approval-card {
-  width: 90%;
-  max-width: 400px;
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.approval-card :deep(.q-card__section) {
+  flex: 1;
+}
+
+.approval-card :deep(.q-card__actions) {
+  flex-shrink: 0;
+  padding: 16px;
 }
 
 .break-word {
   word-break: break-all;
-}
-
-.overflow-auto {
-  overflow: auto;
 }
 </style>

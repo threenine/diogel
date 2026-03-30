@@ -4,10 +4,18 @@ import PopupHeader from 'components/PopupHeader.vue';
 
 <template>
   <q-layout class="popup-root" view="hHh Lpr lFf">
-    <div class="popup-header-slot">
-      <PopupHeader />
+    <!-- Header -->
+    <div class="popup-header">
+      <div class="app-brand">
+        <img src="/images/diogel.svg" alt="Diogel" class="app-logo" />
+        <span class="app-name">Diogel</span>
+      </div>
+      <div class="header-actions">
+        <PopupHeader />
+      </div>
     </div>
 
+    <!-- Content -->
     <q-page-container class="popup-container">
       <router-view />
     </q-page-container>
@@ -15,10 +23,9 @@ import PopupHeader from 'components/PopupHeader.vue';
 </template>
 
 <style>
-/* Using global style to affect html/body when this layout is used */
 html.extension-popup,
 html.extension-popup body {
-  width: 500px;
+  width: 400px;
   height: 600px;
   overflow: hidden;
 }
@@ -26,36 +33,64 @@ html.extension-popup body {
 
 <style scoped>
 .popup-root {
-  position: relative;
-  width: 500px;
-  height: 600px;
-  max-width: 100vw;
-  max-height: 100vh;
-  overflow: hidden !important; /* hide outer scrollbars */
   display: flex;
   flex-direction: column;
+  width: 400px;
+  height: 600px;
+  background: var(--page-bg);
 }
 
-.popup-header-slot {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  z-index: 10;
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--header-bg);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-logo {
+  width: 28px;
+  height: 28px;
+}
+
+.app-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text-color);
+  letter-spacing: -0.0125em;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
 }
 
 .popup-container {
-  overflow: hidden;
-  height: 100%;
-  max-height: 100%;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-color) transparent;
 }
 
-.popup-container :deep(.q-page) {
-  min-height: 100% !important;
-  max-height: 100% !important;
-  width: 100%;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
+.popup-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.popup-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.popup-container::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
 }
 </style>

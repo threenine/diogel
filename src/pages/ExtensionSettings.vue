@@ -6,6 +6,7 @@ import { useI18n } from 'vue-i18n';
 import { exportVault, importVault } from 'src/services/vault-service';
 import { useQuasar, exportFile } from 'quasar';
 import { useRouter } from 'vue-router';
+import { formatErrorForUser } from 'src/types/error-codes';
 
 const { t } = useI18n();
 const settingsStore = useSettingsStore();
@@ -41,7 +42,7 @@ async function handleExportVault() {
   } else {
     $q.notify({
       type: 'negative',
-      message: result.error || 'Failed to export vault',
+      message: formatErrorForUser(result.error, result.errorCode),
     });
   }
 }
@@ -68,7 +69,11 @@ function handleFileImport(event: Event) {
         const backup = JSON.parse(content);
 
         if (!backup.encryptedData) {
-          throw new Error('Invalid backup file format');
+          $q.notify({
+            type: 'negative',
+            message: 'Invalid backup file format',
+          });
+          return;
         }
 
         importVault(backup.encryptedData)
@@ -82,7 +87,7 @@ function handleFileImport(event: Event) {
             } else {
               $q.notify({
                 type: 'negative',
-                message: result.error || t('settings.importError'),
+                message: formatErrorForUser(result.error, result.errorCode),
               });
             }
           })
@@ -117,8 +122,8 @@ function handleFileImport(event: Event) {
         <q-list dividers>
           <q-item v-ripple tag="label">
             <q-item-section>
-              <q-item-label>Theme</q-item-label>
-              <q-item-label caption lines="2">Use light or dark mode</q-item-label>
+              <q-item-label>{{ t('profile.theme')}}</q-item-label>
+              <q-item-label caption lines="2">{{ t('profile.themeCaption') }}</q-item-label>
             </q-item-section>
             <q-item-section side top>
               <theme-switch size="xl" />
@@ -127,9 +132,9 @@ function handleFileImport(event: Event) {
 
           <q-item>
             <q-item-section>
-              <q-item-label>Vault auto-lock</q-item-label>
+              <q-item-label>{{ t('settings.autoLockVault') }}</q-item-label>
               <q-item-label caption lines="2">
-                Automatically lock the vault after inactivity. Set to 0 to disable.
+               {{ t('settings.autoLockVaultCaption')}}
               </q-item-label>
             </q-item-section>
             <q-item-section side style="min-width: 140px">
@@ -147,9 +152,7 @@ function handleFileImport(event: Event) {
                 map-options
                 dense
                 outlined
-                @update:model-value="
-                  (val) => settingsStore.setVaultAutoLockMinutes(Number(val))
-                "
+                @update:model-value="(val) => settingsStore.setVaultAutoLockMinutes(Number(val))"
               />
             </q-item-section>
           </q-item>
@@ -160,7 +163,7 @@ function handleFileImport(event: Event) {
           <q-item>
             <q-item-section>
               <q-item-label>{{ t('profile.blossomServer') }}</q-item-label>
-              <q-item-label caption> URL of the Blossom server for image uploads </q-item-label>
+              <q-item-label caption> {{ t('profile.blossomServerCaption')}}</q-item-label>
               <q-input
                 v-model="settingsStore.blossomServer"
                 class="q-mt-sm"
@@ -185,8 +188,7 @@ function handleFileImport(event: Event) {
             </q-item-section>
             <q-item-section side>
               <q-btn
-                color="primary"
-                flat
+                class="diogel-btn-ghost"
                 icon="download"
                 label="Export"
                 @click="handleExportVault"
@@ -200,7 +202,7 @@ function handleFileImport(event: Event) {
               <q-item-label caption>{{ t('settings.importVaultCaption') }}</q-item-label>
             </q-item-section>
             <q-item-section side>
-              <q-btn color="primary" flat icon="upload" label="Import" @click="triggerImport" />
+              <q-btn class="diogel-btn-ghost" icon="upload" label="Import" @click="triggerImport" />
               <input
                 ref="fileInput"
                 accept=".json"

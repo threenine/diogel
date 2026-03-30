@@ -5,6 +5,7 @@ import {
   encryptWithKey,
 } from 'src/services/crypto';
 import { db } from 'src/services/database';
+import { ErrorCode } from 'src/types/error-codes';
 
 let vaultKey: CryptoKey | null = null;
 let vaultSalt: Uint8Array | null = null;
@@ -45,13 +46,10 @@ export async function restoreVaultState() {
         const keyData = Uint8Array.from(atob(items[SESSION_KEY]), (c) => c.charCodeAt(0));
         const saltData = Uint8Array.from(atob(items[SESSION_SALT]), (c) => c.charCodeAt(0));
 
-        vaultKey = await crypto.subtle.importKey(
-          'raw',
-          keyData.buffer,
-          'AES-GCM',
-          true,
-          ['encrypt', 'decrypt'],
-        );
+        vaultKey = await crypto.subtle.importKey('raw', keyData.buffer, 'AES-GCM', true, [
+          'encrypt',
+          'decrypt',
+        ]);
         vaultSalt = saltData;
         console.log('[Vault] Session state restored');
         return true;
@@ -77,7 +75,11 @@ export async function unlockVault(password: string) {
     const vault = await db.vaults.get('master');
 
     if (!vault) {
-      return { success: false, error: 'No vault found' };
+      return {
+        success: false,
+        error: 'No vault found',
+        errorCode: ErrorCode.VLT_NOT_CREATED
+      };
     }
 
     const { key, salt } = await deriveKeyFromEncryptedVault(password, vault.encryptedData);
@@ -92,7 +94,11 @@ export async function unlockVault(password: string) {
   } catch (err) {
     clearVaultKey();
     console.error('Unlock vault error:', err);
-    return { success: false, error: 'Invalid password' };
+    return {
+      success: false,
+      error: 'Invalid password',
+      errorCode: ErrorCode.VLT_INVALID_PASSWORD
+    };
   }
 }
 
@@ -121,13 +127,21 @@ export async function createNewVault(password: string, vaultData: unknown) {
   } catch (err) {
     clearVaultKey();
     console.error('Create vault error:', err);
-    return { success: false, error: (err as Error).message };
+    return {
+      success: false,
+      error: (err as Error).message,
+      errorCode: ErrorCode.GEN_UNKNOWN
+    };
   }
 }
 
 export async function updateVaultData(vaultData: unknown) {
   if (!isVaultUnlocked() || !vaultKey || !vaultSalt) {
-    return { success: false, error: 'Vault is locked' };
+    return {
+      success: false,
+      error: 'Vault is locked',
+      errorCode: ErrorCode.VLT_LOCKED
+    };
   }
 
   try {
@@ -142,26 +156,42 @@ export async function updateVaultData(vaultData: unknown) {
     return { success: true };
   } catch (err) {
     console.error('Update vault data error:', err);
-    return { success: false, error: (err as Error).message };
+    return {
+      success: false,
+      error: (err as Error).message,
+      errorCode: ErrorCode.GEN_UNKNOWN
+    };
   }
 }
 
 export async function getVaultData() {
   if (!isVaultUnlocked() || !vaultKey) {
-    return { success: false, error: 'Vault is locked' };
+    return {
+      success: false,
+      error: 'Vault is locked',
+      errorCode: ErrorCode.VLT_LOCKED
+    };
   }
 
   try {
     const vault = await db.vaults.get('master');
     if (!vault) {
-      return { success: false, error: 'No vault found' };
+      return {
+        success: false,
+        error: 'No vault found',
+        errorCode: ErrorCode.VLT_NOT_CREATED
+      };
     }
 
     const vaultData = await decryptWithKey(vault.encryptedData, vaultKey);
     return { success: true, vaultData };
   } catch (err) {
     console.error('Get vault data error:', err);
-    return { success: false, error: (err as Error).message };
+    return {
+      success: false,
+      error: (err as Error).message,
+      errorCode: ErrorCode.GEN_UNKNOWN
+    };
   }
 }
 
@@ -169,12 +199,20 @@ export async function exportVault() {
   try {
     const vault = await db.vaults.get('master');
     if (!vault) {
-      return { success: false, error: 'No vault found' };
+      return {
+        success: false,
+        error: 'No vault found',
+        errorCode: ErrorCode.VLT_NOT_CREATED
+      };
     }
     return { success: true, encryptedData: vault.encryptedData };
   } catch (err) {
     console.error('Export vault error:', err);
-    return { success: false, error: (err as Error).message };
+    return {
+      success: false,
+      error: (err as Error).message,
+      errorCode: ErrorCode.GEN_UNKNOWN
+    };
   }
 }
 
@@ -182,7 +220,11 @@ export async function importVault(encryptedData: string) {
   try {
     // Basic validation
     if (!encryptedData || !encryptedData.startsWith('v2:')) {
-      return { success: false, error: 'Invalid vault format' };
+      return {
+        success: false,
+        error: 'Invalid vault format',
+        errorCode: ErrorCode.GEN_INVALID_INPUT
+      };
     }
 
     await db.vaults.put({
@@ -198,7 +240,11 @@ export async function importVault(encryptedData: string) {
     return { success: true };
   } catch (err) {
     console.error('Import vault error:', err);
-    return { success: false, error: (err as Error).message };
+    return {
+      success: false,
+      error: (err as Error).message,
+      errorCode: ErrorCode.GEN_UNKNOWN
+    };
   }
 }
 

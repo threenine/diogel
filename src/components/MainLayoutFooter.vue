@@ -1,8 +1,6 @@
 <template>
   <q-footer class="bg-transparent text-orange-7 q-pa-sm">
-    <div class="text-center text-caption">
-      {{ $t('footer.version') }}: {{ version }}
-    </div>
+    <div class="text-center text-caption">{{ $t('footer.version') }}: {{ version }}</div>
   </q-footer>
 </template>
 

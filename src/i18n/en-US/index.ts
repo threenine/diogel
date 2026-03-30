@@ -22,7 +22,8 @@ export default {
   },
   account: {
     noAccounts: 'No active account found or selected',
-    noAccountDesc: "Select an account in the Account dropdown or to create a new account, click the 'Create Account'.",
+    noAccountDesc:
+      "Select an account in the Account dropdown or to create a new account, click the 'Create Account'.",
     profileName: 'Profile Name',
     aliasToolTip: "Enter a short name you'll use to identify these keys.",
     publicKey: 'Public Key',
@@ -52,6 +53,9 @@ export default {
     uploadSuccess: 'Image uploaded successfully',
     uploadError: 'Failed to upload image',
     blossomServer: 'Blossom Server URL',
+    blossomServerCaption: 'URL of the Blossom server for image uploads',
+    theme: 'Theme',
+    themeCaption: 'Use light or dark mode',
     edit: 'edit',
   },
   settings: {
@@ -59,6 +63,8 @@ export default {
     exportVault: 'Export Vault',
     exportVaultCaption: 'Download an encrypted backup of your entire vault.',
     importVault: 'Import Vault',
+    autoLockVault: 'Auto-lock Vault',
+    autoLockVaultCaption: ' Automatically lock the vault after inactivity. Set to Off to disable.',
     importVaultCaption: 'Restore your vault from a previously exported backup file.',
     importConfirm: 'This will overwrite your current vault. Are you sure?',
     importSuccess: 'Vault imported successfully. Please log in again.',

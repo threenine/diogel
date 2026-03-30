@@ -4,7 +4,7 @@ import MainNavigation from 'components/MainNavigation.vue';
 </script>
 
 <template>
-  <q-header style="background-color: var(--q-dark-page)">
+  <q-header >
     <q-toolbar>
       <div class="q-pa-lg-lg">
         <main-navigation />
