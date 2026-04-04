@@ -1,8 +1,9 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
+import type { StoredKey, VaultData } from 'src/types/bridge';
+import { storageService, VAULT_UNLOCKED } from 'src/services/storage-service';
 import {
   createVault as createVaultBex,
   hasVault as hasVaultBex,
-  isVaultUnlocked as isVaultUnlockedBex,
   lockVault as lockVaultBex,
   unlockVault as unlockVaultBex,
 } from 'src/services/vault-service';
@@ -17,37 +18,30 @@ const useVaultStore = defineStore('vault', {
 
   actions: {
     listenToLockChanges() {
-      // @ts-expect-error bex is not typed on window
-      const bridge = window.bridge || window.$q?.bex;
-      if (bridge) {
-        bridge.on(
-          'vault.lock-status-changed',
-          ({ payload }: { payload: { unlocked: boolean } }) => {
-            console.log('[VaultStore] Lock status changed from background:', payload.unlocked);
-            this.isUnlocked = payload.unlocked;
-            if (!payload.unlocked) {
-              this.lastLockReason = 'background';
-            }
-          },
-        );
-      }
+      storageService.onChanged((changes, areaName) => {
+        if (areaName === 'session' && VAULT_UNLOCKED in changes) {
+          const unlocked = !!changes[VAULT_UNLOCKED]?.newValue;
+          console.log('[VaultStore] Lock status changed from storage:', unlocked);
+          this.isUnlocked = unlocked;
+          if (!unlocked) {
+            this.lastLockReason = 'background';
+          }
+        }
+      });
     },
 
     async checkVaultStatus() {
       console.log('[VaultStore] checkVaultStatus starting...');
-      // Note: we don't set this.isLoading = true here anymore because App.vue handles the initial loading state
-      // to avoid race conditions.
       try {
-        console.log('[VaultStore] checkVaultStatus calling hasVaultBex...');
-        this.vaultExists = await hasVaultBex();
-        console.log('[VaultStore] checkVaultStatus vaultExists:', this.vaultExists);
-        if (this.vaultExists) {
-          console.log('[VaultStore] checkVaultStatus calling isVaultUnlockedBex...');
-          this.isUnlocked = await isVaultUnlockedBex();
-          console.log('[VaultStore] checkVaultStatus isUnlocked:', this.isUnlocked);
-        } else {
-          this.isUnlocked = false;
-        }
+        const [exists, unlocked] = await Promise.all([
+          hasVaultBex(),
+          storageService.get<boolean>(VAULT_UNLOCKED, 'session'),
+        ]);
+
+        this.vaultExists = !!exists;
+        this.isUnlocked = !!unlocked;
+
+        console.log('[VaultStore] status:', { exists: this.vaultExists, unlocked: this.isUnlocked });
       } catch (e) {
         console.error('[VaultStore] Failed to check vault status', e);
       } finally {
@@ -65,7 +59,7 @@ const useVaultStore = defineStore('vault', {
       return {
         success: false,
         error: result.error,
-        errorCode: result.errorCode
+        errorCode: result.code
       };
     },
 
@@ -79,9 +73,9 @@ const useVaultStore = defineStore('vault', {
       password: string,
       mnemonic: string,
       passphrase?: string,
-      initialAccount?: unknown,
+      initialAccount?: StoredKey,
     ) {
-      const vaultData = {
+      const vaultData: VaultData = {
         mnemonic,
         passphrase: passphrase || '',
         createdAt: new Date().toISOString(),
@@ -96,7 +90,7 @@ const useVaultStore = defineStore('vault', {
       return {
         success: false,
         error: result.error,
-        errorCode: result.errorCode
+        errorCode: result.code
       };
     },
   },

@@ -1,18 +1,14 @@
 <script setup lang="ts">
-import useVaultStore from 'src/stores/vault-store';
 import { useRouter } from 'vue-router';
+import { useVault } from 'src/composables/useVault';
 
-const vaultStore = useVaultStore();
+const { handleLock } = useVault();
 const router = useRouter();
 
 function openInTab(name: string) {
   const resolved = router.resolve({ name });
   const url = chrome.runtime.getURL(`www/index.html${resolved.href}`);
   void chrome.tabs.create({ url });
-}
-async function handleLogout() {
-  await vaultStore.lock();
-  void router.push({ name: 'login' });
 }
 </script>
 
@@ -39,7 +35,7 @@ async function handleLogout() {
           <q-item-section>Logs</q-item-section>
         </q-item>
         <q-separator />
-        <q-item v-ripple clickable @click="handleLogout">
+        <q-item v-ripple clickable @click="handleLock">
           <q-item-section avatar>
             <q-icon name="lock" size="sm" />
           </q-item-section>

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 import { exportFile, useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import type { StoredKey } from '../types';
 import ExportDialog from './ExportDialog.vue';
 import { createEncryptedZipBytes, ZIP_MIME_TYPE } from '../services/compressor';
@@ -12,6 +13,7 @@ const props = defineProps<{
 }>();
 
 const $q = useQuasar();
+const { t } = useI18n();
 const showExportDialog = ref(false);
 
 type ExportPayload = { password: string; filename: string };
@@ -19,7 +21,7 @@ type ExportPayload = { password: string; filename: string };
 function notifyExportStarted() {
   $q.notify({
     type: 'positive',
-    message: 'Export started. You will be prompted to save the file.',
+    message: t('account.exportStarted'),
   });
 }
 
@@ -44,7 +46,12 @@ async function onExportConfirm(payload: ExportPayload) {
 </script>
 
 <template>
-  <q-btn class="diogel-btn-primary" dense label="Export" @click="onExportClick" />
+  <q-btn
+    class="diogel-btn-primary"
+    dense
+    :label="t('settings.export')"
+    @click="onExportClick"
+  />
 
   <ExportDialog
     v-model="showExportDialog"

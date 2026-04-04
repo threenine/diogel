@@ -1,8 +1,11 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
+import {
+  BLOSSOM_SERVER,
+  DARK_MODE,
+  storageService,
+  VAULT_AUTO_LOCK_MINUTES,
+} from 'src/services/storage-service';
 
-const BLOSSOM_SERVER = 'nostr:blossom-server' as const;
-const DARK_MODE = 'nostr:dark-mode' as const;
-const VAULT_AUTO_LOCK_MINUTES = 'vault:auto-lock-minutes' as const;
 const DEFAULT_BLOSSOM_SERVER = 'https://blossom.primal.net/';
 const DEFAULT_VAULT_AUTO_LOCK_MINUTES = 15;
 
@@ -16,57 +19,45 @@ const useSettingsStore = defineStore('settings', {
 
   actions: {
     async getSettings(): Promise<void> {
-      return new Promise((resolve) => {
-        chrome.storage.local.get([BLOSSOM_SERVER, DARK_MODE, VAULT_AUTO_LOCK_MINUTES], (result) => {
-          if (result[BLOSSOM_SERVER]) {
-            this.blossomServer = result[BLOSSOM_SERVER];
-          }
-          if (Object.prototype.hasOwnProperty.call(result, DARK_MODE)) {
-            this.darkMode = result[DARK_MODE];
-          }
-          if (Object.prototype.hasOwnProperty.call(result, VAULT_AUTO_LOCK_MINUTES)) {
-            const value = Number(result[VAULT_AUTO_LOCK_MINUTES]);
-            this.vaultAutoLockMinutes = Number.isFinite(value)
-              ? Math.max(0, Math.floor(value))
-              : DEFAULT_VAULT_AUTO_LOCK_MINUTES;
-          }
-          resolve();
-        });
-      });
+      const result = await storageService.getMultiple([
+        BLOSSOM_SERVER,
+        DARK_MODE,
+        VAULT_AUTO_LOCK_MINUTES,
+      ]);
+      if (result[BLOSSOM_SERVER] && typeof result[BLOSSOM_SERVER] === 'string') {
+        this.blossomServer = result[BLOSSOM_SERVER];
+      }
+      if (Object.prototype.hasOwnProperty.call(result, DARK_MODE)) {
+        this.darkMode = Boolean(result[DARK_MODE]);
+      }
+      if (Object.prototype.hasOwnProperty.call(result, VAULT_AUTO_LOCK_MINUTES)) {
+        const value = Number(result[VAULT_AUTO_LOCK_MINUTES]);
+        this.vaultAutoLockMinutes = Number.isFinite(value)
+          ? Math.max(0, Math.floor(value))
+          : DEFAULT_VAULT_AUTO_LOCK_MINUTES;
+      }
     },
 
     async setBlossomServer(url: string): Promise<void> {
       this.blossomServer = url;
-      return new Promise((resolve) => {
-        chrome.storage.local.set({ [BLOSSOM_SERVER]: url }, () => {
-          resolve();
-        });
-      });
+      await storageService.set(BLOSSOM_SERVER, url);
     },
 
     async setDarkMode(dark: boolean): Promise<void> {
       this.darkMode = dark;
-      return new Promise((resolve) => {
-        chrome.storage.local.set({ [DARK_MODE]: dark }, () => {
-          resolve();
-        });
-      });
+      await storageService.set(DARK_MODE, dark);
     },
 
     async setVaultAutoLockMinutes(minutes: number): Promise<void> {
       const normalized = Number.isFinite(minutes) ? Math.max(0, Math.floor(minutes)) : 0;
       this.vaultAutoLockMinutes = normalized;
-      return new Promise((resolve) => {
-        chrome.storage.local.set({ [VAULT_AUTO_LOCK_MINUTES]: normalized }, () => {
-          resolve();
-        });
-      });
+      await storageService.set(VAULT_AUTO_LOCK_MINUTES, normalized);
     },
 
     listenToStorageChanges() {
       if (this.isListening) return;
 
-      chrome.storage.onChanged.addListener((changes, areaName) => {
+      storageService.onChanged((changes, areaName) => {
         if (areaName === 'local') {
           if (BLOSSOM_SERVER in changes) {
             const newValue = changes[BLOSSOM_SERVER].newValue;
