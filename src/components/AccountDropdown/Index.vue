@@ -1,6 +1,6 @@
 <template>
   <q-select
-    v-model="innerValue"
+    v-model="model"
     :behavior="behavior"
     :clearable="clearable"
     :dense="dense"
@@ -8,7 +8,7 @@
     :dropdown-icon="dropdownIcon || 'expand_more'"
     :hint="hint"
     :loading="loading"
-    :options="computedOptions"
+    :options="items"
     :outlined="outlined"
     :borderless="borderless"
     :use-chips="useChips"
@@ -23,13 +23,12 @@
     <!-- Custom option rendering to support themable icon for the Create option -->
     <template #option="scope">
       <q-item class="no-wrap" v-bind="scope.itemProps">
-        <q-item-section v-if="scope.opt.value === createValue" avatar>
+        <q-item-section v-if="scope.opt.value === createAccountValue" avatar>
           <q-icon name="add_circle" color="primary" />
         </q-item-section>
         <q-item-section>
           <q-item-label class="text-no-wrap">
-            <!-- For the Create option, show the createLabel without the emoji; others show label as-is -->
-            {{ scope.opt.value === createValue ? createLabel : scope.opt.label }}
+            {{ scope.opt.value === createAccountValue ? t('account.create') : scope.opt.label }}
           </q-item-label>
         </q-item-section>
       </q-item>
@@ -39,24 +38,27 @@
     <template #selected-item="scope">
       <div class="row items-center no-wrap q-gutter-xs">
         <q-icon
-          v-if="scope.opt.value === createValue"
+          v-if="scope.opt.value === createAccountValue"
           name="add_circle"
           size="18px"
           color="primary"
         />
-        <span class="text-body text-no-wrap">{{ scope.opt.label }}</span>
+        <span class="text-body text-no-wrap">
+          {{ scope.opt.value === createAccountValue ? t('account.create') : scope.opt.label }}
+        </span>
       </div>
     </template>
   </q-select>
 </template>
 
 <script lang="ts" setup>
-import { computed, onMounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import type { DropdownItem } from 'src/types';
-import useAccountStore from 'src/stores/account-store';
+import { watch } from 'vue';
+import { useAccounts } from 'src/composables/useAccounts';
+import { useI18n } from 'vue-i18n';
 
-const accountStore = useAccountStore();
+const { t } = useI18n();
+const { model, items, createValue: createAccountValue } = useAccounts();
+
 defineOptions({ name: 'AccountDropdown' });
 const props = withDefaults(
   defineProps<{
@@ -64,8 +66,6 @@ const props = withDefaults(
     modelValue?: string | number | null;
     /** Label for the q-select input */
     label?: string;
-    /** Whether to include the always-available default option */
-    includeCreateOption?: boolean;
     /** Text shown for the default option */
     createLabel?: string;
     /** Value used for the default option */
@@ -84,8 +84,7 @@ const props = withDefaults(
   }>(),
   {
     modelValue: null,
-    includeCreateOption: true,
-    createLabel: 'Create Account',
+    createLabel: '',
     createValue: 'create-account',
     useChips: false,
     clearable: false,
@@ -105,90 +104,18 @@ const emit = defineEmits<{
   (e: 'change', value: string | number | null): void;
 }>();
 
-const router = useRouter();
-
-const CREATE_OPTION = computed<DropdownItem>(() => ({
-  label: `➕ ${props.createLabel}`,
-  value: props.createValue,
-}));
-
-// Build options list from the account store ensuring the Create option is listed last
-const computedOptions = computed<DropdownItem[]>(() => {
-  const fromStore: DropdownItem[] = Array.from(accountStore.storedKeys)
-    .filter((key) => key.alias !== 'Main Account')
-    .map((key) => ({
-      label: key.alias,
-      value: key.alias,
-    }));
-
-  // Ensure Create option is last
-  return props.includeCreateOption ? [...fromStore, CREATE_OPTION.value] : fromStore;
-});
-
-// Local state: select activeKey if present; otherwise empty
-const innerValue = ref<string | number | null>(props.modelValue ?? accountStore.activeKey ?? null);
-
-// Load keys initially and start listening for changes (chrome.storage listener)
-onMounted(async () => {
-  await accountStore.getKeys();
-  accountStore.listenToStorageChanges();
-  // After loading, ensure selection reflects activeKey (or empty if none)
-  innerValue.value = props.modelValue ?? accountStore.activeKey ?? null;
-});
-
 watch(
   () => props.modelValue,
   (v) => {
     if (v === undefined) return;
-    innerValue.value = v;
+    model.value = v as string | null;
   },
 );
 
-watch(innerValue, (v, oldV) => {
+watch(model, (v) => {
   emit('update:modelValue', v);
   emit('change', v);
-
-  // If the value hasn't actually changed (e.g. initial setup), don't trigger navigation
-  if (v === oldV) return;
-
-  // Navigate based on selection
-  if (v === props.createValue) {
-    router.push({ name: 'create-account' }).catch(() => {});
-  } else if (v !== null && v !== undefined) {
-    accountStore.setActiveKey(v as string).catch(() => {});
-    // Only navigate to home if we are specifically wanting to go back to home after account change,
-    // but don't do it if we are already on a management page like Profile or Settings.
-    // In fact, usually we only want to redirect to Home if we were on a route that depended on the old account context,
-    // or if we just want to reset the view.
-    // If the user is on /profile and changes account, they probably want to see the profile of the NEW account.
-    // So we should NOT redirect to / if they are already on /profile.
-    const currentPath = router.currentRoute.value.path;
-    if (
-      currentPath !== '/' &&
-      currentPath !== '/profile' &&
-      currentPath !== '/settings' &&
-      currentPath !== '/logs' &&
-      currentPath !== '/popup' &&
-      currentPath !== '/login' &&
-      currentPath !== '/create-account' &&
-      currentPath !== '/approve' &&
-      !currentPath.startsWith('/edit-account')
-    ) {
-      router.push({ path: '/' }).catch(() => {});
-    }
-  }
 });
-
-// Keep selection in sync with store.activeKey if it changes elsewhere
-watch(
-  () => accountStore.activeKey,
-  (alias) => {
-    // Only update if external model isn't explicitly controlling it
-    if (props.modelValue === null || props.modelValue === undefined) {
-      innerValue.value = alias ?? null;
-    }
-  },
-);
 </script>
 
 <style scoped></style>

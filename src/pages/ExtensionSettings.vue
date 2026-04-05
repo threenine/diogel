@@ -1,128 +1,32 @@
 <script lang="ts" setup>
-import { onMounted, ref } from 'vue';
+import { onMounted } from 'vue';
 import ThemeSwitch from '../components/ThemeSwitch/Index.vue';
 import useSettingsStore from '../stores/settings-store';
 import { useI18n } from 'vue-i18n';
-import { exportVault, importVault } from 'src/services/vault-service';
-import { useQuasar, exportFile } from 'quasar';
-import { useRouter } from 'vue-router';
-import { formatErrorForUser } from 'src/types/error-codes';
+import { useVaultManagement } from 'src/composables/useVaultManagement';
 
 const { t } = useI18n();
 const settingsStore = useSettingsStore();
-const $q = useQuasar();
-const router = useRouter();
 
-const fileInput = ref<HTMLInputElement | null>(null);
+const { fileInput, handleExportVault, triggerImport, handleFileImport } =
+  useVaultManagement();
 
 onMounted(async () => {
   await settingsStore.getSettings();
 });
-
-async function handleExportVault() {
-  const result = await exportVault();
-  if (result.success && result.encryptedData) {
-    const backup = {
-      version: 1,
-      encryptedData: result.encryptedData,
-      exportedAt: new Date().toISOString(),
-    };
-    const status = exportFile(
-      `diogel-vault-backup-${new Date().toISOString().split('T')[0]}.json`,
-      JSON.stringify(backup, null, 2),
-      'application/json',
-    );
-
-    if (status !== true) {
-      $q.notify({
-        type: 'negative',
-        message: 'Browser denied file download',
-      });
-    }
-  } else {
-    $q.notify({
-      type: 'negative',
-      message: formatErrorForUser(result.error, result.errorCode),
-    });
-  }
-}
-
-function triggerImport() {
-  fileInput.value?.click();
-}
-
-function handleFileImport(event: Event) {
-  const target = event.target as HTMLInputElement;
-  const file = target.files?.[0];
-  if (!file) return;
-
-  $q.dialog({
-    title: t('settings.importVault'),
-    message: t('settings.importConfirm'),
-    cancel: true,
-    persistent: true,
-  }).onOk(() => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const content = e.target?.result as string;
-        const backup = JSON.parse(content);
-
-        if (!backup.encryptedData) {
-          $q.notify({
-            type: 'negative',
-            message: 'Invalid backup file format',
-          });
-          return;
-        }
-
-        importVault(backup.encryptedData)
-          .then((result) => {
-            if (result.success) {
-              $q.notify({
-                type: 'positive',
-                message: t('settings.importSuccess'),
-              });
-              void router.push({ name: 'login' });
-            } else {
-              $q.notify({
-                type: 'negative',
-                message: formatErrorForUser(result.error, result.errorCode),
-              });
-            }
-          })
-          .catch((err) => {
-            $q.notify({
-              type: 'negative',
-              message: (err as Error).message || t('settings.importError'),
-            });
-          });
-      } catch (err) {
-        $q.notify({
-          type: 'negative',
-          message: 'Failed to parse backup file: ' + (err as Error).message,
-        });
-      }
-    };
-    reader.readAsText(file);
-  });
-
-  // Reset input
-  target.value = '';
-}
 </script>
 
 <template>
   <q-page padding>
     <q-card class="shadow-0">
       <q-toolbar>
-        <q-toolbar-title>Extension Settings</q-toolbar-title>
+        <q-toolbar-title>{{ t('settings.title') }}</q-toolbar-title>
       </q-toolbar>
       <q-card-section>
         <q-list dividers>
           <q-item v-ripple tag="label">
             <q-item-section>
-              <q-item-label>{{ t('profile.theme')}}</q-item-label>
+              <q-item-label>{{ t('profile.theme') }}</q-item-label>
               <q-item-label caption lines="2">{{ t('profile.themeCaption') }}</q-item-label>
             </q-item-section>
             <q-item-section side top>
@@ -134,19 +38,19 @@ function handleFileImport(event: Event) {
             <q-item-section>
               <q-item-label>{{ t('settings.autoLockVault') }}</q-item-label>
               <q-item-label caption lines="2">
-               {{ t('settings.autoLockVaultCaption')}}
+                {{ t('settings.autoLockVaultCaption') }}
               </q-item-label>
             </q-item-section>
             <q-item-section side style="min-width: 140px">
               <q-select
                 :model-value="settingsStore.vaultAutoLockMinutes"
                 :options="[
-                  { label: 'Off', value: 0 },
-                  { label: '1 minute', value: 1 },
-                  { label: '5 minutes', value: 5 },
-                  { label: '15 minutes', value: 15 },
-                  { label: '30 minutes', value: 30 },
-                  { label: '60 minutes', value: 60 },
+                  { label: t('settings.autoLockOptions.off'), value: 0 },
+                  { label: t('settings.autoLockOptions.minutes', 1), value: 1 },
+                  { label: t('settings.autoLockOptions.minutes', 5), value: 5 },
+                  { label: t('settings.autoLockOptions.minutes', 15), value: 15 },
+                  { label: t('settings.autoLockOptions.minutes', 30), value: 30 },
+                  { label: t('settings.autoLockOptions.minutes', 60), value: 60 },
                 ]"
                 emit-value
                 map-options
@@ -190,7 +94,7 @@ function handleFileImport(event: Event) {
               <q-btn
                 class="diogel-btn-ghost"
                 icon="download"
-                label="Export"
+                :label="t('settings.export')"
                 @click="handleExportVault"
               />
             </q-item-section>
@@ -202,7 +106,12 @@ function handleFileImport(event: Event) {
               <q-item-label caption>{{ t('settings.importVaultCaption') }}</q-item-label>
             </q-item-section>
             <q-item-section side>
-              <q-btn class="diogel-btn-ghost" icon="upload" label="Import" @click="triggerImport" />
+              <q-btn
+                class="diogel-btn-ghost"
+                icon="upload"
+                :label="t('settings.import')"
+                @click="triggerImport"
+              />
               <input
                 ref="fileInput"
                 accept=".json"

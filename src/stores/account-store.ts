@@ -1,6 +1,7 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import type { StoredKey } from '../types';
 import { get, getActive, save, setActive } from '../services/dexie-storage';
+import { NOSTR_ACTIVE, storageService } from '../services/storage-service';
 
 const useAccountStore = defineStore('account', {
   state: () => ({
@@ -34,8 +35,8 @@ const useAccountStore = defineStore('account', {
     listenToStorageChanges() {
       if (this.isListening) return;
 
-      chrome.storage.onChanged.addListener((changes, areaName) => {
-        if (areaName === 'local' && 'nostr:active' in changes) {
+      storageService.onChanged((changes, areaName) => {
+        if (areaName === 'local' && NOSTR_ACTIVE in changes) {
           void this.getKeys();
         }
       });

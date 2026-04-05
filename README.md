@@ -40,6 +40,10 @@ web applications.
 
 The project has been bootstrapped with Quasar Framework. [Learn More](https://quasar.dev/introduction-to-quasar)
 
+### Deployment
+
+Detailed instructions for setting up GitHub Secrets and publishing to the Chrome Web Store can be found in [DEPLOYMENT.md](./DEPLOYMENT.md).
+
 ### Installation
 
 To install a browser extension from the GitHub repository, follow these steps:

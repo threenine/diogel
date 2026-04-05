@@ -186,12 +186,12 @@ watch(
           <q-item-section>
             <q-item-label>{{ relay.url }}</q-item-label>
             <q-item-label caption>
-              <q-badge v-if="relay.read" color="blue-2" label="Read" text-color="blue-9" />
+              <q-badge v-if="relay.read" color="blue-2" :label="$t('relays.read')" text-color="blue-9" />
               <q-badge
                 v-if="relay.write"
                 class="q-ml-xs"
                 color="green-2"
-                label="Write"
+                :label="$t('relays.write')"
                 text-color="green-9"
               />
             </q-item-label>

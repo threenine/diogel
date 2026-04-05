@@ -49,30 +49,33 @@ jobs:
           else
             TAG=$(node -p "require('./package.json').version")-$(git rev-parse --short HEAD)
           fi
+          ZIP_NAME="diogel-chrome-${TAG}.zip"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
           cd dist/bex-chrome
-          zip -r ../../diogel-chrome-${TAG}.zip .
+          zip -r "../../$ZIP_NAME" .
           cd ../..
-          cp diogel-chrome-${TAG}.zip diogel.zip
+          cp "$ZIP_NAME" diogel.zip
 
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${{ steps.package.outputs.tag }}"
-          echo "Uploading diogel-chrome-${tag}.zip to release $tag"
-          if [ ! -f "diogel-chrome-${tag}.zip" ]; then
-            echo "Error: diogel-chrome-${tag}.zip not found!"
+          zip_name="${{ steps.package.outputs.zip_name }}"
+          echo "Uploading $zip_name to release $tag"
+          if [ ! -f "$zip_name" ]; then
+            echo "Error: $zip_name not found!"
             exit 1
           fi
           
           # Try to create the release. If it exists, upload to it.
           gh release create "$tag" \
-            "diogel-chrome-${tag}.zip" \
+            "$zip_name" \
             --title="$tag" \
             --generate-notes || \
           gh release upload "$tag" \
-            "diogel-chrome-${tag}.zip" \
+            "$zip_name" \
             --clobber
 
       - name: Upload & Publish to Chrome Web Store

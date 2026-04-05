@@ -1,11 +1,13 @@
 <script lang="ts" setup>
 import { ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import type { StoredKey } from 'src/types';
 import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
 import ExportButton from 'components/ExportButton.vue';
 import useAccountStore from 'stores/account-store';
 
+const { t } = useI18n();
 const accountStore = useAccountStore();
 const storedKey = ref<StoredKey>({
   id: '',
@@ -39,14 +41,19 @@ function loadStoredKeys() {
   <q-page>
     <div class="shadow-0">
       <q-toolbar>
-        <q-toolbar-title>Edit Account</q-toolbar-title>
+        <q-toolbar-title>{{ t('account.editAccount') }}</q-toolbar-title>
       </q-toolbar>
       <div class="q-pa-lg-lg full-width settings-form rounded-borders">
         <q-list>
           <q-item v-ripple tag="label">
             <q-item-section>
               <div class="q-gutter-lg">
-                <q-input v-model="storedKey.alias" class="text-input" label="Profile Name" readonly>
+                <q-input
+                  v-model="storedKey.alias"
+                  class="text-input"
+                  :label="t('account.profileName')"
+                  readonly
+                >
                   <template v-slot:prepend>
                     <q-icon name="person" />
                   </template>

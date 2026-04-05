@@ -14,9 +14,9 @@ import { useI18n } from 'vue-i18n';
 
 import { bytesToHex } from '@noble/hashes/utils';
 
+const { t } = useI18n();
 const store = useAccountStore();
 const $q = useQuasar();
-const $t = useI18n().t;
 const router = useRouter();
 const storedKey = ref<StoredKey>({
   id: '',
@@ -72,7 +72,7 @@ function onImportClick(): void {
     // Reveal the alias + details section for import
     importedReady.value = true;
   } catch {
-    $q.notify({ type: 'negative', message: String($t('validation.invalidNsec')) });
+    $q.notify({ type: 'negative', message: String(t('validation.invalidNsec')) });
   }
 }
 
@@ -81,7 +81,7 @@ const importedReady = ref(false);
 const trimmedAlias = computed(() => storedKey.value.alias.trim());
 
 function notifyMissingAlias() {
-  $q.notify({ type: 'negative', message: String($t('validation.profileNameRequired')) });
+  $q.notify({ type: 'negative', message: String(t('validation.profileNameRequired')) });
 }
 
 async function saveKey() {
@@ -92,7 +92,7 @@ async function saveKey() {
     await router.push({ name: 'edit-account', params: { alias: storedKey.value.alias } });
   } catch (error: unknown) {
     const errorMessage =
-      error instanceof Error ? error.message : String($t('validation.keyPairExists'));
+      error instanceof Error ? error.message : String(t('validation.keyPairExists'));
 
     $q.notify({
       type: 'negative',
@@ -107,10 +107,10 @@ function validate() {
     aliasInputRef.value?.focus();
     return false;
   }
-  if (trimmedAlias.value === 'Main Account') {
+  if (trimmedAlias.value === t('account.mainAccountReserved')) {
     $q.notify({
       type: 'negative',
-      message: 'Alias "Main Account" is reserved.',
+      message: t('account.mainAccountReservedError', { name: t('account.mainAccountReserved') }),
     });
     aliasInputRef.value?.focus();
     return false;
@@ -124,12 +124,12 @@ function validate() {
     <div class="settings-container">
       <div class="shadow-0">
         <q-toolbar>
-          <q-toolbar-title>{{ $t('createAccount.title') }}</q-toolbar-title>
+          <q-toolbar-title>{{ t('createAccount.title') }}</q-toolbar-title>
         </q-toolbar>
 
         <q-tabs v-model="tab" class="text-primary" dense no-caps>
-          <q-tab :label="$t('createAccount.tabs.create')" name="create" />
-          <q-tab :label="$t('createAccount.tabs.import')" name="import" />
+          <q-tab :label="t('createAccount.tabs.create')" name="create" />
+          <q-tab :label="t('createAccount.tabs.import')" name="import" />
         </q-tabs>
         <q-separator />
 
@@ -141,7 +141,7 @@ function validate() {
               class="flex justify-center q-pa-lg-lg full-width settings-form rounded-borders"
             >
               <q-btn
-                :label="$t('createAccount.generateKeys')"
+                :label="t('createAccount.generateKeys')"
                 class="diogel-btn-primary"
                 @click="onGenerateKeysClick"
               />
@@ -158,11 +158,11 @@ function validate() {
                       <q-input
                         ref="aliasInputRef"
                         v-model="storedKey.alias"
-                        :label="$t('account.profileName')"
+                        :label="t('account.profileName')"
                         :rules="[
                           (v) =>
                             !!String(v ?? '').trim() ||
-                            String($t('validation.profileNameRequired')),
+                            String(t('validation.profileNameRequired')),
                         ]"
                         class="text-input"
                         lazy-rules
@@ -178,7 +178,7 @@ function validate() {
                               class="text-body1 text-primary"
                               self="top middle"
                             >
-                              {{ $t('account.aliasToolTip') }}
+                              {{ t('account.aliasToolTip') }}
                             </q-tooltip>
                           </q-icon>
                         </template>
@@ -188,7 +188,7 @@ function validate() {
 
                     <div class="row q-gutter-lg items-center q-mt-lg">
                       <q-btn
-                        :label="$t('createAccount.save')"
+                        :label="t('createAccount.save')"
                         class="full-width diogel-btn-primary"
                         dense
                         size="lg"
@@ -207,14 +207,14 @@ function validate() {
               <div class="q-gutter-lg">
                 <q-input
                   v-model="importNsec"
-                  :label="$t('createAccount.importNsecLabel')"
-                  :rules="[(v) => (v && isValidNsec) || String($t('validation.invalidNsec'))]"
+                  :label="t('createAccount.importNsecLabel')"
+                  :rules="[(v) => (v && isValidNsec) || String(t('validation.invalidNsec'))]"
                   clearable
                   lazy-rules
                 />
                 <q-btn
                   :disable="!isValidNsec"
-                  :label="$t('createAccount.importButton')"
+                  :label="t('createAccount.importButton')"
                   class="diogel-btn-primary"
                   @click="onImportClick"
                 />
@@ -228,11 +228,11 @@ function validate() {
                         <q-input
                           ref="aliasInputRef"
                           v-model="storedKey.alias"
-                          :label="$t('account.profileName')"
+                          :label="t('account.profileName')"
                           :rules="[
                             (v) =>
                               !!String(v ?? '').trim() ||
-                              String($t('validation.profileNameRequired')),
+                              String(t('validation.profileNameRequired')),
                           ]"
                           class="text-input"
                           lazy-rules
@@ -248,7 +248,7 @@ function validate() {
                                 class="text-body1 text-primary"
                                 self="top middle"
                               >
-                                {{ $t('account.aliasToolTip') }}
+                                {{ t('account.aliasToolTip') }}
                               </q-tooltip>
                             </q-icon>
                           </template>
@@ -258,7 +258,7 @@ function validate() {
 
                       <div class="row q-gutter-lg items-center q-mt-lg">
                         <q-btn
-                          :label="$t('createAccount.save')"
+                          :label="t('createAccount.save')"
                           class="full-width diogel-btn-primary"
                           dense
                           size="lg"

@@ -3,6 +3,11 @@
  * Manages automatic vault locking after inactivity
  */
 
+import {
+  storageService,
+  VAULT_AUTO_LOCK_MINUTES,
+  VAULT_LAST_ACTIVITY,
+} from 'src/services/storage-service';
 import { lockVault } from '../vault';
 
 let autoLockTimer: ReturnType<typeof setInterval> | null = null;
@@ -23,8 +28,9 @@ export async function checkAutoLock(): Promise<void> {
     return;
   }
 
-  const items = await chrome.storage.local.get(['vault:auto-lock-minutes']);
-  const minutes = Number(items['vault:auto-lock-minutes'] ?? AUTO_LOCK_DEFAULT_MINUTES);
+  const minutes = Number(
+    (await storageService.get<number>(VAULT_AUTO_LOCK_MINUTES)) ?? AUTO_LOCK_DEFAULT_MINUTES,
+  );
 
   if (minutes <= 0) {
     return;
@@ -36,8 +42,6 @@ export async function checkAutoLock(): Promise<void> {
   if (idleMs >= maxIdleMs) {
     console.log(`[AutoLock] Auto-locking vault after ${minutes} minutes`);
     await lockVault();
-    // Notify extension UI
-    chrome.runtime.sendMessage({ type: 'vault:locked' }).catch(() => {});
     stopAutoLockTimer();
   }
 }
@@ -70,8 +74,8 @@ export function isAutoLockEnabled(): boolean {
 }
 
 export async function restoreLastActivity(): Promise<void> {
-  const items = await chrome.storage.local.get(['vault:last-activity']);
-  if (items['vault:last-activity']) {
-    lastActivityAt = Number(items['vault:last-activity']);
+  const activity = await storageService.get<number>(VAULT_LAST_ACTIVITY);
+  if (activity) {
+    lastActivityAt = Number(activity);
   }
 }
