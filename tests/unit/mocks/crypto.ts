@@ -3,8 +3,7 @@
  */
 
 export class MockCrypto {
-  private static readonly MOCK_KEY = new Uint8Array(32).fill(0x42);
-  private static readonly keyIds = new WeakMap<CryptoKey, number>();
+   private static readonly keyIds = new WeakMap<CryptoKey, number>();
   private static readonly passwordIds = new WeakMap<CryptoKey, number>();
 
   private static assignKeyId(key: CryptoKey, id?: number): CryptoKey {
@@ -32,11 +31,11 @@ export class MockCrypto {
           usages: keyUsages,
         } as CryptoKey;
         // Deterministic key id based on salt + password
-        const salt = new Uint8Array((algorithm as Pbkdf2Params).salt as ArrayBuffer);
+        const salt = new Uint8Array(algorithm.salt as ArrayBuffer);
         const saltId = salt.reduce((acc, b) => (acc + b) & 0xff, 0);
         const pwdId = MockCrypto.passwordIds.get(baseKey) ?? 0;
         const id = (saltId + pwdId) & 0xff;
-        return MockCrypto.assignKeyId(key, id);
+        return Promise.resolve(MockCrypto.assignKeyId(key, id));
       },
 
       // Mock AES-GCM encryption
@@ -51,9 +50,9 @@ export class MockCrypto {
         const output = new Uint8Array(iv.length + input.length + 16); // +16 for tag
         output.set(iv, 0);
         output.set(input, iv.length);
-        const keyId = MockCrypto.keyIds.get(key) ?? 0;
-        output[output.length - 1] = keyId;
-        return output.buffer;
+       // const keyId = MockCrypto.keyIds.get(key) ?? 0;
+        output[output.length - 1] = MockCrypto.keyIds.get(key) ?? 0;
+        return Promise.resolve(output.buffer);
       },
 
       // Mock AES-GCM decryption
@@ -67,9 +66,9 @@ export class MockCrypto {
         const keyId = MockCrypto.keyIds.get(key) ?? 0;
         const tagKeyId = input[input.length - 1];
         if (tagKeyId !== keyId) {
-          throw new Error('Authentication failed');
+          return Promise.reject(new Error('Authentication failed'));
         }
-        return input.slice(ivLength, -16).buffer; // Remove IV and tag
+        return Promise.resolve(input.slice(ivLength, -16).buffer); // Remove IV and tag
       },
 
       // Mock importKey
@@ -87,12 +86,13 @@ export class MockCrypto {
           usages: keyUsages,
         } as CryptoKey;
         // If importing a PBKDF2 base key from password bytes, store a simple hash
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         if (format === 'raw' && (algorithm as any) === 'PBKDF2') {
           const bytes = new Uint8Array(keyData as ArrayBuffer);
           const pwdId = bytes.reduce((acc, b) => (acc + b) & 0xff, 0);
           MockCrypto.passwordIds.set(key, pwdId);
         }
-        return MockCrypto.assignKeyId(key);
+        return Promise.resolve(MockCrypto.assignKeyId(key));
       },
 
       // Mock generateKey
@@ -107,7 +107,7 @@ export class MockCrypto {
           type: 'secret',
           usages: keyUsages,
         } as CryptoKey;
-        return MockCrypto.assignKeyId(key);
+        return Promise.resolve(MockCrypto.assignKeyId(key));
       },
 
       // Mock exportKey
@@ -117,9 +117,9 @@ export class MockCrypto {
       ): Promise<ArrayBuffer | JsonWebKey> {
         if (format === 'raw') {
           // Return a 32-byte pseudo key
-          return new Uint8Array(32).fill(0x11).buffer;
+          return Promise.resolve(new Uint8Array(32).fill(0x11).buffer);
         }
-        return { kty: 'oct', k: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' } as unknown as JsonWebKey;
+        return Promise.resolve({ kty: 'oct', k: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' } as unknown as JsonWebKey);
       },
     } as SubtleCrypto;
   }

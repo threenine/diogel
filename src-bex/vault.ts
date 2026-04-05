@@ -79,26 +79,27 @@ export async function unlockVault(password: string) {
       return {
         success: false,
         error: 'No vault found',
-        errorCode: ErrorCode.VLT_NOT_CREATED
+        errorCode: ErrorCode.VLT_NOT_CREATED,
       };
     }
 
     const { key, salt } = await deriveKeyFromEncryptedVault(password, vault.encryptedData);
+    const vaultData = await decryptWithKey(vault.encryptedData, key);
+
+    // Only set the key and save the session if decryption succeeded
     vaultKey = key;
     vaultSalt = salt;
-
     await saveKeyToSession();
-
-    const vaultData = await decryptWithKey(vault.encryptedData, vaultKey);
 
     return { success: true, vaultData };
   } catch (err) {
     clearVaultKey();
+    await clearSession(); // Ensure session is also cleared in storage
     console.error('Unlock vault error:', err);
     return {
       success: false,
       error: 'Invalid password',
-      errorCode: ErrorCode.VLT_INVALID_PASSWORD
+      errorCode: ErrorCode.VLT_INVALID_PASSWORD,
     };
   }
 }
@@ -111,12 +112,12 @@ export async function lockVault() {
 export async function createNewVault(password: string, vaultData: unknown) {
   try {
     const { key, salt } = await deriveNewKey(password);
+    const encryptedVault = await encryptWithKey(vaultData, key, salt);
+
+    // Only set the key, save the session, and update the DB if encryption succeeded
     vaultKey = key;
     vaultSalt = salt;
-
     await saveKeyToSession();
-
-    const encryptedVault = await encryptWithKey(vaultData, vaultKey, vaultSalt);
 
     await db.vaults.put({
       id: 'master',
@@ -127,11 +128,12 @@ export async function createNewVault(password: string, vaultData: unknown) {
     return { success: true, encryptedVault };
   } catch (err) {
     clearVaultKey();
+    await clearSession();
     console.error('Create vault error:', err);
     return {
       success: false,
       error: (err as Error).message,
-      errorCode: ErrorCode.GEN_UNKNOWN
+      errorCode: ErrorCode.GEN_UNKNOWN,
     };
   }
 }

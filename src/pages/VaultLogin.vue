@@ -39,6 +39,10 @@
             label="Confirm Password"
             type="password"
           />
+
+          <div v-if="loginError" class="q-mt-sm text-negative text-center text-weight-medium">
+            {{ loginError }}
+          </div>
         </q-card-section>
 
         <q-card-section v-else>
@@ -49,6 +53,10 @@
             type="password"
             @keyup.enter="handleUnlock"
           />
+
+          <div v-if="loginError" class="q-mt-sm text-negative text-center text-weight-medium">
+            {{ loginError }}
+          </div>
         </q-card-section>
 
         <q-card-actions align="right">
@@ -71,11 +79,12 @@ import { onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useVault } from 'src/composables/useVault';
 
-const {
+    const {
   vaultStore,
   password,
   confirmPassword,
   loading,
+  loginError,
   handleCreate,
   handleUnlock,
 } = useVault();

@@ -6,7 +6,7 @@ import type { StoredKey } from 'src/types/bridge';
 import * as nip06 from 'nostr-tools/nip06';
 import { getPublicKey } from 'nostr-tools';
 import { bytesToHex } from '@noble/hashes/utils';
-import { formatErrorForUser } from 'src/types/error-codes';
+import { type ErrorCode, formatErrorForUser } from 'src/types/error-codes';
 
 export function useVault() {
   const vaultStore = useVaultStore();
@@ -19,12 +19,14 @@ export function useVault() {
   const mnemonic = ref('Generating...');
   const passphrase = ref('');
   const loading = ref(false);
+  const loginError = ref('');
 
   async function handleCreate() {
     if (password.value.length < 8 || password.value !== confirmPassword.value) {
       return;
     }
     loading.value = true;
+    loginError.value = '';
 
     let initialAccount: StoredKey | undefined = undefined;
     try {
@@ -55,10 +57,10 @@ export function useVault() {
       await router.push({ name: 'home' });
     } else {
       console.error('[useVault] Failed to create vault:', result.error);
+      loginError.value = formatErrorForUser(result.error, result.errorCode as ErrorCode);
       $q.notify({
         type: 'negative',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        message: formatErrorForUser(result.error, result.errorCode as any),
+        message: loginError.value,
       });
     }
   }
@@ -66,6 +68,7 @@ export function useVault() {
   async function handleUnlock() {
     console.log('[useVault] Attempting to unlock vault...');
     loading.value = true;
+    loginError.value = '';
     const result = await vaultStore.unlock(password.value);
     loading.value = false;
     if (result.success) {
@@ -80,10 +83,10 @@ export function useVault() {
       }
     } else {
       console.error('[useVault] Failed to unlock vault:', result.error);
+      loginError.value = formatErrorForUser(result.error, result.errorCode as ErrorCode);
       $q.notify({
         type: 'negative',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        message: formatErrorForUser(result.error, result.errorCode as any),
+        message: loginError.value,
       });
     }
   }
@@ -100,6 +103,7 @@ export function useVault() {
     mnemonic,
     passphrase,
     loading,
+    loginError,
     handleCreate,
     handleUnlock,
     handleLock,
