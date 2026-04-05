@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleBlossomUpload } from '../../../src-bex/handlers/blossom-handler';
-import { handleVaultGetData, handleVaultIsUnlocked } from '../../../src-bex/handlers/vault-handler';
-import { storageService, NOSTR_ACTIVE, BLOSSOM_UPLOAD_STATUS } from '../../../src/services/storage-service';
+import { handleBlossomUpload } from 'app/src-bex/handlers/blossom-handler';
+import { handleVaultGetData, handleVaultIsUnlocked } from 'app/src-bex/handlers/vault-handler';
+import { storageService, NOSTR_ACTIVE, BLOSSOM_UPLOAD_STATUS } from 'src/services/storage-service';
 import { finalizeEvent, getPublicKey } from 'nostr-tools';
 
 // Mock dependencies
-vi.mock('../../../src-bex/handlers/vault-handler', () => ({
+vi.mock('app/src-bex/handlers/vault-handler', () => ({
   handleVaultIsUnlocked: vi.fn(),
   handleVaultGetData: vi.fn(),
 }));
 
-vi.mock('../../../src/services/storage-service', () => ({
+vi.mock('src/services/storage-service', () => ({
   storageService: {
     get: vi.fn(),
     set: vi.fn(),
@@ -32,7 +32,7 @@ vi.mock('@noble/hashes/sha2.js', () => ({
   sha256: vi.fn(() => new Uint8Array(32)),
 }));
 
-vi.mock('../../../src/services/log-service', () => ({
+vi.mock('src/services/log-service', () => ({
   logService: {
     logException: vi.fn(),
   },
@@ -66,14 +66,16 @@ describe('BlossomHandler', () => {
     mockFetch.mockResolvedValue({
       ok: true,
       status: 200,
-      json: async () => ({ url: 'https://blossom.example.com/file.txt' }),
-      text: async () => JSON.stringify({ url: 'https://blossom.example.com/file.txt' }),
+      json: () => Promise.resolve({ url: 'https://blossom.example.com/file.txt' }),
+      text: () => Promise.resolve(JSON.stringify({ url: 'https://blossom.example.com/file.txt' })),
     });
     vi.mocked(handleVaultIsUnlocked).mockResolvedValue({ success: true, data: true });
-    vi.mocked(storageService.get).mockImplementation((key) => {
+    // eslint-disable-next-line @typescript-eslint/unbound-method
+    vi.mocked(storageService.get).mockImplementation(((key: string) => {
       if (key === NOSTR_ACTIVE) return Promise.resolve('test-alias');
       return Promise.resolve(null);
-    });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any);
     vi.mocked(handleVaultGetData).mockResolvedValue({
       success: true,
       data: {
@@ -83,6 +85,7 @@ describe('BlossomHandler', () => {
       },
     });
     vi.mocked(getPublicKey).mockReturnValue('test-pubkey');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     vi.mocked(finalizeEvent).mockReturnValue({ id: 'event-id', sig: 'event-sig' } as any);
   });
 
@@ -94,6 +97,7 @@ describe('BlossomHandler', () => {
       expect(result.data).toBe('https://blossom.example.com/file.txt');
     }
     expect(mockFetch).toHaveBeenCalled();
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(storageService.set).toHaveBeenCalledWith(BLOSSOM_UPLOAD_STATUS, expect.objectContaining({
       uploading: false,
       url: 'https://blossom.example.com/file.txt',
@@ -106,6 +110,7 @@ describe('BlossomHandler', () => {
     const result = await handleBlossomUpload(payload);
 
     expect(result.success).toBe(false);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(storageService.set).toHaveBeenCalledWith(BLOSSOM_UPLOAD_STATUS, expect.objectContaining({
       uploading: false,
       error: 'No active account found',
@@ -114,12 +119,12 @@ describe('BlossomHandler', () => {
 
   it('should handle fetch failure and retry', async () => {
     mockFetch
-      .mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Error', text: async () => 'error' })
+      .mockResolvedValueOnce({ ok: false, status: 500, statusText: 'Internal Error', text: () => Promise.resolve('error') })
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        json: async () => ({ url: 'https://blossom.example.com/retry.txt' }),
-        text: async () => JSON.stringify({ url: 'https://blossom.example.com/retry.txt' }),
+        json: () => Promise.resolve({ url: 'https://blossom.example.com/retry.txt' }),
+        text: () => Promise.resolve(JSON.stringify({ url: 'https://blossom.example.com/retry.txt' })),
       });
 
     const result = await handleBlossomUpload(payload);
@@ -136,12 +141,13 @@ describe('BlossomHandler', () => {
       ok: false,
       status: 500,
       statusText: 'Internal Error',
-      text: async () => 'error',
+      text: () => Promise.resolve('error'),
     });
 
     const result = await handleBlossomUpload(payload);
 
     expect(result.success).toBe(false);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(storageService.set).toHaveBeenCalledWith(BLOSSOM_UPLOAD_STATUS, expect.objectContaining({
       uploading: false,
       error: expect.stringContaining('HTTP Error 500'),

@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleNip04Encrypt, handleNip04Decrypt } from '../../../src-bex/handlers/nip04';
-import { handleVaultGetData, handleVaultIsUnlocked } from '../../../src-bex/handlers/vault-handler';
-import { storageService } from '../../../src/services/storage-service';
+import { handleNip04Encrypt, handleNip04Decrypt } from 'app/src-bex/handlers/nip04';
+import { handleVaultGetData, handleVaultIsUnlocked } from 'app/src-bex/handlers/vault-handler';
+import { storageService } from 'src/services/storage-service';
 import { nip04 } from 'nostr-tools';
 
 // Mock dependencies
-vi.mock('../../../src-bex/handlers/vault-handler', () => ({
+vi.mock('app/src-bex/handlers/vault-handler', () => ({
   handleVaultIsUnlocked: vi.fn(),
   handleVaultGetData: vi.fn(),
 }));
 
-vi.mock('../../../src/services/storage-service', () => ({
+vi.mock('src/services/storage-service', () => ({
   storageService: {
     get: vi.fn(),
   },

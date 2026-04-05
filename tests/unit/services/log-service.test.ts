@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { logService, LogLevel } from '../../../src/services/log-service';
-import { db } from '../../../src/services/database';
+import { logService, LogLevel } from 'src/services/log-service';
+import { db } from 'src/services/database';
 
 // Mock the database
-vi.mock('@/services/database', () => ({
+vi.mock('src/services/database', () => ({
   db: {
     exceptions: {
       add: vi.fn().mockResolvedValue(1),
@@ -38,6 +38,7 @@ describe('LogService', () => {
   it('should log an exception to the database and console', async () => {
     await logService.logException('test error', 'acc1', 'host1');
 
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(db.exceptions.add).toHaveBeenCalledWith(
       expect.objectContaining({
         message: 'test error',
@@ -55,6 +56,7 @@ describe('LogService', () => {
   it('should log an approval to the database and console', async () => {
     await logService.logApproval(1, 'host1', 'acc1');
 
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(db.approvals.add).toHaveBeenCalledWith(
       expect.objectContaining({
         eventKind: 1,
@@ -107,6 +109,7 @@ describe('LogService', () => {
       expect.stringContaining('TestService.testMethod failed: fail'),
       expect.any(Object)
     );
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(db.exceptions.add).toHaveBeenCalled();
   });
 });
