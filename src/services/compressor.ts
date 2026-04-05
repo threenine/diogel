@@ -42,20 +42,36 @@ function isValidHex(str: string): boolean {
  * @param key The stored key to export
  * @returns The text content for the export file
  */
-export function generateKeyExportText(key: StoredKey): string {
+function generateKeyExportText(key: StoredKey): string {
   if (!key) {
     throw new Error('Stored key cannot be null or undefined');
   }
 
-  if (!isValidHex(key.id) || !isValidHex(key.account.privkey)) {
-    throw new Error('Invalid hex string for key.id or privkey');
+  let npub = 'Error (Invalid ID)';
+  let nsec = 'Error (Invalid Private Key)';
+
+  try {
+    if (isValidHex(key.id)) {
+      npub = nip19.npubEncode(key.id);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (e) {
+    npub = 'Error encoding npub';
   }
 
-     const npub = nip19.npubEncode(key.id);
-     const nsec = nip19.nsecEncode(hexToBytes(key.account.privkey));
+  try {
+    if (isValidHex(key.account.privkey)) {
+      nsec = nip19.nsecEncode(hexToBytes(key.account.privkey));
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (e) {
+    nsec = `Error encoding nsec`;
+  }
 
   return formatKeyBackupText(key.alias, key.createdAt, npub, nsec);
 }
+
+export default generateKeyExportText
 export function formatKeyBackupText(
   alias: string,
   createdAt: string,
