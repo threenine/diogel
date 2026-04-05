@@ -20,36 +20,91 @@ export async function createEncryptedZipBytes(
     zipCrypto: true, // enables encryption
   });
 
-  const content = createText(key) + '\n';
+  const content = generateKeyExportText(key);
   await writer.add(`${key.alias}.txt`, new TextReader(content));
 
   const zipBlob = await writer.close();
   return await zipBlob.arrayBuffer();
 }
 
-function createText(key: StoredKey): string {
-  let npub = '';
-  let nsec = '';
-  try {
-    npub = nip19.npubEncode(key.id);
-    nsec = nip19.nsecEncode(hexToBytes(key.account.privkey));
-  } catch (e) {
-    console.error('Failed to derive keys for export', e);
+
+
+/**
+ * Check if a string is a valid hexadecimal string
+ */
+function isValidHex(str: string): boolean {
+  return /^[0-9a-fA-F]+$/.test(str);
+}
+
+/**
+ * Generates the text content for the exported key file.
+ * This is exported for testing purposes.
+ * @param key The stored key to export
+ * @returns The text content for the export file
+ */
+function generateKeyExportText(key: StoredKey): string {
+  if (!key) {
+    throw new Error('Stored key cannot be null or undefined');
   }
 
+  let npub = 'Error (Invalid ID)';
+  let nsec = 'Error (Invalid Private Key)';
+
+  try {
+    if (isValidHex(key.id)) {
+      npub = nip19.npubEncode(key.id);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (e) {
+    npub = 'Error encoding npub';
+  }
+
+  try {
+    if (isValidHex(key.account.privkey)) {
+      nsec = nip19.nsecEncode(hexToBytes(key.account.privkey));
+    }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  } catch (e) {
+    nsec = `Error encoding nsec`;
+  }
+
+  return formatKeyBackupText(key.alias, key.createdAt, npub, nsec);
+}
+
+export default generateKeyExportText
+export function formatKeyBackupText(
+  alias: string,
+  createdAt: string,
+  npub: string,
+  nsec: string,
+): string {
   const lines = [
-    `Alias: ${key.alias}`,
+    '===================================================================================',
+    '                          DIOGEL KEY BACKUP',
+    '===================================================================================',
     '',
-    '== Nostr Keys ==',
-    `npub:  ${npub}`,
-    `nsec: ${nsec}`,
+    `Alias: ${alias}`,
+    `Created At: ${createdAt}`,
     '',
-    'Notes:',
-    '- Keep this file secure. Do not leave this file in plain text on your computer.',
-    '- Do not share this file with anyone.',
-    '- Do not upload this file to a public website.',
-    '- Do not email this file to anyone.',
-    '- This file contains your public and private keys. It is your responsibility to keep it safe.',
+    '-----------------------------------------------------------------------------------',
+    'NOSTR KEYS',
+    '-----------------------------------------------------------------------------------',
+    `npub (Public Key):  ${npub}`,
+    `nsec (Private Key): ${nsec}`,
+    '',
+    '-----------------------------------------------------------------------------------',
+    'IMPORTANT SECURITY NOTES',
+    '-----------------------------------------------------------------------------------',
+    '- KEEP THIS FILE SECURE: This file contains your sensitive private key.',
+    '- DO NOT SHARE: Anyone with access to this file can control your Nostr identity.',
+    '- DO NOT LEAVE IN PLAIN TEXT: Once decrypted, ensure this file is not left on',
+    '  an unencrypted drive.',
+    '- DO NOT UPLOAD: Never upload this file to any public or cloud storage.',
+    '- DO NOT EMAIL: Email is not a secure medium for private keys.',
+    '',
+    '===================================================================================',
+    'DIOGEL - Secure Nostr Key Management',
+    '====================================================================================',
   ];
 
   return lines.join('\n') + '\n';
