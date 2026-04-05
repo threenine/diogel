@@ -47,19 +47,12 @@ export function generateKeyExportText(key: StoredKey): string {
     throw new Error('Stored key cannot be null or undefined');
   }
 
-  let npub = 'Error';
-  let nsec = 'Error';
-
-  if (!isValidHex(key.id)) {
-    console.error('Invalid hex string for key.id:', key.id);
-  } else {
-    try {
-      npub = nip19.npubEncode(key.id);
-      nsec = nip19.nsecEncode(hexToBytes(key.account.privkey));
-    } catch (e) {
-      console.error('Failed to derive keys for export', e);
-    }
+  if (!isValidHex(key.id) || !isValidHex(key.account.privkey)) {
+    throw new Error('Invalid hex string for key.id or privkey');
   }
+
+     const npub = nip19.npubEncode(key.id);
+     const nsec = nip19.nsecEncode(hexToBytes(key.account.privkey));
 
   return formatKeyBackupText(key.alias, key.createdAt, npub, nsec);
 }
