@@ -48,6 +48,8 @@ export default {
   profile: {
     title: 'Profile',
     imagesTitle: 'Images',
+    avatarTitle: 'Avatar',
+    bannerTitle: 'Banner',
     keysTitle: 'Keys',
     relaysTitle: 'Relays',
     name: 'Name',

@@ -38,7 +38,7 @@ function onUploading(status: boolean) {
 <template>
   <q-card class="full-width full-height">
     <q-card-section class="text-left">
-      <p class="text-h7 text-orange-5">{{ t('profile.imagesTitle') }}</p>
+      <p class="text-h7 text-orange-5">{{ t('profile.avatarTitle') }}</p>
     </q-card-section>
     <q-card-section class="flex flex-center">
       <ImagePreview :is-avatar="true" :name="name" :size="size" :url="modelValue" />
