@@ -43,6 +43,7 @@ export default {
     create: 'Create Account',
     mainAccountReserved: 'Main Account',
     mainAccountReservedError: 'Alias "{name}" is reserved.',
+    anonymous: 'Anonymous',
   },
   profile: {
     title: 'Profile',

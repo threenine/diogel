@@ -101,7 +101,7 @@ watch(
 
         <div class="profile-info q-mt-sm">
           <div class="text-heading text-weight-bold">
-            {{ profile.display_name || profile.name || 'Anonymous' }}
+            {{ profile.display_name || profile.name || t('account.anonymous') }}
           </div>
           <div v-if="profile.name && profile.display_name" class="text-caption text-primary">
             @{{ profile.name }}
