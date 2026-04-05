@@ -49,35 +49,38 @@ jobs:
           else
             TAG=$(node -p "require('./package.json').version")-$(git rev-parse --short HEAD)
           fi
+          ZIP_NAME="diogel-firefox-${TAG}.zip"
           echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "zip_name=$ZIP_NAME" >> $GITHUB_OUTPUT
           cd dist/bex-firefox
-          zip -r ../../diogel-firefox-${TAG}.zip .
+          zip -r "../../$ZIP_NAME" .
           cd ../..
-          cp diogel-firefox-${TAG}.zip diogel.zip
+          cp "$ZIP_NAME" diogel.zip
       - name: Create Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           tag="${{ steps.package.outputs.tag }}"
-          echo "Uploading diogel-firefox-${tag}.zip to release $tag"
-          if [ ! -f "diogel-firefox-${tag}.zip" ]; then
-            echo "Error: diogel-firefox-${tag}.zip not found!"
+          zip_name="${{ steps.package.outputs.zip_name }}"
+          echo "Uploading $zip_name to release $tag"
+          if [ ! -f "$zip_name" ]; then
+            echo "Error: $zip_name not found!"
             exit 1
           fi
           
           gh release create "$tag" \
-            "diogel-firefox-${tag}.zip" \
+            "$zip_name" \
             --title="$tag" \
             --generate-notes || \
           gh release upload "$tag" \
-            "diogel-firefox-${tag}.zip" \
+            "$zip_name" \
             --clobber
       - name: Publish to AMO (Firefox Add-ons)
         uses: browser-actions/release-firefox-addon@v0.2.1
         with:
           addon-id: ${{ secrets.AMO_ADDON_ID }}
-          addon-path: diogel.zip
-          auth-api-issuer: ${{ secrets.AMO_API_ISSUER }}
+          addon-path: ${{ steps.package.outputs.zip_name }}
+          auth-api-issuer: ${{ secrets.AMO_API_ISSUE }}
           auth-api-secret: ${{ secrets.AMO_API_SECRET }}
           channel: listed
 
