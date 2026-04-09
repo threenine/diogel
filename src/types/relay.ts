@@ -11,7 +11,7 @@ export interface RelayCatalogEntry {
     supported_nips?: number[];
     software?: string;
     version?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
   status: 'unknown' | 'online' | 'offline' | 'error';
   lastSeen?: number; // timestamp
