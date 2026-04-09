@@ -1,7 +1,7 @@
 # Diogel Developer Onboarding
 
 Date: 2026-04-09
-Prepared by: Dave
+Prepared by: Gary Woodfine
 
 ## Purpose
 

@@ -1,7 +1,7 @@
 # Diogel Security Review
 
 Date: 2026-04-09
-Reviewer: Dave
+Reviewer: Gary Woodfine
 
 ## Executive Summary
 

@@ -3,11 +3,10 @@
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/inhkmeiabnknligdjngmoocohdonoboa?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/nostrame/inhkmeiabnknligdjngmoocohdonoboa)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-A Nostr Account and Signer browser extension, enabling you to manage and switch between multiple identities while
-interacting with Nostr apps.
-
-Diogel signer is a secure browser extension for managing your Nostr identities without exposing your private keys to
-web applications.
+Diogel is a Quasar-based browser extension that injects a NIP-07-compatible window.nostr provider into web pages, 
+routes requests through a background script, enforces per-origin approval rules, signs with the currently active Nostr 
+identity stored inside an encrypted local vault, and provides a Vue/Pinia UI for account, vault, and settings 
+management.
 
 **Key Features:**
 
