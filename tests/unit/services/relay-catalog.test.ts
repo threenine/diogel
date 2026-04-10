@@ -432,4 +432,107 @@ describe('Relay Catalog Service - getEntries', () => {
     expect(results[0]?.url).toBe('wss://a.com');
     expect(results[1]?.url).toBe('wss://b.com');
   });
+
+  it('should exclude offline or error entries with no metadata', async () => {
+    const now = Date.now();
+    // 1. Offline with no metadata - exclude
+    mockRelayCatalog.set('wss://offline-no-meta.com', {
+      url: 'wss://offline-no-meta.com',
+      hostname: 'offline-no-meta.com',
+      isUserAdded: false,
+      isSeed: false,
+      status: 'offline',
+      createdAt: now,
+      updatedAt: now,
+    });
+    // 2. Error with no metadata - exclude
+    mockRelayCatalog.set('wss://error-no-meta.com', {
+      url: 'wss://error-no-meta.com',
+      hostname: 'error-no-meta.com',
+      isUserAdded: false,
+      isSeed: false,
+      status: 'error',
+      createdAt: now,
+      updatedAt: now,
+    });
+    // 3. Online with no metadata - keep
+    mockRelayCatalog.set('wss://online-no-meta.com', {
+      url: 'wss://online-no-meta.com',
+      hostname: 'online-no-meta.com',
+      isUserAdded: false,
+      isSeed: false,
+      status: 'online',
+      createdAt: now,
+      updatedAt: now,
+    });
+    // 4. Offline with metadata - keep
+    mockRelayCatalog.set('wss://offline-with-meta.com', {
+      url: 'wss://offline-with-meta.com',
+      hostname: 'offline-with-meta.com',
+      isUserAdded: false,
+      isSeed: false,
+      status: 'offline',
+      metadata: { name: 'Offline but metadata-rich' },
+      createdAt: now,
+      updatedAt: now,
+    });
+    // 5. Seed entry (even offline and no metadata) - keep
+    mockRelayCatalog.set('wss://seed-offline-no-meta.com', {
+      url: 'wss://seed-offline-no-meta.com',
+      hostname: 'seed-offline-no-meta.com',
+      isUserAdded: false,
+      isSeed: true,
+      status: 'offline',
+      createdAt: now,
+      updatedAt: now,
+    });
+    // 6. User-added entry (even offline and no metadata) - keep
+    mockRelayCatalog.set('wss://user-offline-no-meta.com', {
+      url: 'wss://user-offline-no-meta.com',
+      hostname: 'user-offline-no-meta.com',
+      isUserAdded: true,
+      isSeed: false,
+      status: 'offline',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const results = await relayCatalogService.getEntries();
+    const urls = results.map(r => r.url);
+
+    expect(urls).not.toContain('wss://offline-no-meta.com');
+    expect(urls).not.toContain('wss://error-no-meta.com');
+    expect(urls).toContain('wss://online-no-meta.com');
+    expect(urls).toContain('wss://offline-with-meta.com');
+    expect(urls).toContain('wss://seed-offline-no-meta.com');
+    expect(urls).toContain('wss://user-offline-no-meta.com');
+  });
+
+  it('should exclude malformed URLs', async () => {
+    const now = Date.now();
+    mockRelayCatalog.set('wss://', {
+      url: 'wss://',
+      hostname: '',
+      isUserAdded: false,
+      isSeed: false,
+      status: 'online',
+      createdAt: now,
+      updatedAt: now,
+    });
+    mockRelayCatalog.set('wss://.com', {
+      url: 'wss://.com',
+      hostname: '.com',
+      isUserAdded: false,
+      isSeed: false,
+      status: 'online',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const results = await relayCatalogService.getEntries();
+    const urls = results.map(r => r.url);
+
+    expect(urls).not.toContain('wss://');
+    expect(urls).not.toContain('wss://.com');
+  });
 });

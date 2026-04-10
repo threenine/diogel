@@ -21,10 +21,29 @@ const loading = ref(false);
 const refreshing = ref(false);
 const searchText = ref('');
 const searchOnly = ref(false);
+
+const pageSize = ref(10);
+const currentPage = ref(1);
+const pageSizeOptions = [10, 20, 30, 50, 100];
+
 let statusInterval: ReturnType<typeof setInterval> | null = null;
 
 const filteredRelays = computed(() => {
   return filterAndSortRelays(relays.value, searchText.value, searchOnly.value);
+});
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredRelays.value.length / pageSize.value));
+});
+
+const pagedRelays = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return filteredRelays.value.slice(start, end);
+});
+
+watch([searchText, searchOnly, pageSize], () => {
+  currentPage.value = 1;
 });
 
 async function fetchRelays() {
@@ -188,36 +207,60 @@ function selectRelay(relay: RelayCatalogEntry) {
           <q-icon name="explore" size="4em" class="q-mb-md" />
           <div>{{ t('relays.browser.empty') }}</div>
         </div>
-        <q-list v-else separator>
-          <q-item
-            v-for="relay in filteredRelays"
-            :key="relay.url"
-            clickable
-            @click="selectRelay(relay)"
-          >
-            <q-item-section v-if="relay.metadata?.icon" avatar>
-              <q-avatar size="32px">
-                <img :src="relay.metadata.icon" alt="Relay Icon" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section v-else avatar>
-              <q-avatar size="32px" color="primary" text-color="white" icon="hub" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>{{ getDisplayName(relay) }}</q-item-label>
-              <q-item-label caption lines="1">{{ relay.url }}</q-item-label>
-              <q-item-label v-if="relay.metadata?.description" caption lines="2">
-                {{ relay.metadata.description }}
-              </q-item-label>
-            </q-item-section>
-            <q-item-section side>
-              <q-badge
-                :color="relay.status === 'online' ? 'positive' : 'grey'"
-                :label="relay.status"
-              />
-            </q-item-section>
-          </q-item>
-        </q-list>
+        <div v-else>
+          <q-list separator>
+            <q-item
+              v-for="relay in pagedRelays"
+              :key="relay.url"
+              clickable
+              @click="selectRelay(relay)"
+            >
+              <q-item-section v-if="relay.metadata?.icon" avatar>
+                <q-avatar size="32px">
+                  <img :src="relay.metadata.icon" alt="Relay Icon" />
+                </q-avatar>
+              </q-item-section>
+              <q-item-section v-else avatar>
+                <q-avatar size="32px" color="primary" text-color="white" icon="hub" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ getDisplayName(relay) }}</q-item-label>
+                <q-item-label caption lines="1">{{ relay.url }}</q-item-label>
+                <q-item-label v-if="relay.metadata?.description" caption lines="2">
+                  {{ relay.metadata.description }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-badge
+                  :color="relay.status === 'online' ? 'positive' : 'grey'"
+                  :label="relay.status"
+                />
+              </q-item-section>
+            </q-item>
+          </q-list>
+
+          <div class="row items-center justify-between q-mt-md">
+            <q-select
+              v-model="pageSize"
+              :options="pageSizeOptions"
+              :label="t('relays.browser.results_per_page')"
+              dense
+              outlined
+              options-dense
+              emit-value
+              map-options
+              style="width: 150px"
+            />
+            <q-pagination
+              v-model="currentPage"
+              :max="totalPages"
+              :max-pages="5"
+              boundary-numbers
+              direction-links
+              color="primary"
+            />
+          </div>
+        </div>
       </q-card-section>
 
       <q-card-actions align="right">

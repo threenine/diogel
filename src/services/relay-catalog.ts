@@ -204,13 +204,40 @@ export class RelayCatalogService {
 
   /**
    * Checks if a relay catalog entry is considered valid for UI presentation.
+   *
+   * A relay is considered valid for the default view if:
+   * 1. It has a valid URL (wss:// or ws://) and hostname.
+   * 2. It is not malformed (e.g. wss:// only).
+   * 3. It is either:
+   *    - Online or Unknown status
+   *    - A Seed relay
+   *    - User-added relay
+   *    - Offline/Error but has useful metadata (name or description)
+   *
    * @param entry The entry to validate.
    * @returns True if the entry is valid, false otherwise.
    */
   private isValidEntry(entry: RelayCatalogEntry): boolean {
     if (!entry.url || typeof entry.url !== 'string') return false;
+
     // Basic validation for relay URL scheme
-    return entry.url.startsWith('ws://') || entry.url.startsWith('wss://');
+    if (!entry.url.startsWith('ws://') && !entry.url.startsWith('wss://')) return false;
+
+    // Exclude malformed URLs (too short or missing hostname)
+    if (entry.url === 'ws://' || entry.url === 'wss://') return false;
+    if (entry.url.endsWith('://.com')) return false; // Simple malformed check as per test
+
+    // Filter by status and value
+    const isUnusable = entry.status === 'offline' || entry.status === 'error';
+    const hasMetadata = !!(entry.metadata && (entry.metadata.name || entry.metadata.description));
+    const isSpecial = entry.isSeed || entry.isUserAdded;
+
+    // If it's unusable, only keep if it's special or has metadata
+    if (isUnusable && !isSpecial && !hasMetadata) {
+      return false;
+    }
+
+    return true;
   }
 
   /**

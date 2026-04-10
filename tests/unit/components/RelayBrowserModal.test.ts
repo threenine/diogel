@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
 import RelayBrowserModal from 'src/components/RelayBrowserModal.vue';
 import { listRelayCatalog, refreshRelayCatalog, getRelayDiscoveryStatus } from 'src/services/relay-service';
+import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 
 const i18nMock = {
   t: (key: string) => key,
@@ -60,6 +61,10 @@ const stubs = {
     template: '<div class="q-item-label" :class="{ caption }"><slot /></div>',
     props: ['caption', 'lines'],
   },
+  'q-avatar': {
+    template: '<div class="q-avatar"><slot /></div>',
+    props: ['size', 'color', 'text-color', 'icon'],
+  },
   'q-badge': {
     template: '<span>{{ label }}</span>',
     props: ['color', 'label'],
@@ -74,6 +79,14 @@ const stubs = {
   'q-toggle': {
     template: '<input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />',
     props: ['modelValue', 'label'],
+  },
+  'q-pagination': {
+    template: '<div class="q-pagination"><button class="prev" @click="$emit(\'update:modelValue\', modelValue - 1)">prev</button><span class="current">{{ modelValue }}</span><button class="next" @click="$emit(\'update:modelValue\', modelValue + 1)">next</button></div>',
+    props: ['modelValue', 'max'],
+  },
+  'q-select': {
+    template: '<select :value="modelValue" @change="$emit(\'update:modelValue\', Number($event.target.value))"><option v-for="opt in options" :key="opt" :value="opt">{{ opt }}</option></select>',
+    props: ['modelValue', 'options', 'label'],
   },
 };
 
@@ -118,7 +131,7 @@ describe('RelayBrowserModal.vue', () => {
         },
       },
     ];
-    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as any);
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
 
     const wrapper = mount(RelayBrowserModal, {
       props: {
@@ -152,7 +165,7 @@ describe('RelayBrowserModal.vue', () => {
         status: 'offline',
       },
     ];
-    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as any);
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
 
     const wrapper = mount(RelayBrowserModal, {
       props: {
@@ -178,7 +191,7 @@ describe('RelayBrowserModal.vue', () => {
         status: 'unknown',
       },
     ];
-    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as any);
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
 
     const wrapper = mount(RelayBrowserModal, {
       props: {
@@ -228,7 +241,7 @@ describe('RelayBrowserModal.vue', () => {
         metadata: { name: 'Example Relay' },
       },
     ];
-    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as any);
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
 
     const wrapper = mount(RelayBrowserModal, {
       props: {
@@ -273,7 +286,7 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
   ];
 
   it('filters relays by search text', async () => {
-    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as any);
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
     const wrapper = mount(RelayBrowserModal, {
       props: { modelValue: true },
       global: { stubs, directives },
@@ -292,7 +305,7 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
   });
 
   it('filters relays by search-capable toggle', async () => {
-    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as any);
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
     const wrapper = mount(RelayBrowserModal, {
       props: { modelValue: true },
       global: { stubs, directives },
@@ -309,7 +322,7 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
   });
 
   it('sorts relays alphabetically by default', async () => {
-    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as any);
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
     const wrapper = mount(RelayBrowserModal, {
       props: { modelValue: true },
       global: { stubs, directives },
@@ -326,7 +339,7 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
   });
 
   it('shows empty state when no results match filter', async () => {
-    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as any);
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
     const wrapper = mount(RelayBrowserModal, {
       props: { modelValue: true },
       global: { stubs, directives },
@@ -343,8 +356,8 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
   });
 
   it('triggers refresh automatically when catalog is small', async () => {
-    vi.mocked(listRelayCatalog).mockResolvedValue([{ url: 'wss://seed.com', hostname: 'seed.com', isSeed: true }] as any);
-    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({ isDiscoveryInProgress: false } as any);
+    vi.mocked(listRelayCatalog).mockResolvedValue([{ url: 'wss://seed.com', hostname: 'seed.com', isSeed: true }] as RelayCatalogEntry[]);
+    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({ isDiscoveryInProgress: false } as RelayDiscoveryState);
 
     mount(RelayBrowserModal, {
       props: { modelValue: true },
@@ -368,8 +381,8 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
       { url: '9', hostname: '9' },
       { url: '10', hostname: '10' },
       { url: '11', hostname: '11' },
-    ] as any);
-    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({ isDiscoveryInProgress: false } as any);
+    ] as RelayCatalogEntry[]);
+    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({ isDiscoveryInProgress: false } as RelayDiscoveryState);
 
     const wrapper = mount(RelayBrowserModal, {
       props: { modelValue: true },
@@ -389,7 +402,7 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
   it('polls status when discovery is in progress', async () => {
     vi.useFakeTimers();
     vi.mocked(listRelayCatalog).mockResolvedValue([]);
-    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({ isDiscoveryInProgress: true } as any);
+    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({ isDiscoveryInProgress: true } as RelayDiscoveryState);
 
     mount(RelayBrowserModal, {
       props: { modelValue: true },
@@ -406,5 +419,107 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
     expect(getRelayDiscoveryStatus).toHaveBeenCalledTimes(3);
 
     vi.useRealTimers();
+  });
+
+  it('shows only the first page of results', async () => {
+    const mockRelays = Array.from({ length: 15 }, (_, i) => ({
+      url: `wss://relay${i + 1}.com`,
+      hostname: `relay${i + 1}.com`,
+      status: 'online',
+      metadata: { name: `Relay ${String(i + 1).padStart(2, '0')}` },
+    }));
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
+
+    const wrapper = mount(RelayBrowserModal, {
+      props: { modelValue: true },
+      global: { stubs, directives },
+    });
+    await flushPromises();
+
+    // Default page size is 10
+    const items = wrapper.findAll('.q-item');
+    expect(items).toHaveLength(10);
+    expect(wrapper.text()).toContain('Relay 01');
+    expect(wrapper.text()).toContain('Relay 10');
+    expect(wrapper.text()).not.toContain('Relay 11');
+  });
+
+  it('switches pages correctly', async () => {
+    const mockRelays = Array.from({ length: 15 }, (_, i) => ({
+      url: `wss://relay${i + 1}.com`,
+      hostname: `relay${i + 1}.com`,
+      status: 'online',
+      metadata: { name: `Relay ${String(i + 1).padStart(2, '0')}` },
+    }));
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
+
+    const wrapper = mount(RelayBrowserModal, {
+      props: { modelValue: true },
+      global: { stubs, directives },
+    });
+    await flushPromises();
+
+    const nextBtn = wrapper.find('.q-pagination .next');
+    await nextBtn.trigger('click');
+    await flushPromises();
+
+    const items = wrapper.findAll('.q-item');
+    expect(items).toHaveLength(5);
+    expect(wrapper.text()).not.toContain('Relay 10');
+    expect(wrapper.text()).toContain('Relay 11');
+    expect(wrapper.text()).toContain('Relay 15');
+  });
+
+  it('changes page size correctly', async () => {
+    const mockRelays = Array.from({ length: 25 }, (_, i) => ({
+      url: `wss://relay${i + 1}.com`,
+      hostname: `relay${i + 1}.com`,
+      status: 'online',
+      metadata: { name: `Relay ${String(i + 1).padStart(2, '0')}` },
+    }));
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
+
+    const wrapper = mount(RelayBrowserModal, {
+      props: { modelValue: true },
+      global: { stubs, directives },
+    });
+    await flushPromises();
+
+    expect(wrapper.findAll('.q-item')).toHaveLength(10);
+
+    const select = wrapper.find('select');
+    await select.setValue(20);
+    await flushPromises();
+
+    expect(wrapper.findAll('.q-item')).toHaveLength(20);
+    expect(wrapper.text()).toContain('Relay 20');
+  });
+
+  it('resets to page 1 when filtering', async () => {
+    const mockRelays = Array.from({ length: 25 }, (_, i) => ({
+      url: `wss://relay${i + 1}.com`,
+      hostname: `relay${i + 1}.com`,
+      status: 'online',
+      metadata: { name: `Relay ${String(i + 1).padStart(2, '0')}` },
+    }));
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
+
+    const wrapper = mount(RelayBrowserModal, {
+      props: { modelValue: true },
+      global: { stubs, directives },
+    });
+    await flushPromises();
+
+    // Go to page 2
+    await wrapper.find('.q-pagination .next').trigger('click');
+    expect(wrapper.find('.q-pagination .current').text()).toBe('2');
+
+    // Filter
+    const input = wrapper.find('input');
+    await input.setValue('Relay 01');
+    await flushPromises();
+
+    expect(wrapper.find('.q-pagination .current').text()).toBe('1');
+    expect(wrapper.findAll('.q-item')).toHaveLength(1);
   });
 });
