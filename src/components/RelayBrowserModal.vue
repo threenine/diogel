@@ -3,7 +3,7 @@ import { ref, watch, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { RelayCatalogEntry } from 'src/types/relay';
 import { listRelayCatalog, refreshRelayCatalog, getRelayDiscoveryStatus } from 'src/services/relay-service';
-import { filterAndSortRelays } from 'src/utils/relay-filters';
+import { filterRelays } from 'src/utils/relay-filters';
 
 const { t } = useI18n();
 
@@ -29,7 +29,7 @@ const pageSizeOptions = [10, 20, 30, 50, 100];
 let statusInterval: number | null = null;
 
 const filteredRelays = computed(() => {
-  return filterAndSortRelays(relays.value, searchText.value, searchOnly.value);
+  return filterRelays(relays.value, searchText.value, searchOnly.value);
 });
 
 const totalPages = computed(() => {

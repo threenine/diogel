@@ -118,6 +118,12 @@ Guidelines for adding tests (irrespective of runner):
   - Place locale messages under `src/i18n`. The unplugin picks them up at build time; avoid dynamic paths outside that
     directory.
 
+- Relay Browser Sorting
+  - Canonical sorting responsibility belongs to the background service (`RelayCatalogService` in `src/services/relay-catalog.ts`).
+  - The background service provides a "smart" sort (prioritizing online status, metadata richness, and seed status).
+  - UI components (like `RelayBrowserModal.vue`) must preserve this order and only apply non-destructive filtering via `filterRelays` in `src/utils/relay-filters.ts`.
+  - Avoid adding secondary sorting layers in the UI to prevent drift and inconsistent user experience.
+
 - Browser Extension (BEX) specifics
   - Background/service worker code resides in `src-bex/*.ts` (e.g., `background.ts`).
   - When working on BEX, verify TypeScript types in that folder as well; ESLint and the checker already include

@@ -321,7 +321,7 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
     expect(wrapper.text()).toContain('Apple Relay');
   });
 
-  it('sorts relays alphabetically by default', async () => {
+  it('preserves the order provided by the background service', async () => {
     vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
     const wrapper = mount(RelayBrowserModal, {
       props: { modelValue: true },
@@ -330,12 +330,12 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
     await flushPromises();
 
     const items = wrapper.findAll('.q-item-label').filter(i => !i.classes('caption'));
-    // Apple Relay name, Apple Relay URL, Zebra Relay name, Zebra Relay URL
+    // Should be Zebra, then Apple (following mockRelays order)
     expect(items).toHaveLength(4);
-    expect(items[0]!.text()).toContain('Apple Relay');
-    expect(items[1]!.text()).toContain('wss://apple.relay.com');
-    expect(items[2]!.text()).toContain('Zebra Relay');
-    expect(items[3]!.text()).toContain('wss://zebra.relay.com');
+    expect(items[0]!.text()).toContain('Zebra Relay');
+    expect(items[1]!.text()).toContain('wss://zebra.relay.com');
+    expect(items[2]!.text()).toContain('Apple Relay');
+    expect(items[3]!.text()).toContain('wss://apple.relay.com');
   });
 
   it('shows empty state when no results match filter', async () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { RelayCatalogEntry } from 'src/types/relay';
-import { filterAndSortRelays } from 'src/utils/relay-filters';
+import { filterRelays } from 'src/utils/relay-filters';
 
 const mockRelays: RelayCatalogEntry[] = [
   {
@@ -47,54 +47,54 @@ const mockRelays: RelayCatalogEntry[] = [
 
 describe('relay-filters util', () => {
   it('should filter by text match in name', () => {
-    const result = filterAndSortRelays(mockRelays, 'Zebra', false);
+    const result = filterRelays(mockRelays, 'Zebra', false);
     expect(result).toHaveLength(1);
     expect(result[0]!.url).toBe('wss://zebra.relay.com');
   });
 
   it('should filter by text match in hostname', () => {
-    const result = filterAndSortRelays(mockRelays, 'v0l.me', false);
+    const result = filterRelays(mockRelays, 'v0l.me', false);
     expect(result).toHaveLength(1);
     expect(result[0]!.url).toBe('wss://nostr.v0l.me');
   });
 
   it('should filter by text match in URL', () => {
-    const result = filterAndSortRelays(mockRelays, 'wss://zebra', false);
+    const result = filterRelays(mockRelays, 'wss://zebra', false);
     expect(result).toHaveLength(1);
     expect(result[0]!.url).toBe('wss://zebra.relay.com');
   });
 
   it('should filter for search-capable (NIP-50) only', () => {
-    const result = filterAndSortRelays(mockRelays, '', true);
+    const result = filterRelays(mockRelays, '', true);
     expect(result).toHaveLength(2);
     expect(result.some((r) => r.url === 'wss://apple.relay.com')).toBe(true);
     expect(result.some((r) => r.url === 'wss://search.example.com')).toBe(true);
   });
 
   it('should apply both text filter and NIP-50 toggle', () => {
-    const result = filterAndSortRelays(mockRelays, 'apple', true);
+    const result = filterRelays(mockRelays, 'apple', true);
     expect(result).toHaveLength(1);
     expect(result[0]!.url).toBe('wss://apple.relay.com');
   });
 
   it('should return empty list when no matches found', () => {
-    const result = filterAndSortRelays(mockRelays, 'no-match-at-all', false);
+    const result = filterRelays(mockRelays, 'no-match-at-all', false);
     expect(result).toHaveLength(0);
   });
 
-  it('should sort relays alphabetically by name', () => {
-    const result = filterAndSortRelays(mockRelays, '', false);
-    // Apple, Searchable, Volme, Zebra
+  it('should preserve input order (canonical sorting is owned by background service)', () => {
+    const result = filterRelays(mockRelays, '', false);
     expect(result).toHaveLength(4);
-    expect(result[0]!.metadata?.name).toBe('Apple Relay');
-    expect(result[1]!.metadata?.name).toBe('Searchable Relay');
-    expect(result[2]!.metadata?.name).toBe('Volme');
-    expect(result[3]!.metadata?.name).toBe('Zebra Relay');
+    // Should match mockRelays order exactly
+    expect(result[0]!.url).toBe('wss://zebra.relay.com');
+    expect(result[1]!.url).toBe('wss://apple.relay.com');
+    expect(result[2]!.url).toBe('wss://search.example.com');
+    expect(result[3]!.url).toBe('wss://nostr.v0l.me');
   });
 
   it('should be deterministic after filtering', () => {
-    const result1 = filterAndSortRelays(mockRelays, 'relay', false);
-    const result2 = filterAndSortRelays(mockRelays, 'relay', false);
+    const result1 = filterRelays(mockRelays, 'relay', false);
+    const result2 = filterRelays(mockRelays, 'relay', false);
     expect(result1).toEqual(result2);
   });
 });
