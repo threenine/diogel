@@ -1,7 +1,14 @@
 import { db } from 'src/services/database';
 import { normalizeRelayUrl } from 'src/services/relay-url';
-import type { RelayCatalogEntry } from 'src/types/relay';
+import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 import { RELAY_SEEDS } from 'src/data/relay-seeds';
+
+/**
+ * Constants for relay discovery and metadata staleness thresholds (in milliseconds).
+ * These are easily adjustable for later tuning.
+ */
+export const DISCOVERY_STALENESS_THRESHOLD = 24 * 60 * 60 * 1000; // 24 hours
+export const METADATA_STALENESS_THRESHOLD = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export async function loadSeedRelays(): Promise<{ added: number; updated: number; skipped: number }> {
   let added = 0;
@@ -143,6 +150,80 @@ export class RelayCatalogService {
     }
 
     return 1;
+  }
+
+  /**
+   * Retrieves the current discovery state from the database.
+   * @param id The ID of the discovery task (defaults to 'global').
+   * @returns The discovery state or null if not found.
+   */
+  async getDiscoveryState(id = 'global'): Promise<RelayDiscoveryState | null> {
+    return (await db.relayDiscoveryState.get(id)) || null;
+  }
+
+  /**
+   * Updates the discovery state in the database.
+   * Creates it if it doesn't exist.
+   * @param id The ID of the discovery task (defaults to 'global').
+   * @param updates The fields to update.
+   */
+  async updateDiscoveryState(updates: Partial<RelayDiscoveryState>, id = 'global'): Promise<void> {
+    await db.transaction('rw', db.relayDiscoveryState, async () => {
+      const existing = await db.relayDiscoveryState.get(id);
+      const now = Date.now();
+
+      if (existing) {
+        await db.relayDiscoveryState.update(id, {
+          ...updates,
+          updatedAt: now,
+        });
+      } else {
+        const newState: RelayDiscoveryState = {
+          id,
+          isDiscoveryInProgress: false,
+          updatedAt: now,
+          ...updates,
+        };
+        await db.relayDiscoveryState.add(newState);
+      }
+    });
+  }
+
+  /**
+   * Determines if global discovery should be refreshed based on staleness rules.
+   *
+   * Logic:
+   * 1. No state -> refresh
+   * 2. In progress -> no refresh (avoid duplicates)
+   * 3. Older than DISCOVERY_STALENESS_THRESHOLD -> refresh
+   *
+   * @param state The current discovery state.
+   * @returns True if discovery is stale and should be refreshed.
+   */
+  isDiscoveryStale(state: RelayDiscoveryState | null): boolean {
+    if (!state) return true;
+    if (state.isDiscoveryInProgress) return false;
+    if (!state.lastGlobalDiscoveryAt) return true;
+
+    return Date.now() - state.lastGlobalDiscoveryAt > DISCOVERY_STALENESS_THRESHOLD;
+  }
+
+  /**
+   * Determines if relay metadata should be refreshed.
+   *
+   * Logic:
+   * 1. Status 'unknown' -> refresh
+   * 2. No lastChecked timestamp -> refresh
+   * 3. Older than METADATA_STALENESS_THRESHOLD -> refresh
+   *
+   * @param entry The relay catalog entry.
+   * @returns True if metadata is stale and should be refreshed.
+   */
+  isMetadataStale(entry: RelayCatalogEntry): boolean {
+    if (entry.status === 'unknown') return true;
+    if (!entry.lastChecked) return true;
+
+    return Date.now() - entry.lastChecked > METADATA_STALENESS_THRESHOLD;
   }
 }
 

@@ -29,10 +29,10 @@ export async function handleRelayBrowserList(): Promise<HandlerResult<RelayCatal
  */
 export async function handleRelayBrowserGetStatus(): Promise<HandlerResult<RelayDiscoveryState | null>> {
   try {
-    const status = await db.relayDiscoveryState.get('global');
+    const status = await relayCatalogService.getDiscoveryState('global');
     return {
       success: true,
-      data: status || null,
+      data: status,
     };
   } catch (error) {
     console.error('[RelayBrowserHandler] Failed to get discovery status:', error);

@@ -7,6 +7,7 @@ import { db } from 'src/services/database';
 vi.mock('src/services/relay-catalog', () => ({
   relayCatalogService: {
     getEntries: vi.fn(),
+    getDiscoveryState: vi.fn(),
   },
 }));
 
@@ -60,7 +61,7 @@ describe('RelayBrowserHandler', () => {
         isDiscoveryInProgress: false,
         updatedAt: 123456789,
       };
-      vi.mocked(db.relayDiscoveryState.get).mockResolvedValue(mockStatus as any);
+      vi.mocked(relayCatalogService.getDiscoveryState).mockResolvedValue(mockStatus as any);
 
       const result = await handleRelayBrowserGetStatus();
 
@@ -68,11 +69,11 @@ describe('RelayBrowserHandler', () => {
       if (result.success) {
         expect(result.data).toEqual(mockStatus);
       }
-      expect(db.relayDiscoveryState.get).toHaveBeenCalledWith('global');
+      expect(relayCatalogService.getDiscoveryState).toHaveBeenCalledWith('global');
     });
 
     it('should return null when no status exists in database', async () => {
-      vi.mocked(db.relayDiscoveryState.get).mockResolvedValue(undefined as any);
+      vi.mocked(relayCatalogService.getDiscoveryState).mockResolvedValue(null);
 
       const result = await handleRelayBrowserGetStatus();
 
@@ -83,7 +84,7 @@ describe('RelayBrowserHandler', () => {
     });
 
     it('should return failure when database access fails', async () => {
-      vi.mocked(db.relayDiscoveryState.get).mockRejectedValue(new Error('Read error'));
+      vi.mocked(relayCatalogService.getDiscoveryState).mockRejectedValue(new Error('Read error'));
 
       const result = await handleRelayBrowserGetStatus();
 
