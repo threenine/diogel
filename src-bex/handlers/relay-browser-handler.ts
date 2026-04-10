@@ -1,4 +1,5 @@
 import { relayCatalogService } from 'src/services/relay-catalog';
+import { relayBrowserOrchestrator } from 'src/services/relay-browser-orchestrator';
 import { db } from 'src/services/database';
 import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 import type { HandlerResult } from '../types/background';
@@ -39,6 +40,32 @@ export async function handleRelayBrowserGetStatus(): Promise<HandlerResult<Relay
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error fetching discovery status',
+    };
+  }
+}
+
+/**
+ * Handles the 'relay.browser.refresh' action.
+ * Triggers the relay browser refresh flow.
+ */
+export async function handleRelayBrowserRefresh(payload?: { force?: boolean }): Promise<HandlerResult<void>> {
+  try {
+    const force = payload?.force || false;
+    // We don't await the full refresh here to avoid blocking the BEX response,
+    // as it can take a long time. The UI should poll getStatus to see progress.
+    relayBrowserOrchestrator.refreshCatalog(force).catch(err => {
+      console.error('[RelayBrowserHandler] Async refresh failed:', err);
+    });
+
+    return {
+      success: true,
+      data: undefined,
+    };
+  } catch (error) {
+    console.error('[RelayBrowserHandler] Failed to trigger refresh:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error triggering refresh',
     };
   }
 }

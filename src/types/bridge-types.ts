@@ -76,7 +76,8 @@ export type BridgeAction =
   | 'activity.mark'
   | 'nostr.approval.respond'
   | 'relay.browser.list'
-  | 'relay.browser.getStatus';
+  | 'relay.browser.getStatus'
+  | 'relay.browser.refresh';
 
 // Request/Response mapping
 export interface BridgeRequestMap {
@@ -218,6 +219,11 @@ export interface BridgeRequestMap {
     id: string;
     action: 'relay.browser.getStatus';
   };
+  'relay.browser.refresh': {
+    id: string;
+    action: 'relay.browser.refresh';
+    force?: boolean;
+  };
 }
 
 export interface BridgeResponseMap {
@@ -245,6 +251,7 @@ export interface BridgeResponseMap {
   'nostr.approval.respond': boolean | { success: boolean };
   'relay.browser.list': RelayCatalogEntry[];
   'relay.browser.getStatus': RelayDiscoveryState | null;
+  'relay.browser.refresh': boolean | { success: false; error: string };
 }
 
 export type BridgeRequest<K extends BridgeAction> = BridgeRequestMap[K];

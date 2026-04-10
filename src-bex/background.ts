@@ -122,6 +122,7 @@ declare module '@quasar/app-vite' {
     ];
     'relay.browser.list': [undefined, BridgeResponsePayload<'relay.browser.list'>];
     'relay.browser.getStatus': [undefined, BridgeResponsePayload<'relay.browser.getStatus'>];
+    'relay.browser.refresh': [{ force?: boolean }, BridgeResponsePayload<'relay.browser.refresh'>];
   }
 }
 
@@ -439,4 +440,8 @@ bridge.on('relay.browser.list', async () => {
 
 bridge.on('relay.browser.getStatus', async () => {
   return await dispatchMessage('relay.browser.getStatus', {}, '');
+});
+
+bridge.on('relay.browser.refresh', async ({ payload }: { payload: BridgeRequest<'relay.browser.refresh'> }) => {
+  return await dispatchMessage('relay.browser.refresh', payload, '');
 });
