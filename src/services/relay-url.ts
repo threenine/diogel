@@ -51,9 +51,9 @@ export function normalizeRelayUrl(input: string | null | undefined): RelayUrlRes
 
     let normalizedUrl = url.toString();
 
-    // If the URL ends with a slash and the pathname was just '/', we trim it for consistency
+    // If the URL ends with a slash and the pathname was just '/' or a path like '/path/', we trim it for consistency
     // but only if it doesn't have search params or hash which would be unusual for a relay but possible.
-    if (url.pathname === '/' && !url.search && !url.hash && normalizedUrl.endsWith('/')) {
+    if (url.pathname.endsWith('/') && !url.search && !url.hash && normalizedUrl.endsWith('/')) {
       normalizedUrl = normalizedUrl.slice(0, -1);
     }
 

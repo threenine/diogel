@@ -36,10 +36,10 @@ describe('normalizeRelayUrl', () => {
     expect(result.url).toBe('wss://relay.damus.io');
   });
 
-  it('should keep trailing slash if there is a path', () => {
+  it('should normalize trailing slash even if there is a path', () => {
     const result = normalizeRelayUrl('wss://relay.damus.io/path/');
     expect(result.valid).toBe(true);
-    expect(result.url).toBe('wss://relay.damus.io/path/');
+    expect(result.url).toBe('wss://relay.damus.io/path');
   });
 
   it('should reject empty string', () => {
