@@ -3,6 +3,7 @@ import { RelayBrowserOrchestrator } from 'src/services/relay-browser-orchestrato
 import { relayCatalogService, loadSeedRelays } from 'src/services/relay-catalog';
 import { relayDiscoveryService } from 'src/services/relay-discovery';
 import { fetchRelayMetadata } from 'src/services/relay-metadata';
+import type { RelayCatalogEntry } from 'src/types/relay';
 
 // Mock dependencies
 vi.mock('src/services/relay-catalog', () => ({
@@ -211,5 +212,77 @@ describe('RelayBrowserOrchestrator', () => {
     expect(relayDiscoveryService.discoverFromRelays).not.toHaveBeenCalled();
     /* eslint-enable @typescript-eslint/unbound-method */
     expect(fetchRelayMetadata).toHaveBeenCalledWith('wss://seed1.com');
+  });
+
+  it('should process multiple stale entries in parallel and handle failures in isolation', async () => {
+    const entries = [
+      { url: 'wss://relay1.com', hostname: 'relay1.com', status: 'unknown' },
+      { url: 'wss://relay2.com', hostname: 'relay2.com', status: 'unknown' },
+      { url: 'wss://relay3.com', hostname: 'relay3.com', status: 'unknown' },
+    ] as RelayCatalogEntry[];
+
+    /* eslint-disable @typescript-eslint/unbound-method */
+    vi.mocked(relayCatalogService.getEntries).mockResolvedValue(entries);
+    vi.mocked(relayCatalogService.isDiscoveryStale).mockReturnValue(false);
+    vi.mocked(relayCatalogService.isMetadataStale).mockReturnValue(true);
+    /* eslint-enable @typescript-eslint/unbound-method */
+
+    vi.mocked(fetchRelayMetadata).mockImplementation((url) => {
+      if (url === 'wss://relay2.com') {
+        return Promise.resolve({ success: false, url, error: 'Failed', timestamp: Date.now() });
+      }
+      return Promise.resolve({ success: true, url, metadata: { name: url }, timestamp: Date.now() });
+    });
+
+    await orchestrator.refreshCatalog();
+
+    expect(fetchRelayMetadata).toHaveBeenCalledTimes(3);
+    /* eslint-disable @typescript-eslint/unbound-method */
+    expect(relayCatalogService.upsertEntry).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'wss://relay1.com',
+      status: 'online'
+    }));
+    expect(relayCatalogService.upsertEntry).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'wss://relay2.com',
+      status: 'error'
+    }));
+    expect(relayCatalogService.upsertEntry).toHaveBeenCalledWith(expect.objectContaining({
+      url: 'wss://relay3.com',
+      status: 'online'
+    }));
+    /* eslint-enable @typescript-eslint/unbound-method */
+  });
+
+  it('should respect concurrency limit', async () => {
+    const entries = Array.from({ length: 10 }, (_, i) => ({
+      url: `wss://relay${i}.com`,
+      hostname: `relay${i}.com`,
+      status: 'unknown'
+    })) as RelayCatalogEntry[];
+
+    /* eslint-disable @typescript-eslint/unbound-method */
+    vi.mocked(relayCatalogService.getEntries).mockResolvedValue(entries);
+    vi.mocked(relayCatalogService.isDiscoveryStale).mockReturnValue(false);
+    vi.mocked(relayCatalogService.isMetadataStale).mockReturnValue(true);
+    /* eslint-enable @typescript-eslint/unbound-method */
+
+    let activeCount = 0;
+    let maxConcurrent = 0;
+
+    vi.mocked(fetchRelayMetadata).mockImplementation(async (url) => {
+      activeCount++;
+      maxConcurrent = Math.max(maxConcurrent, activeCount);
+      // Small delay to ensure they overlap
+      await new Promise(resolve => setTimeout(resolve, 10));
+      activeCount--;
+      return { success: true, url, metadata: {}, timestamp: Date.now() };
+    });
+
+    await orchestrator.refreshCatalog();
+
+    expect(fetchRelayMetadata).toHaveBeenCalledTimes(10);
+    // Should be exactly 5 if our implementation works correctly
+    expect(maxConcurrent).toBeLessThanOrEqual(5);
+    expect(maxConcurrent).toBeGreaterThan(1); // Should definitely be more than 1 (sequential)
   });
 });

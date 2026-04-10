@@ -98,29 +98,42 @@ export class RelayBrowserOrchestrator {
     const allEntries = await relayCatalogService.getEntries();
     const staleEntries = allEntries.filter(e => force || relayCatalogService.isMetadataStale(e));
 
+    const CONCURRENCY_LIMIT = 5;
+    const activePromises = new Set<Promise<void>>();
+
     for (const entry of staleEntries) {
-      try {
-        const result = await fetchRelayMetadata(entry.url);
-        if (result.success && result.metadata) {
-          await relayCatalogService.upsertEntry({
-            url: entry.url,
-            hostname: entry.hostname,
-            metadata: result.metadata,
-            status: 'online',
-            lastChecked: Date.now(),
-          });
-        } else if (!result.success) {
-          await relayCatalogService.upsertEntry({
-            url: entry.url,
-            hostname: entry.hostname,
-            status: 'error',
-            lastChecked: Date.now(),
-          });
+      const p = (async () => {
+        try {
+          const result = await fetchRelayMetadata(entry.url);
+          if (result.success && result.metadata) {
+            await relayCatalogService.upsertEntry({
+              url: entry.url,
+              hostname: entry.hostname,
+              metadata: result.metadata,
+              status: 'online',
+              lastChecked: Date.now(),
+            });
+          } else if (!result.success) {
+            await relayCatalogService.upsertEntry({
+              url: entry.url,
+              hostname: entry.hostname,
+              status: 'error',
+              lastChecked: Date.now(),
+            });
+          }
+        } catch (e) {
+          console.error(`[RelayBrowserOrchestrator] Metadata fetch failed for ${entry.url}:`, e);
         }
-      } catch (e) {
-        console.error(`[RelayBrowserOrchestrator] Metadata fetch failed for ${entry.url}:`, e);
+      })();
+
+      activePromises.add(p);
+      void p.finally(() => activePromises.delete(p));
+
+      if (activePromises.size >= CONCURRENCY_LIMIT) {
+        await Promise.race(activePromises);
       }
     }
+    await Promise.all(activePromises);
   }
 
   private async updateCompletionState(initialCount: number): Promise<void> {
