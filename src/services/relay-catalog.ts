@@ -3,11 +3,6 @@ import { normalizeRelayUrl } from 'src/services/relay-url';
 import type { RelayCatalogEntry } from 'src/types/relay';
 import { RELAY_SEEDS } from 'src/data/relay-seeds';
 
-/**
- * Loads seed relays into the catalog if they are missing or if we need to mark them as seeds.
- * Skips invalid seeds.
- * Preserves existing richer metadata if the entry already exists.
- */
 export async function loadSeedRelays(): Promise<{ added: number; updated: number; skipped: number }> {
   let added = 0;
   let updated = 0;
@@ -61,3 +56,94 @@ export async function loadSeedRelays(): Promise<{ added: number; updated: number
 
   return { added, updated, skipped };
 }
+
+
+/**
+ * Service for reading relay catalog entries from the database.
+ * This service is read-only and provides predictable formatting and sorting for the UI.
+ */
+export class RelayCatalogService {
+  /**
+   * Retrieves all valid relay catalog entries from the database, sorted by default criteria.
+   *
+   * Default sort order:
+   * 1. Seeded entries with metadata
+   * 2. Discovered entries with metadata
+   * 3. Entries without metadata
+   * 4. Unreachable or failed entries last
+   *
+   * @returns A promise that resolves to a stable array of sorted RelayCatalogEntry objects.
+   */
+  async getEntries(): Promise<RelayCatalogEntry[]> {
+    const allEntries = await db.relayCatalog.toArray();
+
+    // Filter out obviously invalid entries (e.g., missing URL)
+    // And return clones to prevent mutation of the underlying data
+    const validEntries = allEntries
+      .filter(entry => this.isValidEntry(entry))
+      .map(entry => ({ ...entry }));
+
+    // Sort entries based on the required criteria
+    return validEntries.sort((a, b) => this.compareEntries(a, b));
+  }
+
+  /**
+   * Checks if a relay catalog entry is considered valid for UI presentation.
+   * @param entry The entry to validate.
+   * @returns True if the entry is valid, false otherwise.
+   */
+  private isValidEntry(entry: RelayCatalogEntry): boolean {
+    if (!entry.url || typeof entry.url !== 'string') return false;
+    // Basic validation for relay URL scheme
+    return entry.url.startsWith('ws://') || entry.url.startsWith('wss://');
+  }
+
+  /**
+   * Comparison function for sorting relay catalog entries.
+   *
+   * Logic:
+   * - Entries with status 'online' or 'unknown' are preferred over 'offline' or 'error'.
+   * - Seeded entries with metadata > Discovered entries with metadata > Entries without metadata.
+   * - Within the same category, sort alphabetically by URL for determinism.
+   */
+  private compareEntries(a: RelayCatalogEntry, b: RelayCatalogEntry): number {
+    const scoreA = this.getEntryScore(a);
+    const scoreB = this.getEntryScore(b);
+
+    if (scoreA !== scoreB) {
+      return scoreB - scoreA; // Higher score first
+    }
+
+    // Deterministic fallback: sort by URL
+    return a.url.localeCompare(b.url);
+  }
+
+  /**
+   * Calculates a priority score for an entry to help with sorting.
+   * Higher score means higher priority.
+   */
+  private getEntryScore(entry: RelayCatalogEntry): number {
+    // Unreachable or failed entries last
+    if (entry.status === 'offline' || entry.status === 'error') {
+      return 0;
+    }
+
+    const hasMetadata = !!(entry.metadata && (entry.metadata.name || entry.metadata.description));
+
+    if (entry.isSeed && hasMetadata) {
+      return 4;
+    }
+
+    if (hasMetadata) {
+      return 3;
+    }
+
+    if (entry.isSeed || entry.isUserAdded) {
+      return 2;
+    }
+
+    return 1;
+  }
+}
+
+export const relayCatalogService = new RelayCatalogService();
