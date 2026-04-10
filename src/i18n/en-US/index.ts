@@ -121,6 +121,7 @@ export default {
       search_only: 'Search-capable only (NIP-50)',
       refresh: 'Refresh List',
       refreshing: 'Refreshing...',
+      results_per_page: 'Results per page',
     },
   },
   approval: {

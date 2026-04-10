@@ -3,7 +3,7 @@ import { ref, watch, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { RelayCatalogEntry } from 'src/types/relay';
 import { listRelayCatalog, refreshRelayCatalog, getRelayDiscoveryStatus } from 'src/services/relay-service';
-import { filterAndSortRelays } from 'src/utils/relay-filters';
+import { filterRelays } from 'src/utils/relay-filters';
 
 const { t } = useI18n();
 
@@ -21,10 +21,29 @@ const loading = ref(false);
 const refreshing = ref(false);
 const searchText = ref('');
 const searchOnly = ref(false);
-let statusInterval: ReturnType<typeof setInterval> | null = null;
+
+const pageSize = ref(10);
+const currentPage = ref(1);
+const pageSizeOptions = [10, 20, 30, 50, 100];
+
+let statusInterval: number | null = null;
 
 const filteredRelays = computed(() => {
-  return filterAndSortRelays(relays.value, searchText.value, searchOnly.value);
+  return filterRelays(relays.value, searchText.value, searchOnly.value);
+});
+
+const totalPages = computed(() => {
+  return Math.max(1, Math.ceil(filteredRelays.value.length / pageSize.value));
+});
+
+const pagedRelays = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  return filteredRelays.value.slice(start, end);
+});
+
+watch([searchText, searchOnly, pageSize], () => {
+  currentPage.value = 1;
 });
 
 async function fetchRelays() {
@@ -33,11 +52,6 @@ async function fetchRelays() {
   try {
     relays.value = await listRelayCatalog();
     console.log(`[RelayBrowserModal] Fetched ${relays.value.length} relays`);
-
-    // If we have very few relays (only seeds), maybe trigger a refresh
-    if (relays.value.length < 10 && !refreshing.value) {
-       await triggerRefresh();
-    }
   } catch (error) {
     console.error('[RelayBrowserModal] Failed to fetch relays:', error);
     relays.value = [];
@@ -61,12 +75,25 @@ async function triggerRefresh(force = false) {
 async function checkStatus() {
   try {
     const status = await getRelayDiscoveryStatus();
+
+    // Determine if we should trigger an automatic refresh
+    const isStale = !status || !status.lastGlobalDiscoveryAt ||
+      Date.now() - status.lastGlobalDiscoveryAt > 24 * 60 * 60 * 1000; // 24 hours
+    const isEmpty = relays.value.length === 0 && !loading.value;
+
+    if ((isStale || isEmpty) && !refreshing.value && (!status || !status.isDiscoveryInProgress)) {
+      void triggerRefresh();
+      return;
+    }
+
     if (status) {
       refreshing.value = status.isDiscoveryInProgress;
       // Refresh the list if discovery is happening or just finished
       relays.value = await listRelayCatalog();
 
-      if (!status.isDiscoveryInProgress) {
+      if (status.isDiscoveryInProgress) {
+        startPollingStatus();
+      } else {
         stopPollingStatus();
       }
     } else {
@@ -76,12 +103,19 @@ async function checkStatus() {
   } catch (error) {
     console.error('[RelayBrowserModal] Failed to check status:', error);
     stopPollingStatus();
+  } finally {
+    // If we're polling status, we've already done the initial list fetch
+    // and if we still have no relays but discovery is NOT in progress,
+    // we should definitely not be showing the loading spinner.
+    // In fact, the loading spinner should always be cleared after the initial fetchRelays
+    // but just in case, we can ensure it's false here.
+    loading.value = false;
   }
 }
 
 function startPollingStatus() {
   if (statusInterval) return;
-  statusInterval = setInterval(() => {
+  statusInterval = window.setInterval(() => {
     void checkStatus();
   }, 2000);
   void checkStatus();
@@ -94,10 +128,10 @@ function stopPollingStatus() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (props.modelValue) {
-    void fetchRelays();
-    void checkStatus(); // Check if discovery is already in progress
+    await fetchRelays();
+    await checkStatus(); // Check if discovery is already in progress
   }
 });
 
@@ -107,10 +141,10 @@ onBeforeUnmount(() => {
 
 watch(
   () => props.modelValue,
-  (newVal) => {
+  async (newVal) => {
     if (newVal) {
-      void fetchRelays();
-      void checkStatus();
+      await fetchRelays();
+      await checkStatus();
     } else {
       stopPollingStatus();
     }
@@ -181,36 +215,60 @@ function selectRelay(relay: RelayCatalogEntry) {
           <q-icon name="explore" size="4em" class="q-mb-md" />
           <div>{{ t('relays.browser.empty') }}</div>
         </div>
-        <q-list v-else separator>
-          <q-item
-            v-for="relay in filteredRelays"
-            :key="relay.url"
-            clickable
-            @click="selectRelay(relay)"
-          >
-            <q-item-section v-if="relay.metadata?.icon" avatar>
-              <q-avatar size="32px">
-                <img :src="relay.metadata.icon" alt="Relay Icon" />
-              </q-avatar>
-            </q-item-section>
-            <q-item-section v-else avatar>
-              <q-avatar size="32px" color="primary" text-color="white" icon="hub" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>{{ getDisplayName(relay) }}</q-item-label>
-              <q-item-label caption lines="1">{{ relay.url }}</q-item-label>
-              <q-item-label v-if="relay.metadata?.description" caption lines="2">
-                {{ relay.metadata.description }}
-              </q-item-label>
-            </q-item-section>
-            <q-item-section side>
-              <q-badge
-                :color="relay.status === 'online' ? 'positive' : 'grey'"
-                :label="relay.status"
-              />
-            </q-item-section>
-          </q-item>
-        </q-list>
+        <div v-else>
+          <q-list separator>
+            <q-item
+              v-for="relay in pagedRelays"
+              :key="relay.url"
+              clickable
+              @click="selectRelay(relay)"
+            >
+              <q-item-section v-if="relay.metadata?.icon" avatar>
+                <q-avatar size="32px">
+                  <img :src="relay.metadata.icon" alt="Relay Icon" />
+                </q-avatar>
+              </q-item-section>
+              <q-item-section v-else avatar>
+                <q-avatar size="32px" color="primary" text-color="white" icon="hub" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ getDisplayName(relay) }}</q-item-label>
+                <q-item-label caption lines="1">{{ relay.url }}</q-item-label>
+                <q-item-label v-if="relay.metadata?.description" caption lines="2">
+                  {{ relay.metadata.description }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-badge
+                  :color="relay.status === 'online' ? 'positive' : 'grey'"
+                  :label="relay.status"
+                />
+              </q-item-section>
+            </q-item>
+          </q-list>
+
+          <div class="row items-center justify-between q-mt-md">
+            <q-select
+              v-model="pageSize"
+              :options="pageSizeOptions"
+              :label="t('relays.browser.results_per_page')"
+              dense
+              outlined
+              options-dense
+              emit-value
+              map-options
+              style="width: 150px"
+            />
+            <q-pagination
+              v-model="currentPage"
+              :max="totalPages"
+              :max-pages="5"
+              boundary-numbers
+              direction-links
+              color="primary"
+            />
+          </div>
+        </div>
       </q-card-section>
 
       <q-card-actions align="right">
