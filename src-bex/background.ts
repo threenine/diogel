@@ -46,6 +46,7 @@ import {
   handleGetPublicKey,
   handleSignEvent,
 } from './handlers/nip07';
+import { loadSeedRelays } from 'src/services/relay-catalog';
 import { dispatchMessage } from './dispatcher';
 
 async function getActiveAlias() {
@@ -238,6 +239,10 @@ async function initialize() {
       startAutoLockTimer();
       checkAutoLock();
     }
+    // Seed relay catalog on startup
+    void loadSeedRelays().then(result => {
+      console.log(`[BEX] Seeded relay catalog: ${result.added} added, ${result.updated} updated`);
+    });
   } catch (e) {
     console.error('[BEX] Initialization error:', e);
   }
