@@ -30,8 +30,7 @@ const DEFAULT_RELAYS = [
 ];
 
 const newRelayUrl = ref('');
-const newRelayRead = ref(true);
-const newRelayWrite = ref(true);
+const newRelayWrite = ref(false);
 const showRelayBrowser = ref(false);
 
 async function fetchRelayList() {
@@ -87,13 +86,12 @@ function addRelay() {
 
   relays.value.push({
     url,
-    read: newRelayRead.value,
+    read: true,
     write: newRelayWrite.value,
   });
 
   newRelayUrl.value = '';
-  newRelayRead.value = true;
-  newRelayWrite.value = true;
+  newRelayWrite.value = false;
 }
 
 function removeRelay(index: number) {
@@ -102,7 +100,6 @@ function removeRelay(index: number) {
 
 function handleRelaySelected(relay: RelayCatalogEntry) {
   newRelayUrl.value = relay.url;
-  newRelayRead.value = true;
   newRelayWrite.value = false;
 }
 
@@ -183,9 +180,6 @@ watch(
                 </q-btn>
               </template>
             </q-input>
-          </div>
-          <div class="col-auto">
-            <q-checkbox v-model="newRelayRead" :label="$t('relays.read')" dense />
           </div>
           <div class="col-auto">
             <q-checkbox v-model="newRelayWrite" :label="$t('relays.write')" dense />
