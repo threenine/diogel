@@ -188,6 +188,14 @@ function selectRelay(relay: RelayCatalogEntry) {
             clickable
             @click="selectRelay(relay)"
           >
+            <q-item-section v-if="relay.metadata?.icon" avatar>
+              <q-avatar size="32px">
+                <img :src="relay.metadata.icon" alt="Relay Icon" />
+              </q-avatar>
+            </q-item-section>
+            <q-item-section v-else avatar>
+              <q-avatar size="32px" color="primary" text-color="white" icon="hub" />
+            </q-item-section>
             <q-item-section>
               <q-item-label>{{ getDisplayName(relay) }}</q-item-label>
               <q-item-label caption lines="1">{{ relay.url }}</q-item-label>

@@ -1,7 +1,8 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { handleRelayBrowserList, handleRelayBrowserGetStatus } from 'app/src-bex/handlers/relay-browser-handler';
 import { relayCatalogService } from 'src/services/relay-catalog';
-import { db } from 'src/services/database';
+import type { RelayCatalogEntry } from 'src/types/relay';
 
 // Mock dependencies
 vi.mock('src/services/relay-catalog', () => ({
@@ -30,7 +31,7 @@ describe('RelayBrowserHandler', () => {
         { url: 'wss://relay1.com', hostname: 'relay1.com', status: 'online' },
         { url: 'wss://relay2.com', hostname: 'relay2.com', status: 'offline' },
       ];
-      vi.mocked(relayCatalogService.getEntries).mockResolvedValue(mockEntries as any);
+      vi.mocked(relayCatalogService.getEntries).mockResolvedValue(mockEntries as unknown as RelayCatalogEntry[]);
 
       const result = await handleRelayBrowserList();
 
@@ -38,7 +39,7 @@ describe('RelayBrowserHandler', () => {
       if (result.success) {
         expect(result.data).toEqual(mockEntries);
       }
-      expect(relayCatalogService.getEntries).toHaveBeenCalled();
+      expect(vi.mocked(relayCatalogService.getEntries)).toHaveBeenCalled();
     });
 
     it('should return failure when service throws an error', async () => {
@@ -61,7 +62,7 @@ describe('RelayBrowserHandler', () => {
         isDiscoveryInProgress: false,
         updatedAt: 123456789,
       };
-      vi.mocked(relayCatalogService.getDiscoveryState).mockResolvedValue(mockStatus as any);
+      vi.mocked(relayCatalogService.getDiscoveryState).mockResolvedValue(mockStatus as unknown as { id: string; lastGlobalDiscoveryAt: number; isDiscoveryInProgress: boolean; updatedAt: number });
 
       const result = await handleRelayBrowserGetStatus();
 

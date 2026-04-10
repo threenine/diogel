@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { loadSeedRelays, relayCatalogService } from 'src/services/relay-catalog';
-import { RELAY_SEEDS } from 'src/data/relay-seeds';
 import type { RelayCatalogEntry } from 'src/types/relay';
 
 // Mock the database
@@ -10,22 +9,22 @@ vi.mock('src/services/database', () => {
   return {
     db: {
       relayCatalog: {
-        get: vi.fn(async (url: string) => mockRelayCatalog.get(url)),
-        add: vi.fn(async (entry: RelayCatalogEntry) => {
+        get: vi.fn((url: string) => Promise.resolve(mockRelayCatalog.get(url))),
+        add: vi.fn((entry: RelayCatalogEntry) => {
           mockRelayCatalog.set(entry.url, entry);
-          return entry.url;
+          return Promise.resolve(entry.url);
         }),
-        update: vi.fn(async (url: string, changes: Partial<RelayCatalogEntry>) => {
+        update: vi.fn((url: string, changes: Partial<RelayCatalogEntry>) => {
           const existing = mockRelayCatalog.get(url);
           if (existing) {
             mockRelayCatalog.set(url, { ...existing, ...changes });
           }
-          return 1;
+          return Promise.resolve(1);
         }),
-        toArray: vi.fn(async () => Array.from(mockRelayCatalog.values())),
+        toArray: vi.fn(() => Promise.resolve(Array.from(mockRelayCatalog.values()))),
       },
-      transaction: vi.fn(async (mode, tables, callback) => {
-        return callback();
+      transaction: vi.fn((mode: string, tables: string[], callback: () => unknown) => {
+        return Promise.resolve(callback());
       }),
     },
   };
@@ -223,38 +222,66 @@ describe('Relay Catalog Service - loadSeedRelays', () => {
       expect(entry?.metadata?.version).toBe('1.0'); // Preserved
     });
 
-    it('should not downgrade status from online to error during a failed metadata refresh', async () => {
-        const online: RelayCatalogEntry = {
-          url: 'wss://online.com',
-          hostname: 'online.com',
-          isUserAdded: false,
-          isSeed: true,
-          status: 'online',
-          createdAt: 1000,
-          updatedAt: 1000,
-          source: 'seed',
-        };
-        mockRelayCatalog.set(online.url, online);
+    it('should protect online status from transient failures if recently seen', async () => {
+      const now = Date.now();
+      const online: RelayCatalogEntry = {
+        url: 'wss://recently-online.com',
+        hostname: 'recently-online.com',
+        isUserAdded: false,
+        isSeed: true,
+        status: 'online',
+        lastSeen: now - 10 * 60 * 1000, // 10 minutes ago
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      mockRelayCatalog.set(online.url, online);
 
-        // Simulate a "failed" refresh which might try to set status to 'error' or 'unknown'
-        await relayCatalogService.upsertEntry({
-          url: 'wss://online.com',
-          hostname: 'online.com',
-          status: 'unknown', // This should be ignored because we have a better status
-        });
-
-        let entry = mockRelayCatalog.get('wss://online.com');
-        expect(entry?.status).toBe('online');
-
-        // But 'error' might be allowed if we explicitly want to mark it as failing
-        await relayCatalogService.upsertEntry({
-            url: 'wss://online.com',
-            hostname: 'online.com',
-            status: 'error',
-          });
-          entry = mockRelayCatalog.get('wss://online.com');
-          expect(entry?.status).toBe('error');
+      // Simulate a "failed" refresh which tries to set status to 'error'
+      await relayCatalogService.upsertEntry({
+        url: 'wss://recently-online.com',
+        hostname: 'recently-online.com',
+        status: 'error',
       });
+
+      const entry = mockRelayCatalog.get('wss://recently-online.com');
+      expect(entry?.status).toBe('online'); // Protected
+    });
+
+    it('should allow status downgrade if not recently seen', async () => {
+      const now = Date.now();
+      const online: RelayCatalogEntry = {
+        url: 'wss://old-online.com',
+        hostname: 'old-online.com',
+        isUserAdded: false,
+        isSeed: true,
+        status: 'online',
+        lastSeen: now - 2 * 60 * 60 * 1000, // 2 hours ago
+        createdAt: 1000,
+        updatedAt: 1000,
+      };
+      mockRelayCatalog.set(online.url, online);
+
+      await relayCatalogService.upsertEntry({
+        url: 'wss://old-online.com',
+        hostname: 'old-online.com',
+        status: 'error',
+      });
+
+      const entry = mockRelayCatalog.get('wss://old-online.com');
+      expect(entry?.status).toBe('error'); // Downgraded
+    });
+
+    it('should update lastSeen when status is online', async () => {
+      const before = Date.now();
+      await relayCatalogService.upsertEntry({
+        url: 'wss://new-online.com',
+        hostname: 'new-online.com',
+        status: 'online',
+      });
+
+      const entry = mockRelayCatalog.get('wss://new-online.com');
+      expect(entry?.lastSeen).toBeGreaterThanOrEqual(before);
+    });
   });
 
   it('should ignore invalid seed entries safely', async () => {
@@ -373,8 +400,8 @@ describe('Relay Catalog Service - getEntries', () => {
     const results = await relayCatalogService.getEntries();
     expect(results.length).toBe(1);
 
-    // Attempt to mutate the returned object (if we can)
-    (results[0] as any).status = 'offline';
+    // @ts-expect-error - testing immutability via side-effect
+    results[0].status = 'offline';
 
     // Verify stored record is unchanged
     expect(mockRelayCatalog.get('wss://immutable.com')?.status).toBe('online');

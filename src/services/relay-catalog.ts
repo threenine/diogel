@@ -105,11 +105,19 @@ export class RelayCatalogService {
         // 3. Status handling: only update if not 'error' or if the new status is better
         // A 'failed' fetch shouldn't destroy 'online' status immediately unless we're sure
         if (entry.status && entry.status !== 'unknown') {
-          updates.status = entry.status;
+          // If existing is 'online' and new is 'error' or 'offline', we only downgrade if it's been a while
+          const isDowngrade =
+            existing.status === 'online' && (entry.status === 'offline' || entry.status === 'error');
+          const isRecentlySeen = existing.lastSeen && now - existing.lastSeen < 60 * 60 * 1000; // 1 hour
+
+          if (!isDowngrade || !isRecentlySeen) {
+            updates.status = entry.status;
+          }
         }
 
         if (entry.lastChecked) updates.lastChecked = entry.lastChecked;
         if (entry.lastSeen) updates.lastSeen = entry.lastSeen;
+        else if (entry.status === 'online') updates.lastSeen = now;
 
         // 4. Metadata merging: Preserve richer data
         if (entry.metadata) {
@@ -163,6 +171,7 @@ export class RelayCatalogService {
         if (entry.source !== undefined) newEntry.source = entry.source;
         if (entry.lastChecked !== undefined) newEntry.lastChecked = entry.lastChecked;
         if (entry.lastSeen !== undefined) newEntry.lastSeen = entry.lastSeen;
+        else if (entry.status === 'online') newEntry.lastSeen = now;
 
         await db.relayCatalog.add(newEntry);
       }

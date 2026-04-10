@@ -11,6 +11,7 @@ export interface RelayCatalogEntry {
     supported_nips?: number[];
     software?: string;
     version?: string;
+    icon?: string;
     [key: string]: unknown;
   };
   status: 'unknown' | 'online' | 'offline' | 'error';
