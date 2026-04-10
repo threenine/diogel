@@ -107,22 +107,26 @@ export class RelayBrowserOrchestrator {
       await relayCatalogService.updateDiscoveryState({
         isDiscoveryInProgress: false,
         discoveryStats: {
-           totalDiscovered: allEntries.length,
-           newFound: allEntries.length - entries.length,
+           totalDiscovered: (await relayCatalogService.getEntries()).length,
+           newFound: (await relayCatalogService.getEntries()).length - entries.length,
         }
       }, 'global');
 
     } catch (error) {
       console.error('[RelayBrowserOrchestrator] Refresh failed:', error);
       // 6. Final State Update: Failure (preserve cache, record error)
-      await relayCatalogService.updateDiscoveryState({
-        isDiscoveryInProgress: false,
-        discoveryStats: {
-           totalDiscovered: (await relayCatalogService.getEntries()).length,
-           newFound: 0,
-           lastError: error instanceof Error ? error.message : String(error),
-        }
-      }, 'global');
+      try {
+        await relayCatalogService.updateDiscoveryState({
+          isDiscoveryInProgress: false,
+          discoveryStats: {
+             totalDiscovered: (await relayCatalogService.getEntries()).length,
+             newFound: 0,
+             lastError: error instanceof Error ? error.message : String(error),
+          }
+        }, 'global');
+      } catch (innerError) {
+        console.error('[RelayBrowserOrchestrator] Failed to update discovery state after error:', innerError);
+      }
     } finally {
       this.isRefreshing = false;
     }

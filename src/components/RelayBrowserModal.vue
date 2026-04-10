@@ -36,7 +36,7 @@ async function fetchRelays() {
 
     // If we have very few relays (only seeds), maybe trigger a refresh
     if (relays.value.length < 10 && !refreshing.value) {
-       await triggerRefresh();
+       void triggerRefresh();
     }
   } catch (error) {
     console.error('[RelayBrowserModal] Failed to fetch relays:', error);
@@ -76,6 +76,13 @@ async function checkStatus() {
   } catch (error) {
     console.error('[RelayBrowserModal] Failed to check status:', error);
     stopPollingStatus();
+  } finally {
+    // If we're polling status, we've already done the initial list fetch
+    // and if we still have no relays but discovery is NOT in progress,
+    // we should definitely not be showing the loading spinner.
+    // In fact, the loading spinner should always be cleared after the initial fetchRelays
+    // but just in case, we can ensure it's false here.
+    loading.value = false;
   }
 }
 
