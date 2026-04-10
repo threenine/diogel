@@ -121,6 +121,15 @@ export class MockCrypto {
         }
         return Promise.resolve({ kty: 'oct', k: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' } as unknown as JsonWebKey);
       },
+
+      // Mock digest
+      async digest(
+        algorithm: AlgorithmIdentifier,
+        data: BufferSource
+      ): Promise<ArrayBuffer> {
+        // Return a dummy digest
+        return Promise.resolve(new Uint8Array(32).fill(0).buffer);
+      },
     } as SubtleCrypto;
   }
 

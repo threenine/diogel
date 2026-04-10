@@ -46,6 +46,7 @@ import {
   handleGetPublicKey,
   handleSignEvent,
 } from './handlers/nip07';
+import { loadSeedRelays } from 'src/services/relay-catalog';
 import { dispatchMessage } from './dispatcher';
 
 async function getActiveAlias() {
@@ -119,6 +120,9 @@ declare module '@quasar/app-vite' {
       },
       BridgeResponsePayload<'blossom.upload'>,
     ];
+    'relay.browser.list': [undefined, BridgeResponsePayload<'relay.browser.list'>];
+    'relay.browser.getStatus': [undefined, BridgeResponsePayload<'relay.browser.getStatus'>];
+    'relay.browser.refresh': [{ force?: boolean }, BridgeResponsePayload<'relay.browser.refresh'>];
   }
 }
 
@@ -236,6 +240,10 @@ async function initialize() {
       startAutoLockTimer();
       checkAutoLock();
     }
+    // Seed relay catalog on startup
+    void loadSeedRelays().then(result => {
+      console.log(`[BEX] Seeded relay catalog: ${result.added} added, ${result.updated} updated`);
+    });
   } catch (e) {
     console.error('[BEX] Initialization error:', e);
   }
@@ -424,4 +432,16 @@ bridge.on('nostr.nip04.decrypt', async ({ payload }: { payload: BridgeRequest<'n
 bridge.on('blossom.upload', async ({ payload }: { payload: BridgeRequest<'blossom.upload'> }) => {
   resetAutoLockTimer();
   return await dispatchMessage('blossom.upload', payload, '');
+});
+
+bridge.on('relay.browser.list', async () => {
+  return await dispatchMessage('relay.browser.list', {}, '');
+});
+
+bridge.on('relay.browser.getStatus', async () => {
+  return await dispatchMessage('relay.browser.getStatus', {}, '');
+});
+
+bridge.on('relay.browser.refresh', async ({ payload }: { payload: BridgeRequest<'relay.browser.refresh'> }) => {
+  return await dispatchMessage('relay.browser.refresh', payload, '');
 });

@@ -3,9 +3,11 @@ import { onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { NostrRelay, StoredKey } from '../types';
+import type { RelayCatalogEntry } from 'src/types/relay';
 import { SimplePool } from 'nostr-tools';
 import { finalizeEvent } from 'nostr-tools/pure';
 import { hexToBytes } from '@noble/hashes/utils';
+import RelayBrowserModal from './RelayBrowserModal.vue';
 
 defineOptions({ name: 'RelayEditor' });
 
@@ -30,6 +32,7 @@ const DEFAULT_RELAYS = [
 const newRelayUrl = ref('');
 const newRelayRead = ref(true);
 const newRelayWrite = ref(true);
+const showRelayBrowser = ref(false);
 
 async function fetchRelayList() {
   relays.value = [];
@@ -95,6 +98,12 @@ function addRelay() {
 
 function removeRelay(index: number) {
   relays.value.splice(index, 1);
+}
+
+function handleRelaySelected(relay: RelayCatalogEntry) {
+  newRelayUrl.value = relay.url;
+  newRelayRead.value = true;
+  newRelayWrite.value = false;
 }
 
 async function saveRelayList() {
@@ -167,7 +176,13 @@ watch(
               dense
               outlined
               @keyup.enter="addRelay"
-            />
+            >
+              <template #append>
+                <q-btn flat round dense icon="explore" @click="showRelayBrowser = true">
+                  <q-tooltip>{{ $t('relays.browse') }}</q-tooltip>
+                </q-btn>
+              </template>
+            </q-input>
           </div>
           <div class="col-auto">
             <q-checkbox v-model="newRelayRead" :label="$t('relays.read')" dense />
@@ -221,6 +236,8 @@ watch(
         />
       </div>
     </template>
+
+    <relay-browser-modal v-model="showRelayBrowser" @select="handleRelaySelected" />
   </div>
 </template>
 

@@ -19,11 +19,12 @@ import type { HandlerResult } from './types/background';
 import { handleGetPublicKey, handleSignEvent } from './handlers/nip07';
 import { handleBlossomUpload } from './handlers/blossom-handler';
 import { handleNip04Encrypt, handleNip04Decrypt } from './handlers/nip04';
+import { handleRelayBrowserList, handleRelayBrowserGetStatus, handleRelayBrowserRefresh } from './handlers/relay-browser-handler';
 
 /**
  * Dispatches messages to the appropriate handlers.
  * This is used by both the Quasar BEX bridge and the direct chrome.runtime.onMessage listener.
- * 
+ *
  * @param type The message type/event name
  * @param payload The message payload
  * @param origin The origin of the request (if applicable)
@@ -154,6 +155,30 @@ export async function dispatchMessage<K extends BridgeAction>(
     case 'activity.mark': {
       resetAutoLockTimer();
       return true as BridgeResponsePayload<K>;
+    }
+
+    case 'relay.browser.list': {
+      const result = await handleRelayBrowserList();
+      if (result.success) {
+        return result.data as BridgeResponsePayload<K>;
+      }
+      return [] as unknown as BridgeResponsePayload<K>;
+    }
+
+    case 'relay.browser.getStatus': {
+      const result = await handleRelayBrowserGetStatus();
+      if (result.success) {
+        return result.data as BridgeResponsePayload<K>;
+      }
+      return null as BridgeResponsePayload<K>;
+    }
+
+    case 'relay.browser.refresh': {
+      const result = await handleRelayBrowserRefresh(payload as any);
+      if (result.success) {
+        return true as BridgeResponsePayload<K>;
+      }
+      return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
     }
 
     default:

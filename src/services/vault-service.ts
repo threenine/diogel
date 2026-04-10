@@ -14,7 +14,7 @@ const getBridge = (): any => {
   return (window as any).bridge || (window as any).$q?.bex;
 };
 
-async function sendBexMessage<T extends BridgeAction>(
+export async function sendBexMessage<T extends BridgeAction>(
   type: T,
   payload?: Omit<BridgeRequestMap[T], 'id' | 'action'>,
 ): Promise<BridgeResponsePayload<T> | undefined> {
