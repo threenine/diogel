@@ -6,6 +6,7 @@ import type { NostrRelay, StoredKey } from '../types';
 import { SimplePool } from 'nostr-tools';
 import { finalizeEvent } from 'nostr-tools/pure';
 import { hexToBytes } from '@noble/hashes/utils';
+import RelayBrowserModal from './RelayBrowserModal.vue';
 
 defineOptions({ name: 'RelayEditor' });
 
@@ -30,6 +31,7 @@ const DEFAULT_RELAYS = [
 const newRelayUrl = ref('');
 const newRelayRead = ref(true);
 const newRelayWrite = ref(true);
+const showRelayBrowser = ref(false);
 
 async function fetchRelayList() {
   relays.value = [];
@@ -167,7 +169,13 @@ watch(
               dense
               outlined
               @keyup.enter="addRelay"
-            />
+            >
+              <template #append>
+                <q-btn flat round dense icon="explore" @click="showRelayBrowser = true">
+                  <q-tooltip>{{ $t('relays.browse') }}</q-tooltip>
+                </q-btn>
+              </template>
+            </q-input>
           </div>
           <div class="col-auto">
             <q-checkbox v-model="newRelayRead" :label="$t('relays.read')" dense />
@@ -221,6 +229,8 @@ watch(
         />
       </div>
     </template>
+
+    <relay-browser-modal v-model="showRelayBrowser" />
   </div>
 </template>
 

@@ -104,6 +104,7 @@ export default {
     read: 'Read',
     write: 'Write',
     add: 'Add Relay',
+    browse: 'Browse',
     save: 'Save Relay List',
     fetchError: 'Failed to fetch relay list from relays',
     saveSuccess: 'Relay list updated successfully',
@@ -111,6 +112,12 @@ export default {
     invalidUrl: 'Invalid relay URL (must start with ws:// or wss://)',
     noRelays: 'No relays in the list',
     recommendedSize: 'NIP-65 recommends keeping the list small (2-4 relays per category).',
+    browser: {
+      title: 'Relay Browser',
+      loading: 'Loading relay catalog...',
+      empty: 'No relays found in the catalog.',
+      close: 'Close',
+    },
   },
   approval: {
     title: 'Approval Request',
