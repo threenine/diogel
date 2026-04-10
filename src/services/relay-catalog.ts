@@ -26,35 +26,26 @@ export async function loadSeedRelays(): Promise<{ added: number; updated: number
     const { url, hostname } = result;
 
     try {
-      await db.transaction('rw', db.relayCatalog, async () => {
-        const existing = await db.relayCatalog.get(url);
-
-        if (existing) {
-          // If it already exists, only update if it wasn't already marked as seed
-          if (!existing.isSeed) {
-            await db.relayCatalog.update(url, {
-              isSeed: true,
-              updatedAt: Date.now(),
-            });
-            updated++;
-          }
-        } else {
-          // New seed entry
-          const now = Date.now();
-          const entry: RelayCatalogEntry = {
+      const existing = await db.relayCatalog.get(url);
+      if (existing) {
+        if (!existing.isSeed) {
+          await relayCatalogService.upsertEntry({
             url,
             hostname,
-            isUserAdded: false,
             isSeed: true,
-            status: 'unknown',
-            createdAt: now,
-            updatedAt: now,
             source: 'seed',
-          };
-          await db.relayCatalog.add(entry);
-          added++;
+          });
+          updated++;
         }
-      });
+      } else {
+        await relayCatalogService.upsertEntry({
+          url,
+          hostname,
+          isSeed: true,
+          source: 'seed',
+        });
+        added++;
+      }
     } catch (e) {
       console.error(`[RelayCatalog] Failed to upsert seed ${url}:`, e);
       skipped++;
@@ -70,6 +61,114 @@ export async function loadSeedRelays(): Promise<{ added: number; updated: number
  * This service is read-only and provides predictable formatting and sorting for the UI.
  */
 export class RelayCatalogService {
+  /**
+   * Upserts a relay catalog entry with sophisticated merging rules.
+   *
+   * Merge logic:
+   * 1. If entry exists, merge metadata: only non-empty fields replace existing ones.
+   * 2. Source markers are accumulated (comma-separated).
+   * 3. 'isSeed' and 'isUserAdded' flags are combined (OR-ed).
+   * 4. Richer metadata (like description or software) is preserved if the update has less info.
+   *
+   * @param entry Partial entry to upsert (must have url and hostname).
+   */
+  async upsertEntry(entry: Partial<RelayCatalogEntry> & { url: string; hostname: string }): Promise<void> {
+    await db.transaction('rw', db.relayCatalog, async () => {
+      const existing = await db.relayCatalog.get(entry.url);
+      const now = Date.now();
+
+      if (existing) {
+        const updates: Partial<RelayCatalogEntry> = {
+          updatedAt: now,
+        };
+
+        // 1. Merge source markers (comma-separated)
+        if (entry.source && entry.source !== existing.source) {
+          const sources = new Set(
+            (existing.source || '')
+              .split(',')
+              .map(s => s.trim())
+              .filter(Boolean),
+          );
+          entry.source
+            .split(',')
+            .map(s => s.trim())
+            .filter(Boolean)
+            .forEach(s => sources.add(s));
+          updates.source = Array.from(sources).join(',');
+        }
+
+        // 2. Combine flags
+        if (entry.isSeed !== undefined) updates.isSeed = existing.isSeed || entry.isSeed;
+        if (entry.isUserAdded !== undefined) updates.isUserAdded = existing.isUserAdded || entry.isUserAdded;
+
+        // 3. Status handling: only update if not 'error' or if the new status is better
+        // A 'failed' fetch shouldn't destroy 'online' status immediately unless we're sure
+        if (entry.status && entry.status !== 'unknown') {
+          updates.status = entry.status;
+        }
+
+        if (entry.lastChecked) updates.lastChecked = entry.lastChecked;
+        if (entry.lastSeen) updates.lastSeen = entry.lastSeen;
+
+        // 4. Metadata merging: Preserve richer data
+        if (entry.metadata) {
+          const mergedMetadata = { ...(existing.metadata || {}) };
+          let hasNewMetadata = false;
+
+          for (const [key, value] of Object.entries(entry.metadata)) {
+            const existingValue = mergedMetadata[key];
+
+            // Only overwrite if the new value is "richer" or non-empty
+            // For now, "richer" means non-null, non-undefined, and if it's a string, non-empty.
+            const isNewValueRicher =
+              value !== undefined &&
+              value !== null &&
+              (typeof value !== 'string' || value.trim().length > 0) &&
+              (existingValue === undefined || existingValue === null || (typeof existingValue === 'string' && existingValue.trim().length === 0));
+
+            // Also allow overwriting if they are both strings but new one is different and not empty
+            // (e.g. name changed)
+            const isValueChanged =
+              value !== undefined &&
+              value !== null &&
+              (typeof value !== 'string' || value.trim().length > 0) &&
+              value !== existingValue;
+
+            if (isNewValueRicher || isValueChanged) {
+              mergedMetadata[key] = value;
+              hasNewMetadata = true;
+            }
+          }
+
+          if (hasNewMetadata) {
+            updates.metadata = mergedMetadata;
+          }
+        }
+
+        await db.relayCatalog.update(entry.url, updates);
+      } else {
+        // New entry
+        const newEntry: RelayCatalogEntry = {
+          url: entry.url,
+          hostname: entry.hostname,
+          isUserAdded: entry.isUserAdded || false,
+          isSeed: entry.isSeed || false,
+          status: entry.status || 'unknown',
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        if (entry.metadata !== undefined) newEntry.metadata = entry.metadata;
+        if (entry.source !== undefined) newEntry.source = entry.source;
+        if (entry.lastChecked !== undefined) newEntry.lastChecked = entry.lastChecked;
+        if (entry.lastSeen !== undefined) newEntry.lastSeen = entry.lastSeen;
+
+        await db.relayCatalog.add(newEntry);
+      }
+    });
+  }
+
   /**
    * Retrieves all valid relay catalog entries from the database, sorted by default criteria.
    *

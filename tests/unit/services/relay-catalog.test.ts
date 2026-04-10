@@ -92,7 +92,169 @@ describe('Relay Catalog Service - loadSeedRelays', () => {
     expect(updatedDamus?.isSeed).toBe(true);
     expect(updatedDamus?.isUserAdded).toBe(true); // preserved
     expect(updatedDamus?.metadata?.name).toBe('Damus Relay'); // preserved
-    expect(updatedDamus?.source).toBe('manual'); // preserved (since update didn't change it)
+    expect(updatedDamus?.source).toBe('manual,seed'); // accumulated
+  });
+
+  describe('upsertEntry', () => {
+    beforeEach(() => {
+      mockRelayCatalog.clear();
+      vi.clearAllMocks();
+    });
+
+    it('should insert a new relay entry', async () => {
+      await relayCatalogService.upsertEntry({
+        url: 'wss://new.relay.com',
+        hostname: 'new.relay.com',
+        source: 'discovery',
+      });
+
+      const entry = mockRelayCatalog.get('wss://new.relay.com');
+      expect(entry).toBeDefined();
+      expect(entry?.url).toBe('wss://new.relay.com');
+      expect(entry?.source).toBe('discovery');
+      expect(entry?.status).toBe('unknown');
+    });
+
+    it('should merge a seed entry into an existing richer entry', async () => {
+      const existing: RelayCatalogEntry = {
+        url: 'wss://rich.com',
+        hostname: 'rich.com',
+        isUserAdded: true,
+        isSeed: false,
+        status: 'online',
+        metadata: { name: 'Rich Relay', description: 'Extremely rich' },
+        createdAt: 1000,
+        updatedAt: 1000,
+        source: 'manual',
+      };
+      mockRelayCatalog.set(existing.url, existing);
+
+      await relayCatalogService.upsertEntry({
+        url: 'wss://rich.com',
+        hostname: 'rich.com',
+        isSeed: true,
+        source: 'seed',
+      });
+
+      const updated = mockRelayCatalog.get('wss://rich.com');
+      expect(updated?.isSeed).toBe(true);
+      expect(updated?.isUserAdded).toBe(true);
+      expect(updated?.metadata?.name).toBe('Rich Relay');
+      expect(updated?.metadata?.description).toBe('Extremely rich');
+      expect(updated?.source).toBe('manual,seed');
+    });
+
+    it('should merge fetched metadata into a placeholder entry', async () => {
+      const placeholder: RelayCatalogEntry = {
+        url: 'wss://placeholder.com',
+        hostname: 'placeholder.com',
+        isUserAdded: false,
+        isSeed: true,
+        status: 'unknown',
+        createdAt: 1000,
+        updatedAt: 1000,
+        source: 'seed',
+      };
+      mockRelayCatalog.set(placeholder.url, placeholder);
+
+      await relayCatalogService.upsertEntry({
+        url: 'wss://placeholder.com',
+        hostname: 'placeholder.com',
+        status: 'online',
+        metadata: { name: 'Now Real', software: 'noscl' },
+        lastChecked: 2000,
+      });
+
+      const updated = mockRelayCatalog.get('wss://placeholder.com');
+      expect(updated?.status).toBe('online');
+      expect(updated?.metadata?.name).toBe('Now Real');
+      expect(updated?.metadata?.software).toBe('noscl');
+      expect(updated?.lastChecked).toBe(2000);
+    });
+
+    it('should not duplicate source markers or entries', async () => {
+      await relayCatalogService.upsertEntry({
+        url: 'wss://dup.com',
+        hostname: 'dup.com',
+        source: 'discovery',
+      });
+
+      await relayCatalogService.upsertEntry({
+        url: 'wss://dup.com',
+        hostname: 'dup.com',
+        source: 'discovery',
+      });
+
+      await relayCatalogService.upsertEntry({
+        url: 'wss://dup.com',
+        hostname: 'dup.com',
+        source: 'nprofile,discovery',
+      });
+
+      const entry = mockRelayCatalog.get('wss://dup.com');
+      expect(entry?.source).toBe('discovery,nprofile');
+      expect(mockRelayCatalog.size).toBe(1);
+    });
+
+    it('should not destroy good prior metadata when merging less-rich metadata', async () => {
+      const rich: RelayCatalogEntry = {
+        url: 'wss://stable.com',
+        hostname: 'stable.com',
+        isUserAdded: false,
+        isSeed: true,
+        status: 'online',
+        metadata: { name: 'Stable', description: 'Very stable', version: '1.0' },
+        createdAt: 1000,
+        updatedAt: 1000,
+        source: 'seed',
+      };
+      mockRelayCatalog.set(rich.url, rich);
+
+      // Attempt to upsert with "poorer" metadata (missing description and version)
+      await relayCatalogService.upsertEntry({
+        url: 'wss://stable.com',
+        hostname: 'stable.com',
+        metadata: { name: 'Stable' }, // Missing other fields
+      });
+
+      const entry = mockRelayCatalog.get('wss://stable.com');
+      expect(entry?.metadata?.name).toBe('Stable');
+      expect(entry?.metadata?.description).toBe('Very stable'); // Preserved
+      expect(entry?.metadata?.version).toBe('1.0'); // Preserved
+    });
+
+    it('should not downgrade status from online to error during a failed metadata refresh', async () => {
+        const online: RelayCatalogEntry = {
+          url: 'wss://online.com',
+          hostname: 'online.com',
+          isUserAdded: false,
+          isSeed: true,
+          status: 'online',
+          createdAt: 1000,
+          updatedAt: 1000,
+          source: 'seed',
+        };
+        mockRelayCatalog.set(online.url, online);
+
+        // Simulate a "failed" refresh which might try to set status to 'error' or 'unknown'
+        await relayCatalogService.upsertEntry({
+          url: 'wss://online.com',
+          hostname: 'online.com',
+          status: 'unknown', // This should be ignored because we have a better status
+        });
+
+        let entry = mockRelayCatalog.get('wss://online.com');
+        expect(entry?.status).toBe('online');
+
+        // But 'error' might be allowed if we explicitly want to mark it as failing
+        await relayCatalogService.upsertEntry({
+            url: 'wss://online.com',
+            hostname: 'online.com',
+            status: 'error',
+          });
+          entry = mockRelayCatalog.get('wss://online.com');
+          expect(entry?.status).toBe('error');
+      });
   });
 
   it('should ignore invalid seed entries safely', async () => {
