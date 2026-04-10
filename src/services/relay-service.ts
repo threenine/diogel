@@ -1,4 +1,4 @@
-import type { RelayCatalogEntry } from 'src/types/relay';
+import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 import { sendBexMessage } from './vault-service';
 
 /**
@@ -11,5 +11,30 @@ export async function listRelayCatalog(): Promise<RelayCatalogEntry[]> {
   } catch (error) {
     console.error('[RelayService] Failed to fetch relay catalog:', error);
     return [];
+  }
+}
+
+/**
+ * Trigger a refresh of the relay catalog from the background.
+ * @param force If true, bypasses staleness checks.
+ */
+export async function refreshRelayCatalog(force = false): Promise<void> {
+  try {
+    await sendBexMessage('relay.browser.refresh', { force });
+  } catch (error) {
+    console.error('[RelayService] Failed to trigger relay catalog refresh:', error);
+  }
+}
+
+/**
+ * Get current relay discovery status from the background.
+ */
+export async function getRelayDiscoveryStatus(): Promise<RelayDiscoveryState | null> {
+  try {
+    const data = await sendBexMessage('relay.browser.getStatus');
+    return data || null;
+  } catch (error) {
+    console.error('[RelayService] Failed to fetch relay discovery status:', error);
+    return null;
   }
 }

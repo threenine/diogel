@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { NostrRelay, StoredKey } from '../types';
+import type { RelayCatalogEntry } from 'src/types/relay';
 import { SimplePool } from 'nostr-tools';
 import { finalizeEvent } from 'nostr-tools/pure';
 import { hexToBytes } from '@noble/hashes/utils';
@@ -97,6 +98,12 @@ function addRelay() {
 
 function removeRelay(index: number) {
   relays.value.splice(index, 1);
+}
+
+function handleRelaySelected(relay: RelayCatalogEntry) {
+  newRelayUrl.value = relay.url;
+  newRelayRead.value = true;
+  newRelayWrite.value = false;
 }
 
 async function saveRelayList() {
@@ -230,7 +237,7 @@ watch(
       </div>
     </template>
 
-    <relay-browser-modal v-model="showRelayBrowser" />
+    <relay-browser-modal v-model="showRelayBrowser" @select="handleRelaySelected" />
   </div>
 </template>
 

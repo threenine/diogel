@@ -115,8 +115,12 @@ export default {
     browser: {
       title: 'Relay Browser',
       loading: 'Loading relay catalog...',
-      empty: 'No relays found in the catalog.',
+      empty: 'No relays found matching your search.',
       close: 'Close',
+      search_placeholder: 'Search by name, hostname, or URL',
+      search_only: 'Search-capable only (NIP-50)',
+      refresh: 'Refresh List',
+      refreshing: 'Refreshing...',
     },
   },
   approval: {
