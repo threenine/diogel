@@ -26,7 +26,7 @@ const pageSize = ref(10);
 const currentPage = ref(1);
 const pageSizeOptions = [10, 20, 30, 50, 100];
 
-let statusInterval: ReturnType<typeof setInterval> | null = null;
+let statusInterval: number | null = null;
 
 const filteredRelays = computed(() => {
   return filterAndSortRelays(relays.value, searchText.value, searchOnly.value);
@@ -52,11 +52,6 @@ async function fetchRelays() {
   try {
     relays.value = await listRelayCatalog();
     console.log(`[RelayBrowserModal] Fetched ${relays.value.length} relays`);
-
-    // If we have very few relays (only seeds), maybe trigger a refresh
-    if (relays.value.length < 10 && !refreshing.value) {
-       void triggerRefresh();
-    }
   } catch (error) {
     console.error('[RelayBrowserModal] Failed to fetch relays:', error);
     relays.value = [];
@@ -80,12 +75,25 @@ async function triggerRefresh(force = false) {
 async function checkStatus() {
   try {
     const status = await getRelayDiscoveryStatus();
+
+    // Determine if we should trigger an automatic refresh
+    const isStale = !status || !status.lastGlobalDiscoveryAt ||
+      Date.now() - status.lastGlobalDiscoveryAt > 24 * 60 * 60 * 1000; // 24 hours
+    const isEmpty = relays.value.length === 0 && !loading.value;
+
+    if ((isStale || isEmpty) && !refreshing.value && (!status || !status.isDiscoveryInProgress)) {
+      void triggerRefresh();
+      return;
+    }
+
     if (status) {
       refreshing.value = status.isDiscoveryInProgress;
       // Refresh the list if discovery is happening or just finished
       relays.value = await listRelayCatalog();
 
-      if (!status.isDiscoveryInProgress) {
+      if (status.isDiscoveryInProgress) {
+        startPollingStatus();
+      } else {
         stopPollingStatus();
       }
     } else {
@@ -107,7 +115,7 @@ async function checkStatus() {
 
 function startPollingStatus() {
   if (statusInterval) return;
-  statusInterval = setInterval(() => {
+  statusInterval = window.setInterval(() => {
     void checkStatus();
   }, 2000);
   void checkStatus();
@@ -120,10 +128,10 @@ function stopPollingStatus() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   if (props.modelValue) {
-    void fetchRelays();
-    void checkStatus(); // Check if discovery is already in progress
+    await fetchRelays();
+    await checkStatus(); // Check if discovery is already in progress
   }
 });
 
@@ -133,10 +141,10 @@ onBeforeUnmount(() => {
 
 watch(
   () => props.modelValue,
-  (newVal) => {
+  async (newVal) => {
     if (newVal) {
-      void fetchRelays();
-      void checkStatus();
+      await fetchRelays();
+      await checkStatus();
     } else {
       stopPollingStatus();
     }

@@ -355,9 +355,9 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
     expect(wrapper.text()).not.toContain('Apple Relay');
   });
 
-  it('triggers refresh automatically when catalog is small', async () => {
-    vi.mocked(listRelayCatalog).mockResolvedValue([{ url: 'wss://seed.com', hostname: 'seed.com', isSeed: true }] as RelayCatalogEntry[]);
-    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({ isDiscoveryInProgress: false } as RelayDiscoveryState);
+  it('triggers refresh automatically when catalog is empty', async () => {
+    vi.mocked(listRelayCatalog).mockResolvedValue([]);
+    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({ isDiscoveryInProgress: false, lastGlobalDiscoveryAt: Date.now() } as RelayDiscoveryState);
 
     mount(RelayBrowserModal, {
       props: { modelValue: true },
@@ -366,6 +366,60 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
     await flushPromises();
 
     expect(refreshRelayCatalog).toHaveBeenCalled();
+  });
+
+  it('triggers refresh automatically when discovery state is stale', async () => {
+    vi.mocked(listRelayCatalog).mockResolvedValue([{ url: 'wss://relay1.com' }] as RelayCatalogEntry[]);
+    const staleTime = Date.now() - (25 * 60 * 60 * 1000); // 25 hours ago
+    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({
+      isDiscoveryInProgress: false,
+      lastGlobalDiscoveryAt: staleTime,
+    } as RelayDiscoveryState);
+
+    mount(RelayBrowserModal, {
+      props: { modelValue: true },
+      global: { stubs, directives },
+    });
+    await flushPromises();
+
+    expect(refreshRelayCatalog).toHaveBeenCalled();
+  });
+
+  it('does not trigger refresh when catalog is not empty and state is fresh', async () => {
+    vi.mocked(listRelayCatalog).mockResolvedValue([{ url: 'wss://relay1.com' }] as RelayCatalogEntry[]);
+    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({
+      isDiscoveryInProgress: false,
+      lastGlobalDiscoveryAt: Date.now(),
+    } as RelayDiscoveryState);
+
+    mount(RelayBrowserModal, {
+      props: { modelValue: true },
+      global: { stubs, directives },
+    });
+    await flushPromises();
+
+    expect(refreshRelayCatalog).not.toHaveBeenCalled();
+  });
+
+  it('does not trigger refresh based on low relay count alone', async () => {
+    // 5 relays (below the old heuristic of 10)
+    const mockRelays = Array.from({ length: 5 }, (_, i) => ({
+      url: `wss://relay${i + 1}.com`,
+      hostname: `relay${i + 1}.com`,
+    }));
+    vi.mocked(listRelayCatalog).mockResolvedValue(mockRelays as RelayCatalogEntry[]);
+    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({
+      isDiscoveryInProgress: false,
+      lastGlobalDiscoveryAt: Date.now(),
+    } as RelayDiscoveryState);
+
+    mount(RelayBrowserModal, {
+      props: { modelValue: true },
+      global: { stubs, directives },
+    });
+    await flushPromises();
+
+    expect(refreshRelayCatalog).not.toHaveBeenCalled();
   });
 
   it('triggers refresh manually when refresh button is clicked', async () => {
@@ -382,7 +436,10 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
       { url: '10', hostname: '10' },
       { url: '11', hostname: '11' },
     ] as RelayCatalogEntry[]);
-    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({ isDiscoveryInProgress: false } as RelayDiscoveryState);
+    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({
+      isDiscoveryInProgress: false,
+      lastGlobalDiscoveryAt: Date.now(),
+    } as RelayDiscoveryState);
 
     const wrapper = mount(RelayBrowserModal, {
       props: { modelValue: true },
@@ -390,7 +447,7 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
     });
     await flushPromises();
 
-    // Auto-refresh should NOT have been called because we have 11 relays
+    // Auto-refresh should NOT have been called
     expect(refreshRelayCatalog).not.toHaveBeenCalled();
 
     const refreshBtn = wrapper.findAll('button').find((b) => b.attributes('icon') === 'refresh');
@@ -401,21 +458,31 @@ describe('RelayBrowserModal.vue filtering and sorting', () => {
 
   it('polls status when discovery is in progress', async () => {
     vi.useFakeTimers();
-    vi.mocked(listRelayCatalog).mockResolvedValue([]);
-    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({ isDiscoveryInProgress: true } as RelayDiscoveryState);
+    vi.mocked(listRelayCatalog).mockResolvedValue([{ url: 'wss://relay1.com' }] as RelayCatalogEntry[]);
+    vi.mocked(getRelayDiscoveryStatus).mockResolvedValue({
+      isDiscoveryInProgress: true,
+      lastGlobalDiscoveryAt: Date.now(),
+    } as RelayDiscoveryState);
 
     mount(RelayBrowserModal, {
       props: { modelValue: true },
       global: { stubs, directives },
     });
+
+    // Run pending promises for onMounted
     await flushPromises();
 
     // The first call is from onMounted -> checkStatus
-    // The second call is from onMounted -> fetchRelays -> triggerRefresh -> startPollingStatus -> checkStatus
-    expect(getRelayDiscoveryStatus).toHaveBeenCalled();
+    // checkStatus calls startPollingStatus because discovery is in progress.
+    // startPollingStatus calls checkStatus once immediately.
+    expect(getRelayDiscoveryStatus).toHaveBeenCalledTimes(2);
 
-    // Advance time to trigger next poll
-    await vi.advanceTimersByTimeAsync(2000);
+    // Trigger timers for first poll
+    vi.advanceTimersByTime(2000);
+    // After timers are advanced, the interval callback is triggered.
+    // Since checkStatus is async, we need to wait for its completion.
+    await flushPromises();
+
     expect(getRelayDiscoveryStatus).toHaveBeenCalledTimes(3);
 
     vi.useRealTimers();
