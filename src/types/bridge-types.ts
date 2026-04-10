@@ -1,4 +1,5 @@
 import type { StoredKey } from './index.d';
+import type { RelayCatalogEntry, RelayDiscoveryState } from './relay';
 
 /**
  * Common types shared between UI and Background/Content Script
@@ -73,7 +74,9 @@ export type BridgeAction =
   | 'vault.export'
   | 'vault.import'
   | 'activity.mark'
-  | 'nostr.approval.respond';
+  | 'nostr.approval.respond'
+  | 'relay.browser.list'
+  | 'relay.browser.getStatus';
 
 // Request/Response mapping
 export interface BridgeRequestMap {
@@ -207,6 +210,14 @@ export interface BridgeRequestMap {
     duration: string;
     requestId?: string;
   };
+  'relay.browser.list': {
+    id: string;
+    action: 'relay.browser.list';
+  };
+  'relay.browser.getStatus': {
+    id: string;
+    action: 'relay.browser.getStatus';
+  };
 }
 
 export interface BridgeResponseMap {
@@ -232,6 +243,8 @@ export interface BridgeResponseMap {
   'vault.import': { success: boolean; error?: string };
   'activity.mark': boolean | void;
   'nostr.approval.respond': boolean | { success: boolean };
+  'relay.browser.list': RelayCatalogEntry[];
+  'relay.browser.getStatus': RelayDiscoveryState | null;
 }
 
 export type BridgeRequest<K extends BridgeAction> = BridgeRequestMap[K];
