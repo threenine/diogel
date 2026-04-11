@@ -2,18 +2,25 @@ import { acceptHMRUpdate, defineStore } from 'pinia';
 import {
   BLOSSOM_SERVER,
   DARK_MODE,
+  FALLBACK_RELAYS,
   storageService,
   VAULT_AUTO_LOCK_MINUTES,
 } from 'src/services/storage-service';
 
 const DEFAULT_BLOSSOM_SERVER = 'https://blossom.primal.net/';
 const DEFAULT_VAULT_AUTO_LOCK_MINUTES = 15;
+const DEFAULT_FALLBACK_RELAYS = [
+  'wss://relay.primal.net',
+  'wss://relay.damus.net',
+  'wss://relay.threenine.services',
+];
 
 const useSettingsStore = defineStore('settings', {
   state: () => ({
     blossomServer: DEFAULT_BLOSSOM_SERVER,
     darkMode: true, // Default to dark mode as per current observed behavior
     vaultAutoLockMinutes: DEFAULT_VAULT_AUTO_LOCK_MINUTES,
+    fallbackRelays: DEFAULT_FALLBACK_RELAYS,
     isListening: false,
   }),
 
@@ -23,6 +30,7 @@ const useSettingsStore = defineStore('settings', {
         BLOSSOM_SERVER,
         DARK_MODE,
         VAULT_AUTO_LOCK_MINUTES,
+        FALLBACK_RELAYS,
       ]);
       if (result[BLOSSOM_SERVER] && typeof result[BLOSSOM_SERVER] === 'string') {
         this.blossomServer = result[BLOSSOM_SERVER];
@@ -35,6 +43,9 @@ const useSettingsStore = defineStore('settings', {
         this.vaultAutoLockMinutes = Number.isFinite(value)
           ? Math.max(0, Math.floor(value))
           : DEFAULT_VAULT_AUTO_LOCK_MINUTES;
+      }
+      if (Array.isArray(result[FALLBACK_RELAYS]) && (result[FALLBACK_RELAYS] as unknown[]).length > 0) {
+        this.fallbackRelays = result[FALLBACK_RELAYS] as string[];
       }
     },
 
@@ -52,6 +63,16 @@ const useSettingsStore = defineStore('settings', {
       const normalized = Number.isFinite(minutes) ? Math.max(0, Math.floor(minutes)) : 0;
       this.vaultAutoLockMinutes = normalized;
       await storageService.set(VAULT_AUTO_LOCK_MINUTES, normalized);
+    },
+
+    async setFallbackRelays(relays: string[]): Promise<void> {
+      const filtered = Array.isArray(relays) ? relays.filter(r => typeof r === 'string' && r.length > 0) : [];
+      if (filtered.length === 0) {
+        this.fallbackRelays = DEFAULT_FALLBACK_RELAYS;
+      } else {
+        this.fallbackRelays = filtered;
+      }
+      await storageService.set(FALLBACK_RELAYS, this.fallbackRelays);
     },
 
     listenToStorageChanges() {
@@ -74,6 +95,14 @@ const useSettingsStore = defineStore('settings', {
               ? Math.max(0, Math.floor(newValue))
               : DEFAULT_VAULT_AUTO_LOCK_MINUTES;
           }
+          if (FALLBACK_RELAYS in changes) {
+            const newValue = changes[FALLBACK_RELAYS].newValue;
+            if (Array.isArray(newValue) && newValue.length > 0) {
+              this.fallbackRelays = newValue as string[];
+            } else {
+              this.fallbackRelays = DEFAULT_FALLBACK_RELAYS;
+            }
+          }
         }
       });
 
@@ -85,5 +114,9 @@ const useSettingsStore = defineStore('settings', {
 export default useSettingsStore;
 
 if (import.meta.hot) {
-  import.meta.hot.accept(acceptHMRUpdate(useSettingsStore, import.meta.hot));
+  import.meta.hot.accept((newModule) => {
+    if (newModule) {
+      acceptHMRUpdate(useSettingsStore, import.meta.hot)(newModule);
+    }
+  });
 }

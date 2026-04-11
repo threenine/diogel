@@ -7,6 +7,7 @@ export const VAULT_LAST_ACTIVITY = 'vault:last-activity' as const;
 export const BLOSSOM_UPLOAD_STATUS = 'blossom:upload-status' as const;
 export const PERMISSIONS_KEY = 'nostr:permissions' as const;
 export const VAULT_UNLOCKED = 'vault:unlocked' as const;
+export const FALLBACK_RELAYS = 'nostr:fallback-relays' as const;
 
 export type StorageArea = 'local' | 'session' | 'sync';
 
@@ -33,46 +34,46 @@ class StorageServiceImpl implements StorageService {
     return chrome.storage[area];
   }
 
-  async get<T>(key: string, area: StorageArea = 'local'): Promise<T | undefined> {
+  get = async <T>(key: string, area: StorageArea = 'local'): Promise<T | undefined> => {
     const result = await this.getArea(area).get([key]);
     return result[key] as T | undefined;
-  }
+  };
 
-  async getMultiple(keys: string[], area: StorageArea = 'local'): Promise<Record<string, unknown>> {
+  getMultiple = async (keys: string[], area: StorageArea = 'local'): Promise<Record<string, unknown>> => {
     return (await this.getArea(area).get(keys)) as Record<string, unknown>;
-  }
+  };
 
-  async set(key: string, value: unknown, area: StorageArea = 'local'): Promise<void> {
+  set = async (key: string, value: unknown, area: StorageArea = 'local'): Promise<void> => {
     await this.getArea(area).set({ [key]: value });
-  }
+  };
 
-  async setMultiple(items: Record<string, unknown>, area: StorageArea = 'local'): Promise<void> {
+  setMultiple = async (items: Record<string, unknown>, area: StorageArea = 'local'): Promise<void> => {
     await this.getArea(area).set(items);
-  }
+  };
 
-  async remove(key: string | string[], area: StorageArea = 'local'): Promise<void> {
+  remove = async (key: string | string[], area: StorageArea = 'local'): Promise<void> => {
     await this.getArea(area).remove(key);
-  }
+  };
 
-  async clear(area: StorageArea = 'local'): Promise<void> {
+  clear = async (area: StorageArea = 'local'): Promise<void> => {
     await this.getArea(area).clear();
-  }
+  };
 
-  onChanged(
+  onChanged = (
     callback: (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => void,
-  ): void {
+  ): void => {
     if (typeof chrome !== 'undefined' && chrome.storage) {
       chrome.storage.onChanged.addListener(callback);
     }
-  }
+  };
 
-  removeOnChanged(
+  removeOnChanged = (
     callback: (changes: Record<string, chrome.storage.StorageChange>, areaName: string) => void,
-  ): void {
+  ): void => {
     if (typeof chrome !== 'undefined' && chrome.storage) {
       chrome.storage.onChanged.removeListener(callback);
     }
-  }
+  };
 }
 
 export const storageService: StorageService = new StorageServiceImpl();
