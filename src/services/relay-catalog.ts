@@ -207,12 +207,13 @@ export class RelayCatalogService {
    *
    * A relay is considered valid for the default view if:
    * 1. It has a valid URL (wss:// or ws://) and hostname.
-   * 2. It is not malformed (e.g. wss:// only).
-   * 3. It is either:
-   *    - Online or Unknown status
+   * 2. It is not malformed or using restricted hostnames (localhost/IPs) unless user-added/seed.
+   * 3. It is not excessively long.
+   * 4. It is either:
+   *    - Online with metadata (or very recently discovered)
    *    - A Seed relay
    *    - User-added relay
-   *    - Offline/Error but has useful metadata (name or description)
+   *    - Offline/Error but has metadata AND was seen recently (< 30 days)
    *
    * @param entry The entry to validate.
    * @returns True if the entry is valid, false otherwise.
@@ -223,18 +224,50 @@ export class RelayCatalogService {
     // Basic validation for relay URL scheme
     if (!entry.url.startsWith('ws://') && !entry.url.startsWith('wss://')) return false;
 
-    // Exclude malformed URLs (too short or missing hostname)
+    // Exclude malformed URLs
     if (entry.url === 'ws://' || entry.url === 'wss://') return false;
-    if (entry.url.endsWith('://.com')) return false; // Simple malformed check as per test
+    if (entry.url.includes('://.com')) return false;
+
+    // Reject excessively long URLs (potential junk/attacks)
+    if (entry.url.length > 255) return false;
+
+    const isSpecial = entry.isSeed || entry.isUserAdded;
+
+    // Exclude restricted hostnames unless it's a special relay
+    if (!isSpecial) {
+      const host = (entry.hostname || '').toLowerCase();
+      if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '0.0.0.0') {
+        return false;
+      }
+
+      // Exclude IP-only relays (too noisy for default discovery)
+      const isIpOnly = /^[0-9.]+$/.test(host) || host.includes(':');
+      if (isIpOnly) return false;
+    }
 
     // Filter by status and value
     const isUnusable = entry.status === 'offline' || entry.status === 'error';
     const hasMetadata = !!(entry.metadata && (entry.metadata.name || entry.metadata.description));
-    const isSpecial = entry.isSeed || entry.isUserAdded;
+    const hasAnyMetadata = hasMetadata || !!(entry.metadata && entry.metadata.supported_nips && entry.metadata.supported_nips.length > 0);
+
+    // If it's online but has NO metadata at all, it's low value
+    // However, we give a 24-hour grace period for newly discovered relays to be crawled
+    if (entry.status === 'online' && !hasAnyMetadata && !isSpecial) {
+      const isRecentlyCreated = Date.now() - entry.createdAt < 24 * 60 * 60 * 1000;
+      if (!isRecentlyCreated) return false;
+    }
 
     // If it's unusable, only keep if it's special or has metadata
     if (isUnusable && !isSpecial && !hasMetadata) {
       return false;
+    }
+
+    // If it's offline/error and hasn't been seen for a long time (30 days), exclude even if it has metadata
+    if (isUnusable && !isSpecial && entry.lastSeen) {
+      const thirtyDays = 30 * 24 * 60 * 60 * 1000;
+      if (Date.now() - entry.lastSeen > thirtyDays) {
+        return false;
+      }
     }
 
     return true;
@@ -263,6 +296,18 @@ export class RelayCatalogService {
   /**
    * Calculates a priority score for an entry to help with sorting.
    * Higher score means higher priority.
+   *
+   * Logic:
+   * 100: Seed relays with rich metadata (name + description)
+   * 90: User-added relays
+   * 85: Seed relays with some metadata
+   * 80: Relays with name AND description
+   * 70: Relays with name OR description
+   * 60: Relays with NIPs but no name/desc
+   * 50: Seeds with no metadata
+   * 10: Unknown status (freshly discovered)
+   * 1: Default (online but low info)
+   * 0: Offline or error
    */
   private getEntryScore(entry: RelayCatalogEntry): number {
     // Unreachable or failed entries last
@@ -270,18 +315,40 @@ export class RelayCatalogService {
       return 0;
     }
 
-    const hasMetadata = !!(entry.metadata && (entry.metadata.name || entry.metadata.description));
+    const hasName = !!(entry.metadata && entry.metadata.name && entry.metadata.name.trim().length > 0);
+    const hasDescription = !!(entry.metadata && entry.metadata.description && entry.metadata.description.trim().length > 0);
+    const hasNips = !!(entry.metadata && entry.metadata.supported_nips && entry.metadata.supported_nips.length > 0);
 
-    if (entry.isSeed && hasMetadata) {
-      return 4;
+    if (entry.isSeed && hasName && hasDescription) {
+      return 100;
     }
 
-    if (hasMetadata) {
-      return 3;
+    if (entry.isUserAdded) {
+      return 90;
     }
 
-    if (entry.isSeed || entry.isUserAdded) {
-      return 2;
+    if (entry.isSeed && (hasName || hasDescription)) {
+      return 85;
+    }
+
+    if (hasName && hasDescription) {
+      return 80;
+    }
+
+    if (hasName || hasDescription) {
+      return 70;
+    }
+
+    if (hasNips) {
+      return 60;
+    }
+
+    if (entry.isSeed) {
+      return 50;
+    }
+
+    if (entry.status === 'unknown') {
+      return 10;
     }
 
     return 1;
