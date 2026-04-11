@@ -16,7 +16,7 @@ import PopupHeader from 'components/PopupHeader.vue';
     </div>
 
     <!-- Content -->
-    <q-page-container class="popup-container">
+    <q-page-container class="popup-container diogel-scrollbar">
       <router-view />
     </q-page-container>
   </q-layout>
@@ -77,20 +77,5 @@ html.extension-popup body {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-width: thin;
-  scrollbar-color: var(--border-color) transparent;
-}
-
-.popup-container::-webkit-scrollbar {
-  width: 6px;
-}
-
-.popup-container::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.popup-container::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 3px;
 }
 </style>

@@ -206,7 +206,7 @@ function selectRelay(relay: RelayCatalogEntry) {
         <q-toggle v-model="searchOnly" :label="t('relays.browser.search_only')" dense />
       </q-card-section>
 
-      <q-card-section class="col scroll q-pt-none">
+      <q-card-section class="col scroll q-pt-none diogel-scrollbar">
         <div v-if="loading" class="flex justify-center q-my-md">
           <q-spinner color="primary" size="3em" />
           <div class="q-mt-sm full-width text-center">{{ t('relays.browser.loading') }}</div>
@@ -276,7 +276,4 @@ function selectRelay(relay: RelayCatalogEntry) {
 </template>
 
 <style scoped>
-.scroll {
-  overflow-y: auto;
-}
 </style>
