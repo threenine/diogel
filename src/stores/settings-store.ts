@@ -6,14 +6,11 @@ import {
   storageService,
   VAULT_AUTO_LOCK_MINUTES,
 } from 'src/services/storage-service';
+import { RELAY_SEEDS } from 'src/data/relay-seeds';
 
 const DEFAULT_BLOSSOM_SERVER = 'https://blossom.primal.net/';
 const DEFAULT_VAULT_AUTO_LOCK_MINUTES = 15;
-const DEFAULT_FALLBACK_RELAYS = [
-  'wss://relay.primal.net',
-  'wss://relay.damus.net',
-  'wss://relay.threenine.services',
-];
+const DEFAULT_FALLBACK_RELAYS = RELAY_SEEDS;
 
 const useSettingsStore = defineStore('settings', {
   state: () => ({
