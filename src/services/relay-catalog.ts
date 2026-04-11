@@ -1,5 +1,6 @@
 import { db } from 'src/services/database';
 import { normalizeRelayUrl, isRestrictedHostname } from 'src/services/relay-url';
+import { logService, LogLevel } from 'src/services/log-service';
 import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 import { RELAY_SEEDS } from 'src/data/relay-seeds';
 
@@ -47,7 +48,7 @@ export async function loadSeedRelays(): Promise<{ added: number; updated: number
         added++;
       }
     } catch (e) {
-      console.error(`[RelayCatalog] Failed to upsert seed ${url}:`, e);
+      logService.log(LogLevel.ERROR, `[RelayCatalog] Failed to upsert seed ${url}`, { error: e });
       skipped++;
     }
   }

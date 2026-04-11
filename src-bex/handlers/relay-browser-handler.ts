@@ -1,6 +1,7 @@
 import { relayCatalogService } from 'src/services/relay-catalog';
 import { relayBrowserOrchestrator } from 'src/services/relay-browser-orchestrator';
 import { db } from 'src/services/database';
+import { logService, LogLevel } from 'src/services/log-service';
 import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 import type { HandlerResult } from '../types/background';
 
@@ -16,7 +17,7 @@ export async function handleRelayBrowserList(): Promise<HandlerResult<RelayCatal
       data: entries,
     };
   } catch (error) {
-    console.error('[RelayBrowserHandler] Failed to list relays:', error);
+    logService.log(LogLevel.ERROR, '[RelayBrowserHandler] Failed to list relays', { error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error fetching relay list',
@@ -36,7 +37,7 @@ export async function handleRelayBrowserGetStatus(): Promise<HandlerResult<Relay
       data: status,
     };
   } catch (error) {
-    console.error('[RelayBrowserHandler] Failed to get discovery status:', error);
+    logService.log(LogLevel.ERROR, '[RelayBrowserHandler] Failed to get discovery status', { error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error fetching discovery status',
@@ -54,7 +55,7 @@ export async function handleRelayBrowserRefresh(payload?: { force?: boolean }): 
     // We don't await the full refresh here to avoid blocking the BEX response,
     // as it can take a long time. The UI should poll getStatus to see progress.
     relayBrowserOrchestrator.refreshCatalog(force).catch(err => {
-      console.error('[RelayBrowserHandler] Async refresh failed:', err);
+      logService.log(LogLevel.ERROR, '[RelayBrowserHandler] Async refresh failed', { error: err });
     });
 
     return {
@@ -62,7 +63,7 @@ export async function handleRelayBrowserRefresh(payload?: { force?: boolean }): 
       data: undefined,
     };
   } catch (error) {
-    console.error('[RelayBrowserHandler] Failed to trigger refresh:', error);
+    logService.log(LogLevel.ERROR, '[RelayBrowserHandler] Failed to trigger refresh', { error });
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error triggering refresh',

@@ -2,6 +2,7 @@ import { relayCatalogService, loadSeedRelays } from './relay-catalog';
 import { relayDiscoveryService } from './relay-discovery';
 import { fetchRelayMetadata } from './relay-metadata';
 import { normalizeRelayUrl } from './relay-url';
+import { logService, LogLevel } from './log-service';
 import type { RelayCatalogEntry } from 'src/types/relay';
 
 /**
@@ -21,13 +22,13 @@ export class RelayBrowserOrchestrator {
    */
   async refreshCatalog(force = false): Promise<void> {
     if (this.isRefreshing) {
-      console.log('[RelayBrowserOrchestrator] Refresh already in progress, skipping.');
+      logService.log(LogLevel.DEBUG, '[RelayBrowserOrchestrator] Refresh already in progress, skipping');
       return;
     }
 
     const state = await relayCatalogService.getDiscoveryState('global');
     if (state?.isDiscoveryInProgress) {
-       console.log('[RelayBrowserOrchestrator] Discovery already marked in progress in DB, skipping.');
+       logService.log(LogLevel.DEBUG, '[RelayBrowserOrchestrator] Discovery already marked in progress in DB, skipping');
        return;
     }
 
@@ -61,7 +62,7 @@ export class RelayBrowserOrchestrator {
 
   private async ensureSeedCatalog(entries: RelayCatalogEntry[]): Promise<void> {
     if (entries.length === 0) {
-      console.log('[RelayBrowserOrchestrator] Catalog empty, loading seed relays...');
+      logService.log(LogLevel.INFO, '[RelayBrowserOrchestrator] Catalog empty, loading seed relays');
       await loadSeedRelays();
     }
   }
@@ -69,7 +70,7 @@ export class RelayBrowserOrchestrator {
   private async runDiscoveryPhase(force: boolean): Promise<void> {
     const currentState = await relayCatalogService.getDiscoveryState('global');
     if (force || relayCatalogService.isDiscoveryStale(currentState)) {
-      console.log('[RelayBrowserOrchestrator] Triggering discovery...');
+      logService.log(LogLevel.INFO, '[RelayBrowserOrchestrator] Triggering discovery');
       const seeds = (await relayCatalogService.getEntries())
         .filter(e => e.isSeed)
         .map(e => e.url);
@@ -88,12 +89,12 @@ export class RelayBrowserOrchestrator {
         lastGlobalDiscoveryAt: Date.now(),
       }, 'global');
     } else {
-      console.log('[RelayBrowserOrchestrator] Discovery is fresh, skipping.');
+      logService.log(LogLevel.DEBUG, '[RelayBrowserOrchestrator] Discovery is fresh, skipping');
     }
   }
 
   private async runMetadataPhase(force: boolean): Promise<void> {
-    console.log('[RelayBrowserOrchestrator] Starting metadata refresh for stale entries...');
+    logService.log(LogLevel.DEBUG, '[RelayBrowserOrchestrator] Starting metadata refresh for stale entries');
     const allEntries = await relayCatalogService.getEntries();
     const staleEntries = allEntries.filter(e => force || relayCatalogService.isMetadataStale(e));
 
@@ -121,7 +122,7 @@ export class RelayBrowserOrchestrator {
             });
           }
         } catch (e) {
-          console.error(`[RelayBrowserOrchestrator] Metadata fetch failed for ${entry.url}:`, e);
+          logService.log(LogLevel.ERROR, `[RelayBrowserOrchestrator] Metadata fetch failed for ${entry.url}`, { error: e });
         }
       })();
 
@@ -147,7 +148,7 @@ export class RelayBrowserOrchestrator {
   }
 
   private async handleFailure(error: unknown): Promise<void> {
-    console.error('[RelayBrowserOrchestrator] Refresh failed:', error);
+    logService.log(LogLevel.ERROR, '[RelayBrowserOrchestrator] Refresh failed', { error });
     try {
       const currentEntries = await relayCatalogService.getEntries();
       await relayCatalogService.updateDiscoveryState({
@@ -159,7 +160,7 @@ export class RelayBrowserOrchestrator {
         }
       }, 'global');
     } catch (innerError) {
-      console.error('[RelayBrowserOrchestrator] Failed to update discovery state after error:', innerError);
+      logService.log(LogLevel.ERROR, '[RelayBrowserOrchestrator] Failed to update discovery state after error', { error: innerError });
     }
   }
 }
