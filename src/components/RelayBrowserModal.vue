@@ -187,7 +187,7 @@ function selectRelay(relay: RelayCatalogEntry) {
         >
           <q-tooltip>{{ t('relays.browser.refresh') }}</q-tooltip>
         </q-btn>
-        <q-btn v-close-popup flat round dense icon="close" />
+        <q-btn v-close-popup flat round dense icon="close" @click="close" />
       </q-card-section>
 
       <q-card-section class="q-pt-sm">
@@ -246,33 +246,30 @@ function selectRelay(relay: RelayCatalogEntry) {
               </q-item-section>
             </q-item>
           </q-list>
-
-          <div class="row items-center justify-between q-mt-md">
-            <q-select
-              v-model="pageSize"
-              :options="pageSizeOptions"
-              :label="t('relays.browser.results_per_page')"
-              dense
-              outlined
-              options-dense
-              emit-value
-              map-options
-              style="width: 150px"
-            />
-            <q-pagination
-              v-model="currentPage"
-              :max="totalPages"
-              :max-pages="5"
-              boundary-numbers
-              direction-links
-              color="primary"
-            />
-          </div>
         </div>
       </q-card-section>
 
-      <q-card-actions align="right">
-        <q-btn flat :label="t('relays.browser.close')" color="primary" @click="close" />
+      <q-card-actions v-if="!loading && filteredRelays.length > 0" class="row items-center justify-between q-px-md q-pb-md">
+        <q-select
+          v-model="pageSize"
+          :options="pageSizeOptions"
+          :label="t('relays.browser.results_per_page')"
+          dense
+          outlined
+          options-dense
+          emit-value
+          map-options
+          style="width: 140px"
+        />
+        <q-pagination
+          v-model="currentPage"
+          :max="totalPages"
+          :max-pages="5"
+          boundary-numbers
+          direction-links
+          color="primary"
+          dense
+        />
       </q-card-actions>
     </q-card>
   </q-dialog>
