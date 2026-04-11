@@ -175,7 +175,7 @@ function selectRelay(relay: RelayCatalogEntry) {
     <q-card style="min-width: 400px; max-height: 80vh" class="column no-wrap">
       <q-card-section class="row items-center q-pb-none">
         <div class="text-h6">{{ t('relays.browser.title') }}</div>
-        <q-spacer />
+        <q-space />
         <q-btn
           flat
           round
