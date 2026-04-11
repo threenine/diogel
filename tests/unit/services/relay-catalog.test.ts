@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { loadSeedRelays, relayCatalogService } from 'src/services/relay-catalog';
+import { FALLBACK_RELAYS } from 'src/services/storage-service';
 import type { RelayCatalogEntry } from 'src/types/relay';
+
 
 // Mock the database
 const mockRelayCatalog = new Map<string, RelayCatalogEntry>();
@@ -29,6 +31,15 @@ vi.mock('src/services/database', () => {
     },
   };
 });
+
+// Mock Storage Service
+const mockStorage = new Map<string, unknown>();
+vi.mock('src/services/storage-service', () => ({
+  FALLBACK_RELAYS: 'nostr:fallback-relays',
+  storageService: {
+    get: vi.fn((key: string) => Promise.resolve(mockStorage.get(key))),
+  },
+}));
 
 // Mock RELAY_SEEDS to have a controlled set for testing, including an invalid one
 vi.mock('src/data/relay-seeds', () => ({
@@ -65,6 +76,19 @@ describe('Relay Catalog Service - loadSeedRelays', () => {
     expect(secondResult.added).toBe(0);
     expect(secondResult.updated).toBe(0);
     expect(mockRelayCatalog.size).toBe(2);
+  });
+
+  it('should use customized fallback relays from storage if available', async () => {
+    mockStorage.set(FALLBACK_RELAYS, ['wss://custom.relay.io']);
+
+    const result = await loadSeedRelays();
+
+    expect(result.added).toBe(1);
+    expect(mockRelayCatalog.has('wss://custom.relay.io')).toBe(true);
+    // Should NOT have the defaults from RELAY_SEEDS if custom storage exists
+    expect(mockStorage.get(FALLBACK_RELAYS)).toContain('wss://custom.relay.io');
+
+    mockStorage.clear();
   });
 
   it('should preserve richer existing metadata and update isSeed status', async () => {

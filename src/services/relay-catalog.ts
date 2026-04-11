@@ -1,6 +1,7 @@
 import { db } from 'src/services/database';
 import { normalizeRelayUrl, isRestrictedHostname } from 'src/services/relay-url';
 import { logService, LogLevel } from 'src/services/log-service';
+import { FALLBACK_RELAYS, storageService } from 'src/services/storage-service';
 import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 import { RELAY_SEEDS } from 'src/data/relay-seeds';
 
@@ -16,7 +17,12 @@ export async function loadSeedRelays(): Promise<{ added: number; updated: number
   let updated = 0;
   let skipped = 0;
 
-  for (const seedUrl of RELAY_SEEDS) {
+  // Use the same fallback relay source for consistency across the app.
+  // This allows the catalog seeds to stay in sync with what the user considers "fallback" relays.
+  const storedSeeds = await storageService.get<string[]>(FALLBACK_RELAYS);
+  const seedsToUse = Array.isArray(storedSeeds) && storedSeeds.length > 0 ? storedSeeds : RELAY_SEEDS;
+
+  for (const seedUrl of seedsToUse) {
     const result = normalizeRelayUrl(seedUrl);
 
     if (!result.valid || !result.url || !result.hostname) {

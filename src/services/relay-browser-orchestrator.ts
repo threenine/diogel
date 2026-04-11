@@ -77,6 +77,10 @@ export class RelayBrowserOrchestrator {
 
       const discoveryResult = await relayDiscoveryService.discoverFromRelays(seeds);
 
+      if (discoveryResult.errors.length > 0) {
+        logService.log(LogLevel.WARN, '[RelayBrowserOrchestrator] Discovery had errors', { errors: discoveryResult.errors });
+      }
+
       // Upsert discovered relays
       for (const rawUrl of discoveryResult.discoveredUrls) {
         const { valid, url, hostname } = normalizeRelayUrl(rawUrl);
