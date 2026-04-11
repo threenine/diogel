@@ -1,6 +1,7 @@
 import { relayCatalogService, loadSeedRelays } from './relay-catalog';
 import { relayDiscoveryService } from './relay-discovery';
 import { fetchRelayMetadata } from './relay-metadata';
+import { normalizeRelayUrl } from './relay-url';
 import type { RelayCatalogEntry } from 'src/types/relay';
 
 /**
@@ -76,12 +77,10 @@ export class RelayBrowserOrchestrator {
       const discoveryResult = await relayDiscoveryService.discoverFromRelays(seeds);
 
       // Upsert discovered relays
-      for (const url of discoveryResult.discoveredUrls) {
-        try {
-           const hostname = new URL(url).hostname;
-           await relayCatalogService.upsertEntry({ url, hostname, source: 'discovery' });
-        } catch (e) {
-           console.warn(`[RelayBrowserOrchestrator] Failed to parse discovered URL ${url}:`, e);
+      for (const rawUrl of discoveryResult.discoveredUrls) {
+        const { valid, url, hostname } = normalizeRelayUrl(rawUrl);
+        if (valid && url && hostname) {
+          await relayCatalogService.upsertEntry({ url, hostname, source: 'discovery' });
         }
       }
 

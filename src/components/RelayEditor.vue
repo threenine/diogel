@@ -2,6 +2,7 @@
 import { onMounted, ref, watch, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
+import { normalizeRelayUrl } from 'src/services/relay-url';
 import type { NostrRelay, StoredKey } from '../types';
 import type { RelayCatalogEntry } from 'src/types/relay';
 import { SimplePool } from 'nostr-tools';
@@ -66,16 +67,18 @@ async function fetchRelayList() {
 }
 
 function addRelay() {
-  const url = newRelayUrl.value.trim();
-  if (!url) return;
-  if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
-    $q.notify({
-      type: 'negative',
-      message: String($t('relays.invalidUrl')),
-    });
+  const result = normalizeRelayUrl(newRelayUrl.value);
+  if (!result.valid || !result.url) {
+    if (result.error && result.error !== 'URL cannot be empty') {
+      $q.notify({
+        type: 'negative',
+        message: String($t('relays.invalidUrl')),
+      });
+    }
     return;
   }
 
+  const url = result.url;
   if (relays.value.some((r) => r.url === url)) {
     newRelayUrl.value = '';
     return;

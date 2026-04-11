@@ -57,6 +57,23 @@ export function normalizeRelayUrl(input: string | null | undefined): RelayUrlRes
       normalizedUrl = normalizedUrl.slice(0, -1);
     }
 
+    // Additional strict validation for relay catalog quality
+    if (normalizedUrl.length > 255) {
+      return {
+        valid: false,
+        error: 'URL exceeds maximum length of 255 characters',
+      };
+    }
+
+    // Ensure hostname is valid (not just an empty string which can happen in some URL parsers)
+    // Also reject hostnames starting with a dot, which are usually malformed placeholders.
+    if (!url.hostname || url.hostname.trim().length === 0 || url.hostname.startsWith('.')) {
+      return {
+        valid: false,
+        error: 'URL must contain a valid hostname',
+      };
+    }
+
     return {
       valid: true,
       url: normalizedUrl,
@@ -68,4 +85,36 @@ export function normalizeRelayUrl(input: string | null | undefined): RelayUrlRes
       error: 'Invalid URL format',
     };
   }
+}
+
+/**
+ * Checks if a hostname is restricted (localhost or IP address).
+ *
+ * This is used to filter out low-value or local-only relays from the catalog
+ * by default, while still allowing them if they are seeds or user-added.
+ *
+ * @param hostname The hostname to check
+ */
+export function isRestrictedHostname(hostname: string | undefined): boolean {
+  if (!hostname) return true;
+
+  const host = hostname.toLowerCase();
+
+  // 1. Localhost and loopback
+  if (
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '[::1]' ||
+    host === '0.0.0.0' ||
+    host === '::'
+  ) {
+    return true;
+  }
+
+  // 2. IPv4 pattern (strict enough for hostname check)
+  const ipv4Pattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
+  if (ipv4Pattern.test(host)) return true;
+
+  // 3. IPv6 check (contains colon and usually wrapped in brackets in URLs, but hostname from URL object may vary)
+  return host.includes(':') || (host.startsWith('[') && host.endsWith(']'));
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeRelayUrl } from 'src/services/relay-url';
+import { normalizeRelayUrl, isRestrictedHostname } from 'src/services/relay-url';
 
 describe('normalizeRelayUrl', () => {
   it('should validate a valid wss:// URL', () => {
@@ -82,5 +82,45 @@ describe('normalizeRelayUrl', () => {
     const result = normalizeRelayUrl('wss://relay.damus.io/v1');
     expect(result.valid).toBe(true);
     expect(result.url).toBe('wss://relay.damus.io/v1');
+  });
+
+  it('should reject excessively long URLs', () => {
+    const longUrl = 'wss://' + 'a'.repeat(250) + '.com';
+    const result = normalizeRelayUrl(longUrl);
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('maximum length');
+  });
+
+  it('should reject malformed hostnames', () => {
+    expect(normalizeRelayUrl('wss://.com').valid).toBe(false);
+    expect(normalizeRelayUrl('wss://').valid).toBe(false);
+    expect(normalizeRelayUrl('wss://.').valid).toBe(false);
+  });
+});
+
+describe('isRestrictedHostname', () => {
+  it('should identify localhost and loopback as restricted', () => {
+    expect(isRestrictedHostname('localhost')).toBe(true);
+    expect(isRestrictedHostname('127.0.0.1')).toBe(true);
+    expect(isRestrictedHostname('[::1]')).toBe(true);
+    expect(isRestrictedHostname('0.0.0.0')).toBe(true);
+    expect(isRestrictedHostname('::')).toBe(true);
+  });
+
+  it('should identify IPv4 addresses as restricted', () => {
+    expect(isRestrictedHostname('8.8.8.8')).toBe(true);
+    expect(isRestrictedHostname('192.168.1.1')).toBe(true);
+    expect(isRestrictedHostname('1.2.3.4')).toBe(true);
+  });
+
+  it('should identify IPv6 addresses as restricted', () => {
+    expect(isRestrictedHostname('2001:db8::1')).toBe(true);
+    expect(isRestrictedHostname('[2001:db8::1]')).toBe(true);
+  });
+
+  it('should identify normal hostnames as not restricted', () => {
+    expect(isRestrictedHostname('relay.damus.io')).toBe(false);
+    expect(isRestrictedHostname('nos.lol')).toBe(false);
+    expect(isRestrictedHostname('my-relay.com')).toBe(false);
   });
 });

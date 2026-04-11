@@ -1,5 +1,5 @@
 import { db } from 'src/services/database';
-import { normalizeRelayUrl } from 'src/services/relay-url';
+import { normalizeRelayUrl, isRestrictedHostname } from 'src/services/relay-url';
 import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 import { RELAY_SEEDS } from 'src/data/relay-seeds';
 
@@ -219,50 +219,39 @@ export class RelayCatalogService {
    * @returns True if the entry is valid, false otherwise.
    */
   private isValidEntry(entry: RelayCatalogEntry): boolean {
-    if (!entry.url || typeof entry.url !== 'string') return false;
-
-    // Basic validation for relay URL scheme
-    if (!entry.url.startsWith('ws://') && !entry.url.startsWith('wss://')) return false;
-
-    // Exclude malformed URLs
-    if (entry.url === 'ws://' || entry.url === 'wss://') return false;
-    if (entry.url.includes('://.com')) return false;
-
-    // Reject excessively long URLs (potential junk/attacks)
-    if (entry.url.length > 255) return false;
+    // 1. Structural and scheme validation
+    // Use the centralized validator to handle protocol, length, and malformed URL checks.
+    const { valid } = normalizeRelayUrl(entry.url);
+    if (!valid) return false;
 
     const isSpecial = entry.isSeed || entry.isUserAdded;
 
-    // Exclude restricted hostnames unless it's a special relay
-    if (!isSpecial) {
-      const host = (entry.hostname || '').toLowerCase();
-      if (host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '0.0.0.0') {
-        return false;
-      }
-
-      // Exclude IP-only relays (too noisy for default discovery)
-      const isIpOnly = /^[0-9.]+$/.test(host) || host.includes(':');
-      if (isIpOnly) return false;
+    // 2. Exclude restricted hostnames (localhost, IP addresses) unless it's a special relay.
+    // This reduces noise from local-only or IP-only relays in the discovery catalog.
+    if (!isSpecial && isRestrictedHostname(entry.hostname)) {
+      return false;
     }
 
-    // Filter by status and value
+    // 3. Status and metadata quality filtering
     const isUnusable = entry.status === 'offline' || entry.status === 'error';
     const hasMetadata = !!(entry.metadata && (entry.metadata.name || entry.metadata.description));
-    const hasAnyMetadata = hasMetadata || !!(entry.metadata && entry.metadata.supported_nips && entry.metadata.supported_nips.length > 0);
+    const hasAnyMetadata =
+      hasMetadata ||
+      !!(entry.metadata && entry.metadata.supported_nips && entry.metadata.supported_nips.length > 0);
 
-    // If it's online but has NO metadata at all, it's low value
-    // However, we give a 24-hour grace period for newly discovered relays to be crawled
+    // 3.a Give a 24-hour grace period for newly discovered online relays to be crawled for metadata.
     if (entry.status === 'online' && !hasAnyMetadata && !isSpecial) {
       const isRecentlyCreated = Date.now() - entry.createdAt < 24 * 60 * 60 * 1000;
       if (!isRecentlyCreated) return false;
     }
 
-    // If it's unusable, only keep if it's special or has metadata
+    // 3.b If it's offline/error, only keep if it's special or has rich metadata.
     if (isUnusable && !isSpecial && !hasMetadata) {
       return false;
     }
 
-    // If it's offline/error and hasn't been seen for a long time (30 days), exclude even if it has metadata
+    // 3.c If it's offline/error and hasn't been seen for a long time (30 days),
+    // exclude even if it has metadata, as it's likely permanently gone.
     if (isUnusable && !isSpecial && entry.lastSeen) {
       const thirtyDays = 30 * 24 * 60 * 60 * 1000;
       if (Date.now() - entry.lastSeen > thirtyDays) {
