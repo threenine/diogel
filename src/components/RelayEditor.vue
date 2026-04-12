@@ -1,12 +1,14 @@
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
+import { normalizeRelayUrl } from 'src/services/relay-url';
 import type { NostrRelay, StoredKey } from '../types';
 import type { RelayCatalogEntry } from 'src/types/relay';
 import { SimplePool } from 'nostr-tools';
 import { finalizeEvent } from 'nostr-tools/pure';
 import { hexToBytes } from '@noble/hashes/utils';
+import useSettingsStore from '../stores/settings-store';
 import RelayBrowserModal from './RelayBrowserModal.vue';
 
 defineOptions({ name: 'RelayEditor' });
@@ -17,17 +19,13 @@ const props = defineProps<{
 
 const $q = useQuasar();
 const $t = useI18n().t;
+const settingsStore = useSettingsStore();
 
 const relays = ref<NostrRelay[]>([]);
 const loading = ref(false);
 const saving = ref(false);
 
-const DEFAULT_RELAYS = [
-  'wss://relay.damus.io',
-  'wss://nos.lol',
-  'wss://relay.snort.social',
-  'wss://purplepag.es',
-];
+const fallbackRelays = computed(() => settingsStore.fallbackRelays);
 
 const newRelayUrl = ref('');
 const newRelayWrite = ref(false);
@@ -38,7 +36,7 @@ async function fetchRelayList() {
   loading.value = true;
   const pool = new SimplePool();
   try {
-    const event = await pool.get(DEFAULT_RELAYS, {
+    const event = await pool.get(fallbackRelays.value, {
       kinds: [10002],
       authors: [props.storedKey.id],
     });
@@ -63,22 +61,24 @@ async function fetchRelayList() {
       message: String($t('relays.fetchError')),
     });
   } finally {
-    pool.close(DEFAULT_RELAYS);
+    pool.close(fallbackRelays.value);
     loading.value = false;
   }
 }
 
 function addRelay() {
-  const url = newRelayUrl.value.trim();
-  if (!url) return;
-  if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
-    $q.notify({
-      type: 'negative',
-      message: String($t('relays.invalidUrl')),
-    });
+  const result = normalizeRelayUrl(newRelayUrl.value);
+  if (!result.valid || !result.url) {
+    if (result.error && result.error !== 'URL cannot be empty') {
+      $q.notify({
+        type: 'negative',
+        message: String($t('relays.invalidUrl')),
+      });
+    }
     return;
   }
 
+  const url = result.url;
   if (relays.value.some((r) => r.url === url)) {
     newRelayUrl.value = '';
     return;
@@ -125,7 +125,7 @@ async function saveRelayList() {
     const sk = hexToBytes(props.storedKey.account.privkey);
     const event = finalizeEvent(unsignedEvent, sk);
 
-    await Promise.any(pool.publish(DEFAULT_RELAYS, event));
+    await Promise.any(pool.publish(fallbackRelays.value, event));
 
     $q.notify({
       type: 'positive',
@@ -138,12 +138,13 @@ async function saveRelayList() {
       message: String($t('relays.saveError')),
     });
   } finally {
-    pool.close(DEFAULT_RELAYS);
+    pool.close(fallbackRelays.value);
     saving.value = false;
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await settingsStore.getSettings();
   void fetchRelayList();
 });
 

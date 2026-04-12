@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { loadSeedRelays, relayCatalogService } from 'src/services/relay-catalog';
+import { FALLBACK_RELAYS } from 'src/services/storage-service';
 import type { RelayCatalogEntry } from 'src/types/relay';
+
 
 // Mock the database
 const mockRelayCatalog = new Map<string, RelayCatalogEntry>();
@@ -29,6 +31,15 @@ vi.mock('src/services/database', () => {
     },
   };
 });
+
+// Mock Storage Service
+const mockStorage = new Map<string, unknown>();
+vi.mock('src/services/storage-service', () => ({
+  FALLBACK_RELAYS: 'nostr:fallback-relays',
+  storageService: {
+    get: vi.fn((key: string) => Promise.resolve(mockStorage.get(key))),
+  },
+}));
 
 // Mock RELAY_SEEDS to have a controlled set for testing, including an invalid one
 vi.mock('src/data/relay-seeds', () => ({
@@ -65,6 +76,19 @@ describe('Relay Catalog Service - loadSeedRelays', () => {
     expect(secondResult.added).toBe(0);
     expect(secondResult.updated).toBe(0);
     expect(mockRelayCatalog.size).toBe(2);
+  });
+
+  it('should use customized fallback relays from storage if available', async () => {
+    mockStorage.set(FALLBACK_RELAYS, ['wss://custom.relay.io']);
+
+    const result = await loadSeedRelays();
+
+    expect(result.added).toBe(1);
+    expect(mockRelayCatalog.has('wss://custom.relay.io')).toBe(true);
+    // Should NOT have the defaults from RELAY_SEEDS if custom storage exists
+    expect(mockStorage.get(FALLBACK_RELAYS)).toContain('wss://custom.relay.io');
+
+    mockStorage.clear();
   });
 
   it('should preserve richer existing metadata and update isSeed status', async () => {
@@ -433,8 +457,11 @@ describe('Relay Catalog Service - getEntries', () => {
     expect(results[1]?.url).toBe('wss://b.com');
   });
 
-  it('should exclude offline or error entries with no metadata', async () => {
+  it('should apply strict exclusion policy for default display', async () => {
     const now = Date.now();
+    const fortyDaysAgo = now - 40 * 24 * 60 * 60 * 1000;
+    const twoDaysAgo = now - 2 * 24 * 60 * 60 * 1000;
+
     // 1. Offline with no metadata - exclude
     mockRelayCatalog.set('wss://offline-no-meta.com', {
       url: 'wss://offline-no-meta.com',
@@ -445,54 +472,84 @@ describe('Relay Catalog Service - getEntries', () => {
       createdAt: now,
       updatedAt: now,
     });
-    // 2. Error with no metadata - exclude
-    mockRelayCatalog.set('wss://error-no-meta.com', {
-      url: 'wss://error-no-meta.com',
-      hostname: 'error-no-meta.com',
+
+    // 2. Online with no metadata but OLD - exclude
+    mockRelayCatalog.set('wss://old-no-meta.com', {
+      url: 'wss://old-no-meta.com',
+      hostname: 'old-no-meta.com',
       isUserAdded: false,
       isSeed: false,
-      status: 'error',
-      createdAt: now,
-      updatedAt: now,
+      status: 'online',
+      createdAt: twoDaysAgo,
+      updatedAt: twoDaysAgo,
     });
-    // 3. Online with no metadata - keep
-    mockRelayCatalog.set('wss://online-no-meta.com', {
-      url: 'wss://online-no-meta.com',
-      hostname: 'online-no-meta.com',
+
+    // 3. IP-only - exclude
+    mockRelayCatalog.set('wss://1.2.3.4', {
+      url: 'wss://1.2.3.4',
+      hostname: '1.2.3.4',
       isUserAdded: false,
       isSeed: false,
       status: 'online',
       createdAt: now,
       updatedAt: now,
     });
-    // 4. Offline with metadata - keep
-    mockRelayCatalog.set('wss://offline-with-meta.com', {
-      url: 'wss://offline-with-meta.com',
-      hostname: 'offline-with-meta.com',
+
+    // 4. Stale offline (seen 40 days ago) - exclude even if it has metadata
+    mockRelayCatalog.set('wss://stale-offline.com', {
+      url: 'wss://stale-offline.com',
+      hostname: 'stale-offline.com',
       isUserAdded: false,
       isSeed: false,
       status: 'offline',
-      metadata: { name: 'Offline but metadata-rich' },
+      metadata: { name: 'Old' },
+      lastSeen: fortyDaysAgo,
+      createdAt: fortyDaysAgo,
+      updatedAt: now,
+    });
+
+    // 5. Excessively long URL - exclude
+    const longUrl = 'wss://' + 'a'.repeat(300) + '.com';
+    mockRelayCatalog.set(longUrl, {
+      url: longUrl,
+      hostname: 'too-long.com',
+      isUserAdded: false,
+      isSeed: false,
+      status: 'online',
       createdAt: now,
       updatedAt: now,
     });
-    // 5. Seed entry (even offline and no metadata) - keep
-    mockRelayCatalog.set('wss://seed-offline-no-meta.com', {
-      url: 'wss://seed-offline-no-meta.com',
-      hostname: 'seed-offline-no-meta.com',
+
+    // 6. Healthy: Online with metadata - keep
+    mockRelayCatalog.set('wss://healthy.com', {
+      url: 'wss://healthy.com',
+      hostname: 'healthy.com',
+      isUserAdded: false,
+      isSeed: false,
+      status: 'online',
+      metadata: { name: 'Healthy' },
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // 7. Valuable: Seed even if offline - keep
+    mockRelayCatalog.set('wss://seed-offline.com', {
+      url: 'wss://seed-offline.com',
+      hostname: 'seed-offline.com',
       isUserAdded: false,
       isSeed: true,
       status: 'offline',
       createdAt: now,
       updatedAt: now,
     });
-    // 6. User-added entry (even offline and no metadata) - keep
-    mockRelayCatalog.set('wss://user-offline-no-meta.com', {
-      url: 'wss://user-offline-no-meta.com',
-      hostname: 'user-offline-no-meta.com',
+
+    // 8. Valuable: User-added even if IP-only - keep
+    mockRelayCatalog.set('wss://8.8.8.8', {
+      url: 'wss://8.8.8.8',
+      hostname: '8.8.8.8',
       isUserAdded: true,
       isSeed: false,
-      status: 'offline',
+      status: 'online',
       createdAt: now,
       updatedAt: now,
     });
@@ -501,14 +558,17 @@ describe('Relay Catalog Service - getEntries', () => {
     const urls = results.map(r => r.url);
 
     expect(urls).not.toContain('wss://offline-no-meta.com');
-    expect(urls).not.toContain('wss://error-no-meta.com');
-    expect(urls).toContain('wss://online-no-meta.com');
-    expect(urls).toContain('wss://offline-with-meta.com');
-    expect(urls).toContain('wss://seed-offline-no-meta.com');
-    expect(urls).toContain('wss://user-offline-no-meta.com');
+    expect(urls).not.toContain('wss://old-no-meta.com');
+    expect(urls).not.toContain('wss://1.2.3.4');
+    expect(urls).not.toContain('wss://stale-offline.com');
+    expect(urls).not.toContain(longUrl);
+
+    expect(urls).toContain('wss://healthy.com');
+    expect(urls).toContain('wss://seed-offline.com');
+    expect(urls).toContain('wss://8.8.8.8');
   });
 
-  it('should exclude malformed URLs', async () => {
+  it('should exclude malformed or restricted URLs', async () => {
     const now = Date.now();
     mockRelayCatalog.set('wss://', {
       url: 'wss://',
@@ -528,11 +588,89 @@ describe('Relay Catalog Service - getEntries', () => {
       createdAt: now,
       updatedAt: now,
     });
+    mockRelayCatalog.set('wss://localhost', {
+      url: 'wss://localhost',
+      hostname: 'localhost',
+      isUserAdded: false,
+      isSeed: false,
+      status: 'online',
+      createdAt: now,
+      updatedAt: now,
+    });
 
     const results = await relayCatalogService.getEntries();
     const urls = results.map(r => r.url);
 
     expect(urls).not.toContain('wss://');
     expect(urls).not.toContain('wss://.com');
+    expect(urls).not.toContain('wss://localhost');
+  });
+
+  it('should prioritize based on metadata richness and source', async () => {
+    const now = Date.now();
+    mockRelayCatalog.clear();
+    const entries: RelayCatalogEntry[] = [
+      {
+        url: 'wss://seed-rich.com',
+        hostname: 'seed-rich.com',
+        status: 'online',
+        isSeed: true,
+        isUserAdded: false,
+        metadata: { name: 'Seed', description: 'Very rich' },
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        url: 'wss://user-added.com',
+        hostname: 'user-added.com',
+        status: 'online',
+        isSeed: false,
+        isUserAdded: true,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        url: 'wss://discovered-rich.com',
+        hostname: 'discovered-rich.com',
+        status: 'online',
+        isSeed: false,
+        isUserAdded: false,
+        metadata: { name: 'Discovered', description: 'Rich' },
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        url: 'wss://discovered-poor.com',
+        hostname: 'discovered-poor.com',
+        status: 'online',
+        isSeed: false,
+        isUserAdded: false,
+        metadata: { name: 'Poor' },
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        url: 'wss://discovered-nips-only.com',
+        hostname: 'discovered-nips-only.com',
+        status: 'online',
+        isSeed: false,
+        isUserAdded: false,
+        metadata: { supported_nips: [1, 11] },
+        createdAt: now,
+        updatedAt: now,
+      }
+    ];
+
+    for (const entry of entries) {
+      mockRelayCatalog.set(entry.url, entry);
+    }
+
+    const results = await relayCatalogService.getEntries();
+    const urls = results.map(r => r.url);
+
+    expect(urls.indexOf('wss://seed-rich.com')).toBeLessThan(urls.indexOf('wss://user-added.com'));
+    expect(urls.indexOf('wss://user-added.com')).toBeLessThan(urls.indexOf('wss://discovered-rich.com'));
+    expect(urls.indexOf('wss://discovered-rich.com')).toBeLessThan(urls.indexOf('wss://discovered-poor.com'));
+    expect(urls.indexOf('wss://discovered-poor.com')).toBeLessThan(urls.indexOf('wss://discovered-nips-only.com'));
   });
 });

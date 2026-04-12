@@ -225,8 +225,9 @@ describe('RelayBrowserModal.vue', () => {
 
     await flushPromises();
 
-    const closeBtn = wrapper.findAll('button').find((b) => b.text().includes('relays.browser.close'));
-    await closeBtn?.trigger('click');
+    // Find the header close button (the one with the 'close' icon)
+    const closeBtn = wrapper.find('button[icon="close"]');
+    await closeBtn.trigger('click');
 
     expect(wrapper.emitted('update:modelValue')).toBeTruthy();
     expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([false]);

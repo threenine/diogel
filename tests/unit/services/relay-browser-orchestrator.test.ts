@@ -3,9 +3,22 @@ import { RelayBrowserOrchestrator } from 'src/services/relay-browser-orchestrato
 import { relayCatalogService, loadSeedRelays } from 'src/services/relay-catalog';
 import { relayDiscoveryService } from 'src/services/relay-discovery';
 import { fetchRelayMetadata } from 'src/services/relay-metadata';
+import { logService, LogLevel } from 'src/services/log-service';
 import type { RelayCatalogEntry } from 'src/types/relay';
 
 // Mock dependencies
+vi.mock('src/services/log-service', () => ({
+  logService: {
+    log: vi.fn(),
+  },
+  LogLevel: {
+    DEBUG: 'DEBUG',
+    INFO: 'INFO',
+    WARN: 'WARN',
+    ERROR: 'ERROR',
+  },
+}));
+
 vi.mock('src/services/relay-catalog', () => ({
   relayCatalogService: {
     getEntries: vi.fn(),
@@ -284,5 +297,29 @@ describe('RelayBrowserOrchestrator', () => {
     // Should be exactly 5 if our implementation works correctly
     expect(maxConcurrent).toBeLessThanOrEqual(5);
     expect(maxConcurrent).toBeGreaterThan(1); // Should definitely be more than 1 (sequential)
+  });
+
+  it('should log discovery errors when they occur', async () => {
+    /* eslint-disable @typescript-eslint/unbound-method */
+    vi.mocked(relayCatalogService.getEntries).mockResolvedValue([
+      { url: 'wss://seed1.com', hostname: 'seed1.com', isSeed: true, status: 'unknown' } as RelayCatalogEntry
+    ]);
+    vi.mocked(relayCatalogService.isDiscoveryStale).mockReturnValue(true);
+    vi.mocked(relayDiscoveryService.discoverFromRelays).mockResolvedValue({
+      discoveredUrls: [],
+      processedEvents: 0,
+      errors: ['Discovery query failed', 'Network error']
+    });
+    /* eslint-enable @typescript-eslint/unbound-method */
+
+    await orchestrator.refreshCatalog();
+
+    /* eslint-disable @typescript-eslint/unbound-method */
+    expect(logService.log).toHaveBeenCalledWith(
+      LogLevel.WARN,
+      '[RelayBrowserOrchestrator] Discovery had errors',
+      expect.objectContaining({ errors: ['Discovery query failed', 'Network error'] })
+    );
+    /* eslint-enable @typescript-eslint/unbound-method */
   });
 });

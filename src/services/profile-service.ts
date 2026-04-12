@@ -1,13 +1,7 @@
 import { finalizeEvent, getPublicKey, SimplePool } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
 import type { NostrProfile } from '../types';
-
-const DEFAULT_RELAYS = [
-  'wss://relay.damus.io',
-  'wss://nos.lol',
-  'wss://relay.snort.social',
-  'wss://purplepag.es',
-];
+import useSettingsStore from '../stores/settings-store';
 
 const pool = new SimplePool();
 
@@ -15,8 +9,15 @@ export const profileService = {
   async fetchProfile(pubkey: string): Promise<NostrProfile | null> {
     if (!pubkey) return null;
 
+    const settingsStore = useSettingsStore();
+    // Ensure settings are loaded
+    if (settingsStore.fallbackRelays.length === 0) {
+      await settingsStore.getSettings();
+    }
+    const relays = settingsStore.fallbackRelays;
+
     try {
-      const event = await pool.get(DEFAULT_RELAYS, {
+      const event = await pool.get(relays, {
         authors: [pubkey],
         kinds: [0],
       });
@@ -52,6 +53,13 @@ export const profileService = {
 
     const signedEvent = finalizeEvent(eventTemplate, sk);
 
-    await Promise.any(pool.publish(DEFAULT_RELAYS, signedEvent));
+    const settingsStore = useSettingsStore();
+    // Ensure settings are loaded
+    if (settingsStore.fallbackRelays.length === 0) {
+      await settingsStore.getSettings();
+    }
+    const relays = settingsStore.fallbackRelays;
+
+    await Promise.any(pool.publish(relays, signedEvent));
   },
 };

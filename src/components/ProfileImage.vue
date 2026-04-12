@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { NostrProfile, StoredKey } from '../types';
@@ -35,12 +35,7 @@ const profile = ref<NostrProfile>({
 const loading = ref(false);
 const saving = ref(false);
 
-const DEFAULT_RELAYS = [
-  'wss://relay.damus.io',
-  'wss://nos.lol',
-  'wss://relay.snort.social',
-  'wss://purplepag.es',
-];
+const fallbackRelays = computed(() => settingsStore.fallbackRelays);
 
 const pool = new SimplePool();
 
@@ -61,7 +56,7 @@ async function fetchProfile() {
 
   loading.value = true;
   try {
-    const event = await pool.get(DEFAULT_RELAYS, {
+    const event = await pool.get(fallbackRelays.value, {
       authors: [props.storedKey.id],
       kinds: [0],
     });
@@ -91,7 +86,7 @@ async function saveProfile(field: 'picture' | 'banner', url: string) {
     const pk = getPublicKey(sk);
 
     // Fetch latest profile to avoid overwriting other fields
-    const latestEvent = await pool.get(DEFAULT_RELAYS, {
+    const latestEvent = await pool.get(fallbackRelays.value, {
       authors: [pk],
       kinds: [0],
     });
@@ -116,7 +111,7 @@ async function saveProfile(field: 'picture' | 'banner', url: string) {
     };
 
     const signedEvent = finalizeEvent(eventTemplate, sk);
-    await Promise.any(pool.publish(DEFAULT_RELAYS, signedEvent));
+    await Promise.any(pool.publish(fallbackRelays.value, signedEvent));
 
     $q.notify({
       type: 'positive',

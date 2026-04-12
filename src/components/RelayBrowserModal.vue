@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { ref, watch, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { logService, LogLevel } from 'src/services/log-service';
 import type { RelayCatalogEntry } from 'src/types/relay';
 import { listRelayCatalog, refreshRelayCatalog, getRelayDiscoveryStatus } from 'src/services/relay-service';
 import { filterRelays } from 'src/utils/relay-filters';
@@ -51,9 +52,8 @@ async function fetchRelays() {
   loading.value = true;
   try {
     relays.value = await listRelayCatalog();
-    console.log(`[RelayBrowserModal] Fetched ${relays.value.length} relays`);
   } catch (error) {
-    console.error('[RelayBrowserModal] Failed to fetch relays:', error);
+    logService.log(LogLevel.ERROR, '[RelayBrowserModal] Failed to fetch relays', { error });
     relays.value = [];
   } finally {
     loading.value = false;
@@ -67,7 +67,7 @@ async function triggerRefresh(force = false) {
     await refreshRelayCatalog(force);
     startPollingStatus();
   } catch (error) {
-    console.error('[RelayBrowserModal] Failed to trigger refresh:', error);
+    logService.log(LogLevel.ERROR, '[RelayBrowserModal] Failed to trigger refresh', { error });
     refreshing.value = false;
   }
 }
@@ -101,7 +101,7 @@ async function checkStatus() {
       stopPollingStatus();
     }
   } catch (error) {
-    console.error('[RelayBrowserModal] Failed to check status:', error);
+    logService.log(LogLevel.ERROR, '[RelayBrowserModal] Failed to check status', { error });
     stopPollingStatus();
   } finally {
     // If we're polling status, we've already done the initial list fetch
@@ -155,7 +155,7 @@ function getDisplayName(relay: RelayCatalogEntry) {
   try {
     return relay.metadata?.name || relay.hostname || relay.url || 'Unknown Relay';
   } catch (e) {
-    console.error('[RelayBrowserModal] Error in getDisplayName:', e);
+    logService.log(LogLevel.ERROR, '[RelayBrowserModal] Error in getDisplayName', { error: e });
     return relay.url || 'Unknown Relay';
   }
 }
@@ -187,7 +187,7 @@ function selectRelay(relay: RelayCatalogEntry) {
         >
           <q-tooltip>{{ t('relays.browser.refresh') }}</q-tooltip>
         </q-btn>
-        <q-btn v-close-popup flat round dense icon="close" />
+        <q-btn v-close-popup flat round dense icon="close" @click="close" />
       </q-card-section>
 
       <q-card-section class="q-pt-sm">
@@ -206,7 +206,7 @@ function selectRelay(relay: RelayCatalogEntry) {
         <q-toggle v-model="searchOnly" :label="t('relays.browser.search_only')" dense />
       </q-card-section>
 
-      <q-card-section class="col scroll q-pt-none">
+      <q-card-section class="col scroll q-pt-none diogel-scrollbar">
         <div v-if="loading" class="flex justify-center q-my-md">
           <q-spinner color="primary" size="3em" />
           <div class="q-mt-sm full-width text-center">{{ t('relays.browser.loading') }}</div>
@@ -246,40 +246,34 @@ function selectRelay(relay: RelayCatalogEntry) {
               </q-item-section>
             </q-item>
           </q-list>
-
-          <div class="row items-center justify-between q-mt-md">
-            <q-select
-              v-model="pageSize"
-              :options="pageSizeOptions"
-              :label="t('relays.browser.results_per_page')"
-              dense
-              outlined
-              options-dense
-              emit-value
-              map-options
-              style="width: 150px"
-            />
-            <q-pagination
-              v-model="currentPage"
-              :max="totalPages"
-              :max-pages="5"
-              boundary-numbers
-              direction-links
-              color="primary"
-            />
-          </div>
         </div>
       </q-card-section>
 
-      <q-card-actions align="right">
-        <q-btn flat :label="t('relays.browser.close')" color="primary" @click="close" />
+      <q-card-actions v-if="!loading && filteredRelays.length > 0" class="row items-center justify-between q-px-md q-pb-md">
+        <q-select
+          v-model="pageSize"
+          :options="pageSizeOptions"
+          :label="t('relays.browser.results_per_page')"
+          dense
+          outlined
+          options-dense
+          emit-value
+          map-options
+          style="width: 140px"
+        />
+        <q-pagination
+          v-model="currentPage"
+          :max="totalPages"
+          :max-pages="5"
+          boundary-numbers
+          direction-links
+          color="primary"
+          dense
+        />
       </q-card-actions>
     </q-card>
   </q-dialog>
 </template>
 
 <style scoped>
-.scroll {
-  overflow-y: auto;
-}
 </style>

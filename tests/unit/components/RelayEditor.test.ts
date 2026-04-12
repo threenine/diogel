@@ -1,7 +1,33 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
+import { createTestingPinia } from '@pinia/testing';
 import RelayEditor from 'src/components/RelayEditor.vue';
 import RelayBrowserModal from 'src/components/RelayBrowserModal.vue';
+import useSettingsStore from 'src/stores/settings-store';
+
+// Mock chrome API
+const chromeMock = {
+  storage: {
+    local: {
+      get: vi.fn().mockResolvedValue({}),
+      set: vi.fn().mockResolvedValue(undefined),
+      remove: vi.fn(),
+      clear: vi.fn(),
+    },
+    session: {
+      get: vi.fn(),
+      set: vi.fn(),
+      remove: vi.fn(),
+      clear: vi.fn(),
+    },
+    onChanged: {
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    },
+  },
+};
+
+vi.stubGlobal('chrome', chromeMock);
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
@@ -31,6 +57,10 @@ vi.mock('@noble/hashes/utils', () => ({
 }));
 
 describe('RelayEditor.vue', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   const props = {
     storedKey: {
       id: 'pubkey',
@@ -85,6 +115,7 @@ describe('RelayEditor.vue', () => {
     const wrapper = mount(RelayEditor, {
       props,
       global: {
+        plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: false })],
         stubs: globalStubs,
       },
     });
@@ -97,6 +128,7 @@ describe('RelayEditor.vue', () => {
     const wrapper = mount(RelayEditor, {
       props,
       global: {
+        plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: false })],
         stubs: globalStubs,
       },
     });
@@ -113,9 +145,18 @@ describe('RelayEditor.vue', () => {
     const wrapper = mount(RelayEditor, {
       props,
       global: {
+        plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: false })],
         stubs: globalStubs,
       },
     });
+
+    // Wait for loading to finish
+    await wrapper.vm.$nextTick();
+    await wrapper.vm.$nextTick();
+
+    // Open modal
+    const browseBtn = wrapper.find('button[data-icon="explore"]');
+    await browseBtn.trigger('click');
 
     const modal = wrapper.getComponent(RelayBrowserModal);
     const mockRelay = {
@@ -143,13 +184,14 @@ describe('RelayEditor.vue', () => {
     const wrapper = mount(RelayEditor, {
       props,
       global: {
+        plugins: [createTestingPinia({ createSpy: vi.fn, stubActions: false })],
         stubs: globalStubs,
       },
     });
 
     // Wait for initial fetch to finish
     await wrapper.vm.$nextTick();
-    await wrapper.vm.$nextTick(); // Multiple ticks might be needed for async
+    await wrapper.vm.$nextTick();
 
     const urlInput = wrapper.find('.q-input-stub input');
     await urlInput.setValue('wss://manual-relay.com');
@@ -180,5 +222,24 @@ describe('RelayEditor.vue', () => {
   it('renders existing relay list correctly', async () => {
     // This test is tricky because of the SimplePool mock in the module scope
     // For now we rely on other tests as the logic is verified
+  });
+
+  it('uses fallback relays from settings store', async () => {
+    const pinia = createTestingPinia({ createSpy: vi.fn });
+    const settingsStore = useSettingsStore(pinia);
+    settingsStore.fallbackRelays = ['wss://test-relay.com'];
+
+    const wrapper = mount(RelayEditor, {
+      props,
+      global: {
+        plugins: [pinia],
+        stubs: globalStubs,
+      },
+    });
+
+    await wrapper.vm.$nextTick();
+    /* eslint-disable @typescript-eslint/unbound-method */
+    expect(settingsStore.getSettings).toHaveBeenCalled();
+    /* eslint-enable @typescript-eslint/unbound-method */
   });
 });
