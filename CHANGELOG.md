@@ -1,5 +1,77 @@
 # Changelog
 
+## v0.0.18
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.17...v0.0.18)
+
+### 🚀 Enhancements
+
+- Conditionally render AccountDropdown based on vaultStore unlock state ([ba47579](https://github.com/threenine/diogel/commit/ba47579))
+- Add unit tests for BlossomHandler, Nip04Handler, and Nip07Handler; refactor i18n keys for reusability ([904ba02](https://github.com/threenine/diogel/commit/904ba02))
+- Improve vault error handling, update unit tests, and enhance login failure UX ([8aa3778](https://github.com/threenine/diogel/commit/8aa3778))
+- Add i18n keys for avatar and banner titles, update related components ([65f93a3](https://github.com/threenine/diogel/commit/65f93a3))
+- Add `normalizeRelayUrl` validator with unit tests ([f51543d](https://github.com/threenine/diogel/commit/f51543d))
+- Add `normalizeRelayUrl` validator with unit tests ([ac36157](https://github.com/threenine/diogel/commit/ac36157))
+- Add `RelayCatalogService.getEntries` with unit tests ([452ae99](https://github.com/threenine/diogel/commit/452ae99))
+
+### 🩹 Fixes
+
+- Replace deprecated `<q-spacer>` with `<q-space>` in RelayBrowserModal ([e2f8cc7](https://github.com/threenine/diogel/commit/e2f8cc7))
+
+### 📖 Documentation
+
+- Add DEPLOYMENT.md for automated Chrome/Firefox extension publishing ([3bb2fbd](https://github.com/threenine/diogel/commit/3bb2fbd))
+- Update README and footer, adjust documentation authors ([61a7250](https://github.com/threenine/diogel/commit/61a7250))
+- Update README and footer, adjust documentation authors ([65656ae](https://github.com/threenine/diogel/commit/65656ae))
+- Update README and footer, adjust documentation authors ([e834726](https://github.com/threenine/diogel/commit/e834726))
+- Remove outdated Phase 2 Relay Browser note and update documentation structure ([d8f4099](https://github.com/threenine/diogel/commit/d8f4099))
+
+### 🏡 Chore
+
+- Refactor key export logic, add validation and improve key backup formatting ([4982a40](https://github.com/threenine/diogel/commit/4982a40))
+- Add unit tests for `generateKeyExportText` in compressor service to validate export formatting and error handling ([9f30f27](https://github.com/threenine/diogel/commit/9f30f27))
+- Simplify import paths, update mocked service references, and enhance TypeScript typings in unit tests ([7ddc24b](https://github.com/threenine/diogel/commit/7ddc24b))
+- Standardize zip name handling in GitHub workflows, update README with deployment guide ([cec1e2e](https://github.com/threenine/diogel/commit/cec1e2e))
+- Simplify key export logic in `compressor.ts` by removing redundant error handling and improving validation ([f4f0b4b](https://github.com/threenine/diogel/commit/f4f0b4b))
+- Make `generateKeyExportText` the default export and handle encoding errors gracefully in `compressor.ts` ([32e4083](https://github.com/threenine/diogel/commit/32e4083))
+- Add `relay.browser.list` and `relay.browser.getStatus` handlers, integrate with dispatcher, and add unit tests ([361b7fe](https://github.com/threenine/diogel/commit/361b7fe))
+- Add `RelayBrowserModal` and `RelayEditor` components with unit tests, integrate relay browsing functionality, and extend i18n for related strings ([5fa1aaa](https://github.com/threenine/diogel/commit/5fa1aaa))
+- Export `sendBexMessage`, seed relay catalog on startup, and enhance `RelayBrowserModal` with relay listing and unit tests ([3746da8](https://github.com/threenine/diogel/commit/3746da8))
+- Add `listRelayCatalog` function to fetch relay catalog entries from the background ([446ad0e](https://github.com/threenine/diogel/commit/446ad0e))
+- Refactor `handleRelayBrowserGetStatus` to use `relayCatalogService` for discovery state management, add staleness checks, and update unit tests ([79a7500](https://github.com/threenine/diogel/commit/79a7500))
+- Add `RelayDiscoveryService` for bounded relay discovery, implement staleness checks, update URL normalization, and include comprehensive unit tests ([aedd0fc](https://github.com/threenine/diogel/commit/aedd0fc))
+- Add `RelayMetadataService` with `getNip11Url` and `fetchRelayMetadata` functions, implement comprehensive unit tests for URL conversion and metadata fetching ([b362b39](https://github.com/threenine/diogel/commit/b362b39))
+- Add `upsertEntry` method to `RelayCatalogService` with advanced merging logic, update seed handling and include comprehensive unit tests ([4599c0c](https://github.com/threenine/diogel/commit/4599c0c))
+- Add `RelayBrowserOrchestrator` for managing relay discovery and metadata refresh, implement `relay.browser.refresh` handler, and include comprehensive unit tests ([1fc4f96](https://github.com/threenine/diogel/commit/1fc4f96))
+- Enhance `RelayBrowserModal` with relay filtering, sorting, and search capabilities, add refresh and discovery status handling, update unit tests, and extend i18n strings ([b32bdda](https://github.com/threenine/diogel/commit/b32bdda))
+- Enhance `RelayCatalogService` with status downgrade protection and `lastSeen` updates, add relay icon in `RelayBrowserModal`, and update related tests ([14618ea](https://github.com/threenine/diogel/commit/14618ea))
+- Improve error handling and finalize loading state in `RelayBrowserModal` and `RelayBrowserOrchestrator` during relay discovery and refresh processes ([cfb5a16](https://github.com/threenine/diogel/commit/cfb5a16))
+- Refactor `RelayEditor` to default Write permission to false, update relay addition logic, adjust related tests with improved stubbing ([c2a1258](https://github.com/threenine/diogel/commit/c2a1258))
+- Add pagination to `RelayBrowserModal`, update entry validity checks in `RelayCatalogService`, enhance i18n strings, and extend unit tests ([fef2b71](https://github.com/threenine/diogel/commit/fef2b71))
+- Update `RelayBrowserModal` to improve relay discovery logic with staleness checks, refine polling behavior, and revise auto-refresh trigger conditions; update unit tests accordingly ([6dcf43b](https://github.com/threenine/diogel/commit/6dcf43b))
+- Refactor `RelayBrowserOrchestrator` to modularize discovery and metadata refresh logic, improve handling of seed catalog initialization, and update unit tests with eslint adjustments ([feb891f](https://github.com/threenine/diogel/commit/feb891f))
+- Implement concurrent metadata fetching with a configurable limit in `RelayBrowserOrchestrator`, update stale entry processing logic, and add unit tests for concurrency and error isolation ([aac7d7f](https://github.com/threenine/diogel/commit/aac7d7f))
+- Remove UI-level sorting from `RelayBrowserModal`, delegate canonical sorting to `RelayCatalogService`, refactor `filterAndSortRelays` to `filterRelays`, and update corresponding tests and guidelines ([ef2e24c](https://github.com/threenine/diogel/commit/ef2e24c))
+- Add fallback relays to `SettingsStore` with default values, enable storage-backed persistence, and implement corresponding unit tests ([6783ac1](https://github.com/threenine/diogel/commit/6783ac1))
+- Replace hardcoded relay lists with `SettingsStore` fallback relays, ensure seamless persistence, and update related components and tests ([0b8388f](https://github.com/threenine/diogel/commit/0b8388f))
+- Enhance relay validation with stricter URL, metadata, and staleness checks in `RelayCatalogService`; refine scoring logic and update unit tests ([ea02bd4](https://github.com/threenine/diogel/commit/ea02bd4))
+- Update `RelayBrowserModal` to improve close button behavior, refine pagination styling, and optimize conditional rendering; update unit tests to enhance coverage ([fc22965](https://github.com/threenine/diogel/commit/fc22965))
+- Replace `console` statements with `logService` for consistent logging across services and components ([b5e2037](https://github.com/threenine/diogel/commit/b5e2037))
+- Standardize custom scrollbar with `diogel-scrollbar`, remove redundant styles, and apply globally to reusable components ([854378e](https://github.com/threenine/diogel/commit/854378e))
+- Integrate storage-backed fallback relays into `RelayCatalogService` seeds, improve error logging in `RelayBrowserOrchestrator`, and enhance unit tests ([a020123](https://github.com/threenine/diogel/commit/a020123))
+- Integrate storage-backed fallback relays into `RelayCatalogService` seeds, improve error logging in `RelayBrowserOrchestrator`, and enhance unit tests ([05e9442](https://github.com/threenine/diogel/commit/05e9442))
+- Upgrade `axios` to v1.15.0 and update `proxy-from-env` to v2.1.0 ([caa7aec](https://github.com/threenine/diogel/commit/caa7aec))
+
+### ✅ Tests
+
+- Add unit tests for `logService` and `storageService` ([cace917](https://github.com/threenine/diogel/commit/cace917))
+- Add comprehensive unit tests for `RelayBrowserModal` to validate clean profile behaviors, auto-refresh triggers, and relay discovery flow ([b69af67](https://github.com/threenine/diogel/commit/b69af67))
+- Expand unit tests for `normalizeRelayUrl` and `isRestrictedHostname`, integrate stricter validation in `RelayCatalogService`, and update dependent components and orchestrators ([d93bdf2](https://github.com/threenine/diogel/commit/d93bdf2))
+
+### ❤️ Contributors
+
+- Gary Woodfine <gary.woodfine@threenine.co.uk>
+
 ## v0.0.17
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.16...v0.0.17)
