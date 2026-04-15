@@ -29,7 +29,7 @@
     "@scure/bip39": "^1.6.0",
     "@zip.js/zip.js": "^2.8.11",
     "archiver-zip-encrypted": "^2.0.0",
-    "axios": "^1.2.1",
+    "axios": "^1.15.0",
     "dexie": "^4.2.1",
     "file-saver": "^2.0.5",
     "jszip": "^3.10.1",
