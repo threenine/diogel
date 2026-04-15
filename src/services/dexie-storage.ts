@@ -1,7 +1,6 @@
-import type { StoredKey } from '../types';
+import type { StoredKey } from 'src/types/bridge';
 import { getVaultData, isVaultUnlocked, updateVaultData } from './vault-service';
-
-const NOSTR_ACTIVE = 'nostr:active' as const;
+import { NOSTR_ACTIVE, storageService } from './storage-service';
 
 export async function get(): Promise<Record<string, StoredKey>> {
   if (!(await isVaultUnlocked())) {
@@ -12,7 +11,7 @@ export async function get(): Promise<Record<string, StoredKey>> {
     return {};
   }
 
-  const vaultData = res.vaultData as { accounts?: StoredKey[] };
+  const vaultData = res.vaultData;
   const accounts = vaultData.accounts || [];
 
   return accounts.reduce(
@@ -25,19 +24,11 @@ export async function get(): Promise<Record<string, StoredKey>> {
 }
 
 export async function getActive(): Promise<string | undefined> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get([NOSTR_ACTIVE], (result) => {
-      resolve(result[NOSTR_ACTIVE]);
-    });
-  });
+  return await storageService.get<string>(NOSTR_ACTIVE);
 }
 
 export async function setActive(alias: string): Promise<void> {
-  return new Promise((resolve) => {
-    chrome.storage.local.set({ [NOSTR_ACTIVE]: alias }, () => {
-      resolve();
-    });
-  });
+  await storageService.set(NOSTR_ACTIVE, alias);
 }
 
 export async function save(storedKey: StoredKey): Promise<void> {
@@ -50,16 +41,16 @@ export async function save(storedKey: StoredKey): Promise<void> {
     throw new Error('Failed to retrieve vault data');
   }
 
-  const vaultData = res.vaultData as { accounts?: StoredKey[] };
+  const vaultData = res.vaultData;
   vaultData.accounts = vaultData.accounts || [];
 
   // Check if a key with the same alias or id already exists
-  const existingAlias = vaultData.accounts.find((acc) => acc.alias === storedKey.alias);
+  const existingAlias = vaultData.accounts.find((acc: StoredKey) => acc.alias === storedKey.alias);
   if (existingAlias) {
     throw new Error('Key with the same alias already exists.');
   }
 
-  const existingId = vaultData.accounts.find((acc) => acc.id === storedKey.id);
+  const existingId = vaultData.accounts.find((acc: StoredKey) => acc.id === storedKey.id);
   if (existingId) {
     throw new Error('Key with the same npub already exists.');
   }
@@ -79,10 +70,10 @@ export async function remove(id: string): Promise<void> {
     throw new Error('Failed to retrieve vault data');
   }
 
-  const vaultData = res.vaultData as { accounts?: StoredKey[] };
+  const vaultData = res.vaultData;
   vaultData.accounts = vaultData.accounts || [];
 
-  const filteredAccounts = vaultData.accounts.filter((acc) => acc.id !== id);
+  const filteredAccounts = vaultData.accounts.filter((acc: StoredKey) => acc.id !== id);
   if (filteredAccounts.length === vaultData.accounts.length) {
     return; // Already not there
   }

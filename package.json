@@ -17,7 +17,7 @@
     "postinstall": "quasar prepare",
     "build:chrome": "quasar build -m bex -T chrome",
     "build:firefox": "quasar build -m bex -T firefox",
-    "release": "npm run build && npm run build:chrome && changelogen --release && git push --follow-tags"
+    "release": "npm run build && npm run build:chrome && npm run build:firefox && changelogen --release && git push --follow-tags && changelogen gh release"
   },
   "dependencies": {
     "@noble/ciphers": "^0.5.3",
@@ -29,7 +29,7 @@
     "@scure/bip39": "^1.6.0",
     "@zip.js/zip.js": "^2.8.11",
     "archiver-zip-encrypted": "^2.0.0",
-    "axios": "^1.2.1",
+    "axios": "^1.15.0",
     "dexie": "^4.2.1",
     "file-saver": "^2.0.5",
     "jszip": "^3.10.1",
@@ -43,6 +43,7 @@
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@intlify/unplugin-vue-i18n": "^4.0.0",
+    "@pinia/testing": "^1.0.3",
     "@quasar/app-vite": "^2.4.1",
     "@types/crypto-js": "^4.2.2",
     "@types/file-saver": "^2.0.7",

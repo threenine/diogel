@@ -7,7 +7,7 @@ import * as nip19 from 'nostr-tools/nip19';
 import { hexToBytes } from '@noble/hashes/utils';
 
 const $q = useQuasar();
-const $t = useI18n().t;
+const { t } = useI18n();
 defineOptions({ name: 'ViewStoredKey' });
 const props = defineProps<{
   storedKey: StoredKey;
@@ -32,7 +32,7 @@ const nsec = computed(() => {
 
 async function copyToClipboard(text: string) {
   await navigator.clipboard.writeText(text);
-  $q.notify({ type: 'positive', message: String($t('account.copySuccess')) });
+  $q.notify({ type: 'positive', message: t('account.copySuccess') });
 }
 </script>
 
@@ -40,7 +40,7 @@ async function copyToClipboard(text: string) {
   <q-list>
     <q-item tag="label">
       <q-item-section>
-        <q-input :model-value="npub" class="text-input" :label="$t('account.publicKey')" readonly>
+        <q-input :model-value="npub" class="text-input" :label="t('account.publicKey')" readonly>
           <template v-slot:prepend>
             <q-icon name="keys" />
           </template>
@@ -52,7 +52,7 @@ async function copyToClipboard(text: string) {
           :model-value="nsec"
           :type="showPrivKey ? 'text' : 'password'"
           class="text-input"
-          :label="$t('account.privateKey')"
+          :label="t('account.privateKey')"
           readonly
         >
           <template v-slot:prepend>

@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
+import { storageService } from 'src/services/storage-service';
 import type { StoredKey } from '../types';
 
 defineOptions({ name: 'ImageUploader' });
@@ -131,28 +132,31 @@ async function uploadImage(file: File) {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   // Check for ongoing or recently completed uploads
-  chrome.storage.local.get([BLOSSOM_UPLOAD_STATUS], (result) => {
-    const status = result[BLOSSOM_UPLOAD_STATUS];
-    if (status) {
-      if (status.uploading) {
-        uploading.value = true;
-        emitStatus('uploading', true);
-      } else if (status.url) {
-        // If we found a URL, it might be from a completed upload while popup was closed
-        emitStatus('uploaded', status.url);
-        // Clear the status after processing
-        void chrome.storage.local.remove([BLOSSOM_UPLOAD_STATUS]);
-      } else if (status.error) {
-        $q.notify({
-          type: 'negative',
-          message: status.error,
-        });
-        void chrome.storage.local.remove([BLOSSOM_UPLOAD_STATUS]);
-      }
+  interface UploadStatus {
+    uploading?: boolean;
+    url?: string;
+    error?: string;
+  }
+  const status = await storageService.get<UploadStatus>(BLOSSOM_UPLOAD_STATUS);
+  if (status) {
+    if (status.uploading) {
+      uploading.value = true;
+      emitStatus('uploading', true);
+    } else if (status.url) {
+      // If we found a URL, it might be from a completed upload while popup was closed
+      emitStatus('uploaded', status.url);
+      // Clear the status after processing
+      void storageService.remove(BLOSSOM_UPLOAD_STATUS);
+    } else if (status.error) {
+      $q.notify({
+        type: 'negative',
+        message: status.error,
+      });
+      void storageService.remove(BLOSSOM_UPLOAD_STATUS);
     }
-  });
+  }
 
   const storageListener = (
     changes: { [key: string]: chrome.storage.StorageChange },
@@ -182,17 +186,17 @@ onMounted(() => {
               });
             }
             // Clear status after completion
-            void chrome.storage.local.remove([BLOSSOM_UPLOAD_STATUS]);
+            void storageService.remove(BLOSSOM_UPLOAD_STATUS);
           }
         }
       }
     }
   };
 
-  chrome.storage.onChanged.addListener(storageListener);
+  storageService.onChanged(storageListener);
 
   onUnmounted(() => {
-    chrome.storage.onChanged.removeListener(storageListener);
+    storageService.removeOnChanged(storageListener);
   });
 });
 

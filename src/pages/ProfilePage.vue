@@ -96,8 +96,8 @@ onMounted(async () => {
                   <q-card>
                     <q-card-section class="text-center">
                       <warning-card
-                        headline="Ensure you export and backup your keys."
-                        message="If you lose them, you will lose access to your account and there is no way to recover them."
+                        :headline="t('warning.exportKeys')"
+                        :message="t('warning.backupNotice')"
                       />
                     </q-card-section>
                   </q-card>
@@ -107,11 +107,11 @@ onMounted(async () => {
           </div>
           <div v-else class="text-center q-pa-xl">
             <q-icon color="grey-5" name="account_circle" size="4em" />
-            <div class="text-h6 text-grey-7 q-mt-md">No active account selected</div>
-            <p class="text-grey-6">Please select or create an account to manage your profile.</p>
+            <div class="text-h6 text-grey-7 q-mt-md">{{ t('account.noAccounts') }}</div>
+            <p class="text-grey-6">{{ t('account.noAccountDesc') }}</p>
             <q-btn
               class="q-mt-md diogel-btn-primary"
-              label="Create Account"
+              :label="t('account.create')"
               to="/create-account"
             />
           </div>

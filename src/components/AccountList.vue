@@ -1,36 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
-import useAccountStore from 'src/stores/account-store';
+import { useAccounts } from 'src/composables/useAccounts';
 
-const accountStore = useAccountStore();
-onMounted(async () => {
-  await accountStore.getKeys();
-  model.value = accountStore.activeKey ?? null;
-});
-const items = computed<string[]>(() => {
-  return Array.from(accountStore.storedKeys)
-    .filter((key) => key.alias !== 'Main Account')
-    .map((key) => key.alias);
-});
-const model = ref<string | null>(null);
-
-watch(
-  () => accountStore.activeKey,
-  (newKey) => {
-    model.value = newKey ?? null;
-  },
-);
-
-watch(model, async (newValue) => {
-  if (newValue) {
-    await accountStore.setActiveKey(newValue);
-  }
-});
+const { model, items } = useAccounts();
 </script>
 
 <template>
   <div class="q-mr-sm q-pa-sm">
-    <q-select v-model="model" :options="items" behavior="menu" filled style="width: 200px">
+    <q-select
+      v-model="model"
+      :options="items"
+      behavior="menu"
+      filled
+      style="width: 200px"
+      emit-value
+      map-options
+      option-label="label"
+      option-value="value"
+    >
     </q-select>
   </div>
 </template>

@@ -1,11 +1,15 @@
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue';
+import { onMounted, ref, watch, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
+import { normalizeRelayUrl } from 'src/services/relay-url';
 import type { NostrRelay, StoredKey } from '../types';
+import type { RelayCatalogEntry } from 'src/types/relay';
 import { SimplePool } from 'nostr-tools';
 import { finalizeEvent } from 'nostr-tools/pure';
 import { hexToBytes } from '@noble/hashes/utils';
+import useSettingsStore from '../stores/settings-store';
+import RelayBrowserModal from './RelayBrowserModal.vue';
 
 defineOptions({ name: 'RelayEditor' });
 
@@ -15,28 +19,24 @@ const props = defineProps<{
 
 const $q = useQuasar();
 const $t = useI18n().t;
+const settingsStore = useSettingsStore();
 
 const relays = ref<NostrRelay[]>([]);
 const loading = ref(false);
 const saving = ref(false);
 
-const DEFAULT_RELAYS = [
-  'wss://relay.damus.io',
-  'wss://nos.lol',
-  'wss://relay.snort.social',
-  'wss://purplepag.es',
-];
+const fallbackRelays = computed(() => settingsStore.fallbackRelays);
 
 const newRelayUrl = ref('');
-const newRelayRead = ref(true);
-const newRelayWrite = ref(true);
+const newRelayWrite = ref(false);
+const showRelayBrowser = ref(false);
 
 async function fetchRelayList() {
   relays.value = [];
   loading.value = true;
   const pool = new SimplePool();
   try {
-    const event = await pool.get(DEFAULT_RELAYS, {
+    const event = await pool.get(fallbackRelays.value, {
       kinds: [10002],
       authors: [props.storedKey.id],
     });
@@ -61,22 +61,24 @@ async function fetchRelayList() {
       message: String($t('relays.fetchError')),
     });
   } finally {
-    pool.close(DEFAULT_RELAYS);
+    pool.close(fallbackRelays.value);
     loading.value = false;
   }
 }
 
 function addRelay() {
-  const url = newRelayUrl.value.trim();
-  if (!url) return;
-  if (!url.startsWith('ws://') && !url.startsWith('wss://')) {
-    $q.notify({
-      type: 'negative',
-      message: String($t('relays.invalidUrl')),
-    });
+  const result = normalizeRelayUrl(newRelayUrl.value);
+  if (!result.valid || !result.url) {
+    if (result.error && result.error !== 'URL cannot be empty') {
+      $q.notify({
+        type: 'negative',
+        message: String($t('relays.invalidUrl')),
+      });
+    }
     return;
   }
 
+  const url = result.url;
   if (relays.value.some((r) => r.url === url)) {
     newRelayUrl.value = '';
     return;
@@ -84,17 +86,21 @@ function addRelay() {
 
   relays.value.push({
     url,
-    read: newRelayRead.value,
+    read: true,
     write: newRelayWrite.value,
   });
 
   newRelayUrl.value = '';
-  newRelayRead.value = true;
-  newRelayWrite.value = true;
+  newRelayWrite.value = false;
 }
 
 function removeRelay(index: number) {
   relays.value.splice(index, 1);
+}
+
+function handleRelaySelected(relay: RelayCatalogEntry) {
+  newRelayUrl.value = relay.url;
+  newRelayWrite.value = false;
 }
 
 async function saveRelayList() {
@@ -119,7 +125,7 @@ async function saveRelayList() {
     const sk = hexToBytes(props.storedKey.account.privkey);
     const event = finalizeEvent(unsignedEvent, sk);
 
-    await Promise.any(pool.publish(DEFAULT_RELAYS, event));
+    await Promise.any(pool.publish(fallbackRelays.value, event));
 
     $q.notify({
       type: 'positive',
@@ -132,12 +138,13 @@ async function saveRelayList() {
       message: String($t('relays.saveError')),
     });
   } finally {
-    pool.close(DEFAULT_RELAYS);
+    pool.close(fallbackRelays.value);
     saving.value = false;
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  await settingsStore.getSettings();
   void fetchRelayList();
 });
 
@@ -167,10 +174,13 @@ watch(
               dense
               outlined
               @keyup.enter="addRelay"
-            />
-          </div>
-          <div class="col-auto">
-            <q-checkbox v-model="newRelayRead" :label="$t('relays.read')" dense />
+            >
+              <template #append>
+                <q-btn flat round dense icon="explore" @click="showRelayBrowser = true">
+                  <q-tooltip>{{ $t('relays.browse') }}</q-tooltip>
+                </q-btn>
+              </template>
+            </q-input>
           </div>
           <div class="col-auto">
             <q-checkbox v-model="newRelayWrite" :label="$t('relays.write')" dense />
@@ -186,12 +196,12 @@ watch(
           <q-item-section>
             <q-item-label>{{ relay.url }}</q-item-label>
             <q-item-label caption>
-              <q-badge v-if="relay.read" color="blue-2" label="Read" text-color="blue-9" />
+              <q-badge v-if="relay.read" color="blue-2" :label="$t('relays.read')" text-color="blue-9" />
               <q-badge
                 v-if="relay.write"
                 class="q-ml-xs"
                 color="green-2"
-                label="Write"
+                :label="$t('relays.write')"
                 text-color="green-9"
               />
             </q-item-label>
@@ -221,6 +231,8 @@ watch(
         />
       </div>
     </template>
+
+    <relay-browser-modal v-model="showRelayBrowser" @select="handleRelaySelected" />
   </div>
 </template>
 

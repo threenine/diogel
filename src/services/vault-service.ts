@@ -1,5 +1,6 @@
 import { db } from './database';
 import { ErrorCode } from 'src/types/error-codes';
+import type { BridgeAction, BridgeRequestMap, BridgeResponsePayload, VaultData } from 'src/types/bridge';
 
 /**
  * Robust messaging for BEX environment.
@@ -13,14 +14,17 @@ const getBridge = (): any => {
   return (window as any).bridge || (window as any).$q?.bex;
 };
 
-async function sendBexMessage(type: string, payload?: unknown): Promise<unknown> {
+export async function sendBexMessage<T extends BridgeAction>(
+  type: T,
+  payload?: Omit<BridgeRequestMap[T], 'id' | 'action'>,
+): Promise<BridgeResponsePayload<T> | undefined> {
   const bridge = getBridge();
   if (bridge) {
     try {
       const response = (await Promise.race([
         bridge.send({ event: type, to: 'background', payload }),
         new Promise((_, reject) => setTimeout(() => reject(new Error('Bridge timeout')), 5000)),
-      ])) as { data: unknown };
+      ])) as { data: BridgeResponsePayload<T> };
       return response.data;
     } catch (e) {
       console.warn(
@@ -35,7 +39,7 @@ async function sendBexMessage(type: string, payload?: unknown): Promise<unknown>
     console.log(`[VaultService] Using direct chrome.runtime.sendMessage for ${type}`);
     return new Promise((resolve) => {
       chrome.runtime.sendMessage({ type, payload }, (response) => {
-        resolve(response);
+        resolve(response as BridgeResponsePayload<T>);
       });
     });
   }
@@ -45,14 +49,14 @@ async function sendBexMessage(type: string, payload?: unknown): Promise<unknown>
 
 export async function unlockVault(
   password: string,
-): Promise<{ success: boolean; error?: string; errorCode?: ErrorCode }> {
+): Promise<{ success: boolean; vaultData?: VaultData | null; error?: string; code?: string }> {
   try {
     const data = await sendBexMessage('vault.unlock', { password });
     return (
-      (data as { success: boolean; error?: string; errorCode?: ErrorCode }) || {
+      (data as { success: boolean; vaultData?: VaultData | null; error?: string; code?: string }) || {
         success: false,
         error: 'No response from background',
-        errorCode: ErrorCode.GEN_UNKNOWN,
+        code: ErrorCode.GEN_UNKNOWN,
       }
     );
   } catch (e) {
@@ -60,7 +64,7 @@ export async function unlockVault(
     return {
       success: false,
       error: (e as Error).message,
-      errorCode: ErrorCode.GEN_UNKNOWN,
+      code: ErrorCode.GEN_UNKNOWN,
     };
   }
 }
@@ -75,11 +79,11 @@ export async function lockVault() {
 
 export async function createVault(
   password: string,
-  vaultData: unknown,
+  vaultData: VaultData,
 ): Promise<{
   success: boolean;
   error?: string;
-  errorCode?: ErrorCode;
+  code?: string;
   encryptedVault?: string;
 }> {
   try {
@@ -88,12 +92,12 @@ export async function createVault(
       (data as {
         success: boolean;
         error?: string;
-        errorCode?: ErrorCode;
+        code?: string;
         encryptedVault?: string;
       }) || {
         success: false,
         error: 'No response from background',
-        errorCode: ErrorCode.GEN_UNKNOWN,
+        code: ErrorCode.GEN_UNKNOWN,
       }
     );
   } catch (e) {
@@ -101,7 +105,7 @@ export async function createVault(
     return {
       success: false,
       error: (e as Error).message,
-      errorCode: ErrorCode.GEN_UNKNOWN,
+      code: ErrorCode.GEN_UNKNOWN,
     };
   }
 }
@@ -118,22 +122,22 @@ export async function isVaultUnlocked(): Promise<boolean> {
 
 export async function getVaultData(): Promise<{
   success: boolean;
-  vaultData?: unknown;
+  vaultData?: VaultData | null;
   error?: string;
-  errorCode?: ErrorCode;
+  code?: string;
 }> {
   try {
     const data = await sendBexMessage('vault.getData');
     return (
       (data as {
         success: boolean;
-        vaultData?: unknown;
+        vaultData?: VaultData | null;
         error?: string;
-        errorCode?: ErrorCode;
+        code?: string;
       }) || {
         success: false,
         error: 'No response from background',
-        errorCode: ErrorCode.GEN_UNKNOWN,
+        code: ErrorCode.GEN_UNKNOWN,
       }
     );
   } catch (e) {
@@ -141,21 +145,21 @@ export async function getVaultData(): Promise<{
     return {
       success: false,
       error: (e as Error).message,
-      errorCode: ErrorCode.GEN_UNKNOWN,
+      code: ErrorCode.GEN_UNKNOWN,
     };
   }
 }
 
 export async function updateVaultData(
-  vaultData: unknown,
-): Promise<{ success: boolean; error?: string; errorCode?: ErrorCode }> {
+  vaultData: VaultData,
+): Promise<{ success: boolean; error?: string; code?: string }> {
   try {
     const data = await sendBexMessage('vault.updateData', { vaultData });
     return (
-      (data as { success: boolean; error?: string; errorCode?: ErrorCode }) || {
+      (data as { success: boolean; error?: string; code?: string }) || {
         success: false,
         error: 'No response from background',
-        errorCode: ErrorCode.GEN_UNKNOWN,
+        code: ErrorCode.GEN_UNKNOWN,
       }
     );
   } catch (e) {
@@ -163,7 +167,7 @@ export async function updateVaultData(
     return {
       success: false,
       error: (e as Error).message,
-      errorCode: ErrorCode.GEN_UNKNOWN,
+      code: ErrorCode.GEN_UNKNOWN,
     };
   }
 }
@@ -187,7 +191,7 @@ export async function exportVault(): Promise<{
   success: boolean;
   encryptedData?: string;
   error?: string;
-  errorCode?: ErrorCode;
+  code?: string;
 }> {
   try {
     const data = await sendBexMessage('vault.export');
@@ -196,11 +200,11 @@ export async function exportVault(): Promise<{
         success: boolean;
         encryptedData?: string;
         error?: string;
-        errorCode?: ErrorCode;
+        code?: string;
       }) || {
         success: false,
         error: 'No response from background',
-        errorCode: ErrorCode.GEN_UNKNOWN,
+        code: ErrorCode.GEN_UNKNOWN,
       }
     );
   } catch (e) {
@@ -208,21 +212,21 @@ export async function exportVault(): Promise<{
     return {
       success: false,
       error: (e as Error).message,
-      errorCode: ErrorCode.GEN_UNKNOWN,
+      code: ErrorCode.GEN_UNKNOWN,
     };
   }
 }
 
 export async function importVault(
   encryptedData: string,
-): Promise<{ success: boolean; error?: string; errorCode?: ErrorCode }> {
+): Promise<{ success: boolean; error?: string; code?: string }> {
   try {
     const data = await sendBexMessage('vault.import', { encryptedData });
     return (
-      (data as { success: boolean; error?: string; errorCode?: ErrorCode }) || {
+      (data as { success: boolean; error?: string; code?: string }) || {
         success: false,
         error: 'No response from background',
-        errorCode: ErrorCode.GEN_UNKNOWN,
+        code: ErrorCode.GEN_UNKNOWN,
       }
     );
   } catch (e) {
@@ -230,7 +234,7 @@ export async function importVault(
     return {
       success: false,
       error: (e as Error).message,
-      errorCode: ErrorCode.GEN_UNKNOWN,
+      code: ErrorCode.GEN_UNKNOWN,
     };
   }
 }

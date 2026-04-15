@@ -34,7 +34,7 @@ function onUploading(status: boolean) {
 <template>
   <q-card class="full-width full-height">
     <q-card-section class="text-left">
-      <p class="text-h7 text-orange-5">Banner Image</p>
+      <p class="text-h7 text-orange-5">{{ t('profile.bannerTitle') }}</p>
     </q-card-section>
     <q-card-section>
       <div class="q-pa-st"><ImagePreview :name="name" :url="modelValue" /></div>

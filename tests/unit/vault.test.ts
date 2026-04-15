@@ -16,14 +16,18 @@ interface MockVault {
 const mockVaultsTable = new Map<string, MockVault>();
 
 // Mock Dexie
-vi.mock('../../src/services/database', () => {
+vi.mock('src/services/database', () => {
   const vaultsMock = {
-    get: vi.fn(async (id: string) => mockVaultsTable.get(id)),
+    get: vi.fn(async (id: string) =>  Promise.resolve(mockVaultsTable.get(id))),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     put: vi.fn(async (vault: any) => {
       mockVaultsTable.set(vault.id, vault);
-      return vault.id;
+      return Promise.resolve(vault.id);
     }),
-    clear: vi.fn(async () => mockVaultsTable.clear()),
+    clear: vi.fn(async () => {
+      mockVaultsTable.clear();
+      return Promise.resolve();
+    }),
   };
   return {
     db: {
@@ -45,21 +49,17 @@ import {
   isVaultUnlocked,
   updateVaultData,
   getVaultData,
-  exportVault,
   importVault,
-  restoreVaultState,
-  getVaultKey,
-} from '../../src-bex/vault';
-import { db } from '../../src/services/database';
+} from 'app/src-bex/vault';
+
 import {
   encryptWithKey,
   decryptWithKey,
   deriveNewKey,
   deriveKeyFromEncryptedVault,
-} from '../../src/services/crypto';
-import type { VaultData } from '../../src/types/bridge';
+} from 'src/services/crypto';
+import type { VaultData } from 'src/types/bridge';
 
-const vaultsMock = db.vaults as any;
 
 // Mock chrome storage
 const chromeMock = {

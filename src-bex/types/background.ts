@@ -5,8 +5,8 @@
 
 // Result type for all handler operations
 export type HandlerResult<T> =
-  | { success: true; data: T }
-  | { success: false; error: string };
+  | { success: true; data: T; metadata?: Record<string, unknown> }
+  | { success: false; error: string; code?: string; metadata?: Record<string, unknown> };
 
 // NIP-07 interface (what we expose to content script)
 export interface NostrWindow {

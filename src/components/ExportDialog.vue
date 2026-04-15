@@ -2,8 +2,8 @@
   <q-dialog v-model="modelValue">
     <q-card style="min-width: 380px; max-width: 90vw">
       <q-card-section>
-        <div class="text-h6">Export Account</div>
-        <div class="text-subtitle2 q-mt-xs">Choose a password and file name</div>
+        <div class="text-h6">{{ t('account.exportAccount') }}</div>
+        <div class="text-subtitle2 q-mt-xs">{{ t('account.exportChoosePassword') }}</div>
       </q-card-section>
 
       <q-separator />
@@ -11,11 +11,11 @@
       <q-card-section class="q-gutter-md">
         <q-input
           v-model="localPassword"
-          :rules="[(v) => !!v || 'Password is required']"
+          :rules="[(v) => !!v || t('account.passwordRequired')]"
           :type="showPassword ? 'text' : 'password'"
           autofocus
           dense
-          label="Password"
+          :label="t('account.password')"
         >
           <template #append>
             <q-icon
@@ -28,9 +28,9 @@
 
         <q-input
           v-model="localFilename"
-          :rules="[(v) => !!v || 'File name is required']"
+          :rules="[(v) => !!v || t('account.filenameRequired')]"
           dense
-          label="File name"
+          :label="t('account.filename')"
           @update:model-value="onFilenameEdited"
         />
       </q-card-section>
@@ -38,8 +38,8 @@
       <q-separator />
 
       <q-card-actions align="right">
-        <q-btn class="diogel-btn-ghost" label="Cancel" @click="onCancel" />
-        <q-btn class="diogel-btn-primary" label="Export" @click="onConfirm" />
+        <q-btn class="diogel-btn-ghost" :label="t('account.cancel')" @click="onCancel" />
+        <q-btn class="diogel-btn-primary" :label="t('settings.export')" @click="onConfirm" />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -47,8 +47,11 @@
 
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 defineOptions({ name: 'ExportDialog' });
+
+const { t } = useI18n();
 
 const props = withDefaults(
   defineProps<{

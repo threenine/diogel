@@ -16,9 +16,12 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url)),
       'src': fileURLToPath(new URL('./src', import.meta.url)),
+      'src/*': fileURLToPath(new URL('./src/*', import.meta.url)),
+      'app': fileURLToPath(new URL('./', import.meta.url)),
+      'app/*': fileURLToPath(new URL('./*', import.meta.url)),
       'src-bex': fileURLToPath(new URL('./src-bex', import.meta.url)),
+      'src-bex/*': fileURLToPath(new URL('./src-bex/*', import.meta.url)),
     },
   },
 });

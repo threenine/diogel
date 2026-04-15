@@ -10,7 +10,7 @@
       <div class="q-mt-sm text-body2 text-grey-8">Initializing secure environment...</div>
 
       <div
-        class="q-mt-lg p-sm bg-grey-2 rounded-borders text-left"
+        class="q-mt-lg p-sm bg-grey-2 rounded-borders text-left diogel-scrollbar"
         style="max-height: 200px; overflow-y: auto; font-family: monospace; font-size: 10px"
       >
         <div v-for="(log, index) in logs" :key="index" class="q-mb-xs">

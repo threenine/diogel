@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie';
+import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 
 export interface Vault {
   id: string; // 'master' or some unique ID
@@ -26,10 +27,12 @@ export class DiogelDatabase extends Dexie {
   vaults!: Table<Vault, string>;
   exceptions!: Table<ExceptionLog, number>;
   approvals!: Table<ApprovalLog, number>;
+  relayCatalog!: Table<RelayCatalogEntry, string>;
+  relayDiscoveryState!: Table<RelayDiscoveryState, string>;
 
   constructor() {
     super('DiogelDatabase');
-    console.log('[Database] Initializing NostrDatabase v4...');
+    console.log('[Database] Initializing DiogelDatabase v7...');
     this.version(3)
       .stores({
         vaults: 'id',
@@ -55,6 +58,14 @@ export class DiogelDatabase extends Dexie {
       vaults: 'id',
       exceptions: '++id, dateTime, account, hostname',
       approvals: '++id, dateTime, eventKind, hostname, account',
+    });
+
+    this.version(7).stores({
+      vaults: 'id',
+      exceptions: '++id, dateTime, account, hostname',
+      approvals: '++id, dateTime, eventKind, hostname, account',
+      relayCatalog: 'url, hostname, status, lastSeen, createdAt',
+      relayDiscoveryState: 'id, lastGlobalDiscoveryAt',
     });
 
     this.on('ready', () => {

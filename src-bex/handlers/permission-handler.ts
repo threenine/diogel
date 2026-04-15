@@ -2,9 +2,9 @@
  * Permission management for Nostr event signing
  */
 
+import { PERMISSIONS_KEY, storageService } from 'src/services/storage-service';
 import type { PermissionGrant } from '../types/background';
 
-const PERMISSIONS_KEY = 'diogel:permissions';
 const PERMISSION_ALWAYS = -1;
 
 // In-memory cache
@@ -15,15 +15,14 @@ async function loadPermissions(): Promise<PermissionGrant[]> {
     return permissionCache;
   }
 
-  const items = await chrome.storage.local.get([PERMISSIONS_KEY]);
-  const permissions = items[PERMISSIONS_KEY] || [];
+  const permissions = (await storageService.get<PermissionGrant[]>(PERMISSIONS_KEY)) || [];
   permissionCache = permissions;
   return permissions;
 }
 
 async function savePermissions(permissions: PermissionGrant[]): Promise<void> {
   permissionCache = permissions;
-  await chrome.storage.local.set({ [PERMISSIONS_KEY]: permissions });
+  await storageService.set(PERMISSIONS_KEY, permissions);
 }
 
 export async function checkPermission(
