@@ -5,11 +5,16 @@ Reviewer: Gary Woodfine
 
 ## Executive Summary
 
-Diogel has a sound overall security direction for a Nostr signer browser extension. The architecture is built around an encrypted local vault, explicit approval flows, and a browser-extension mediated `window.nostr` provider that prevents websites from receiving raw private keys directly.
+Diogel has a sound overall security direction for a Nostr signer browser extension. The architecture is built around an 
+encrypted local vault, explicit approval flows, and a browser-extension mediated `window.nostr` provider that prevents 
+websites from receiving raw private keys directly.
 
-The codebase does not look careless or toy-like. However, several trust-boundary and correctness issues deserve attention before the security story can be considered polished.
+The codebase does not look careless or toy-like. However, several trust-boundary and correctness issues deserve 
+attention before the security story can be considered polished.
 
-The most important concern is that the derived vault encryption key is exportable and persisted in browser session storage so it can survive extension lifecycle interruptions. This appears to be a practical Manifest V3 tradeoff, but it materially weakens the claim that vault secrets exist only in memory while unlocked.
+The most important concern is that the derived vault encryption key is exportable and persisted in browser session 
+storage so it can survive extension lifecycle interruptions. This appears to be a practical Manifest V3 tradeoff, 
+but it materially weakens the claim that vault secrets exist only in memory while unlocked.
 
 ## Security Model
 
@@ -73,9 +78,11 @@ Files:
 - `src/services/crypto.ts`
 - `src-bex/vault.ts`
 
-The AES vault key is derived as extractable and exported into raw bytes so it can be saved in browser session storage. The same is true for the vault salt.
+The AES vault key is derived as extractable and exported into raw bytes so it can be saved in browser session storage. 
+The same is true for the vault salt.
 
-This improves user experience and allows the extension to survive Manifest V3 worker lifecycle interruptions, but it weakens the strictest possible local secret handling model.
+This improves user experience and allows the extension to survive Manifest V3 worker lifecycle interruptions, but it 
+weakens the strictest possible local secret handling model.
 
 #### Why this matters
 
@@ -85,7 +92,8 @@ This improves user experience and allows the extension to survive Manifest V3 wo
 
 #### Assessment
 
-This may be a deliberate and necessary engineering compromise, but it should be treated as a significant design tradeoff, documented explicitly, and reviewed carefully.
+This may be a deliberate and necessary engineering compromise, but it should be treated as a significant design 
+tradeoff, documented explicitly, and reviewed carefully.
 
 #### Recommendation
 
@@ -113,7 +121,8 @@ and maps `session` to a 24-hour expiry.
 
 #### Why this matters
 
-This is a correctness and trust issue. The code and UI do not appear to speak the same language. A user can reasonably believe one permission duration is being granted while a different one is actually enforced.
+This is a correctness and trust issue. The code and UI do not appear to speak the same language. A user can reasonably 
+believe one permission duration is being granted while a different one is actually enforced.
 
 #### Recommendation
 
@@ -124,11 +133,13 @@ This is a correctness and trust issue. The code and UI do not appear to speak th
 ### 3. Auto-lock persistence and restore behavior may be unreliable
 File: `src-bex/services/auto-lock.ts`
 
-The service restores `VAULT_LAST_ACTIVITY`, but based on the reviewed files, there is no obvious symmetrical persistence of that value across the relevant action paths.
+The service restores `VAULT_LAST_ACTIVITY`, but based on the reviewed files, there is no obvious symmetrical 
+persistence of that value across the relevant action paths.
 
 #### Why this matters
 
-If background lifecycle restarts occur, the effective idle timer may drift or reset unexpectedly. This is a security reliability issue because users depend on auto-lock semantics.
+If background lifecycle restarts occur, the effective idle timer may drift or reset unexpectedly. This is a security 
+reliability issue because users depend on auto-lock semantics.
 
 #### Recommendation
 
@@ -185,7 +196,8 @@ The Blossom integration signs upload auth events and performs network requests a
 
 #### Why this matters
 
-This combines signing, file upload, and external HTTP communication. Even if the implementation is mostly sound, it deserves separate review because it expands the extension’s trust surface.
+This combines signing, file upload, and external HTTP communication. Even if the implementation is mostly sound, it 
+deserves separate review because it expands the extension’s trust surface.
 
 #### Recommendation
 
@@ -219,7 +231,8 @@ Files:
 - `src/services/vault-service.ts`
 - related bridge types
 
-There are signs of practical technical debt including `any` usage, partial type simplifications, and comments about deferring type safety cleanup.
+There are signs of practical technical debt including `any` usage, partial type simplifications, and comments about 
+deferring type safety cleanup.
 
 #### Recommendation
 
@@ -245,6 +258,8 @@ There are signs of practical technical debt including `any` usage, partial type 
 
 ## Final Assessment
 
-Diogel has a credible security foundation and a sound architectural direction. The main issues are not signs of incompetence, but rather trust-boundary tradeoffs, correctness mismatches, and unfinished hardening work.
+Diogel has a credible security foundation and a sound architectural direction. The main issues are not signs of 
+incompetence, but rather trust-boundary tradeoffs, correctness mismatches, and unfinished hardening work.
 
-The most important next step is to make the security-sensitive compromises explicit and tighten the areas where user expectations, runtime behavior, and implementation details are currently out of alignment.
+The most important next step is to make the security-sensitive compromises explicit and tighten the areas where user 
+expectations, runtime behavior, and implementation details are currently out of alignment.

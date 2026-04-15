@@ -17,7 +17,7 @@
     "postinstall": "quasar prepare",
     "build:chrome": "quasar build -m bex -T chrome",
     "build:firefox": "quasar build -m bex -T firefox",
-    "release": "npm run build && npm run build:chrome && changelogen --release && git push --follow-tags"
+    "release": "npm run build && npm run build:chrome && npm run build:firefox && changelogen --release && git push --follow-tags && changelogen gh release"
   },
   "dependencies": {
     "@noble/ciphers": "^0.5.3",
