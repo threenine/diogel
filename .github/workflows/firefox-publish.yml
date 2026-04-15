@@ -80,9 +80,10 @@ jobs:
         with:
           addon-id: ${{ secrets.AMO_ADDON_ID }}
           addon-path: ${{ steps.package.outputs.zip_name }}
-          auth-api-issuer: ${{ secrets.AMO_API_ISSUE }}
+          auth-api-issuer: ${{ secrets.AMO_API_ISSUER }}
           auth-api-secret: ${{ secrets.AMO_API_SECRET }}
           channel: listed
+          release-note: "Version ${{ steps.package.outputs.tag }}"
 
 
      

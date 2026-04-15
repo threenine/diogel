@@ -33,14 +33,26 @@ Add the following four secrets:
    - Choose **External** (unless you have a Google Workspace org).
    - Fill in required app information.
    - Add the scope: `https://www.googleapis.com/auth/chromewebstore`.
-   - **Crucial:** Add your own email as a **Test User** while the app is in "Testing" mode.
+   - **Crucial:** Change the **Publishing Status** from "Testing" to "In production". If it remains in "Testing", your `CWS_REFRESH_TOKEN` will expire every 7 days.
+   - Add your own email as a **Test User** (if you keep it in Testing mode, but "In production" is recommended for long-term automation).
 5. Go to **Credentials** > **Create Credentials** > **OAuth Client ID**.
    - Select **Desktop App** as the Application Type.
    - Name it "GitHub Actions Publisher".
    - Copy the generated `Client ID` and `Client Secret`.
 
 ##### C. Generate the Refresh Token (`CWS_REFRESH_TOKEN`)
-The easiest way is to use a manual authorization flow in your browser:
+The most reliable way is using the **Google OAuth2 Playground**:
+
+1. Go to the [Google OAuth2 Playground](https://developers.google.com/oauthplayground/).
+2. Click the **cog icon** (Settings) in the top right corner.
+3. Check **"Use your own OAuth credentials"**.
+4. Enter your `CWS_CLIENT_ID` and `CWS_CLIENT_SECRET`.
+5. In **Step 1 (Select & authorize APIs)**, paste this into the input box: `https://www.googleapis.com/auth/chromewebstore`.
+6. Click **Authorize APIs** and log in with your developer account.
+7. In **Step 2 (Exchange authorization code for tokens)**, click **Exchange authorization code for tokens**.
+8. Copy the `refresh_token` from the JSON response. Save this as your GitHub secret.
+
+Alternatively, you can use a manual authorization flow in your browser:
 
 1. Replace `YOUR_CLIENT_ID` in the following URL and open it in your browser:
    `https://accounts.google.com/o/oauth2/auth?response_type=code&scope=https://www.googleapis.com/auth/chromewebstore&client_id=YOUR_CLIENT_ID&redirect_uri=urn:ietf:wg:oauth:2.0:oob`
@@ -61,12 +73,15 @@ curl "https://accounts.google.com/o/oauth2/token" \
 
 ---
 
-#### 3. Automatic Publishing
-Once these secrets are set, the `.github/workflows/chrome-publish.yml` workflow will automatically:
-- Trigger on every new Git **Tag** (e.g., `v0.0.18`).
-- Build the Quasar BEX.
-- Create a GitHub Release with the ZIP artifact.
-- Upload and publish the ZIP to the Chrome Web Store.
+#### 4. Troubleshooting 401 Unauthorized Errors
+
+If the GitHub Action fails with `HTTPError: Response code 401 (Unauthorized)`, check the following:
+
+1.  **Refresh Token Expired**: If your Google Cloud project is in "Testing" mode, the refresh token expires every 7 days. Set it to **"In production"** on the OAuth Consent Screen.
+2.  **Incorrect Scopes**: Ensure the token was generated with the `https://www.googleapis.com/auth/chromewebstore` scope.
+3.  **Client Secret Mismatch**: If you regenerated your Client Secret in Google Cloud Console, you must update `CWS_CLIENT_SECRET` in GitHub Secrets.
+4.  **Extension Ownership**: The Google account used to generate the `CWS_REFRESH_TOKEN` must have developer access to the extension identified by `CWS_EXTENSION_ID`.
+5.  **API Not Enabled**: Ensure the **Chrome Web Store API** is enabled in your Google Cloud project.
 
 ---
 
@@ -111,3 +126,11 @@ Once these secrets are set, the `.github/workflows/firefox-publish.yml` workflow
 - Build the Quasar BEX specifically for Firefox.
 - Create or update a GitHub Release with the Firefox-compatible ZIP artifact.
 - Upload the extension to Firefox Add-ons (AMO) for signing and publication.
+
+---
+
+#### 4. Troubleshooting 400 Bad Request (release_notes)
+
+If the GitHub Action fails with `400 Bad Request {"release_notes":["This field may not be blank."]}`, it means the `release-note` field is required by the AMO API but was either missing or empty in the workflow.
+
+The workflow has been updated to include a default `release-note` based on the tag name. If you wish to provide more detailed notes, you can modify the `release-note` parameter in `.github/workflows/firefox-publish.yml`.
