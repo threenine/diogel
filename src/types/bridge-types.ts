@@ -155,7 +155,7 @@ export interface BridgeRequestMap {
     action: 'permission.grant';
     origin: string;
     eventKind: number;
-    duration: 'session' | 'always';
+    duration: '8h' | 'always';
   };
   'blossom.upload': {
     id: string;

@@ -62,7 +62,7 @@ export async function checkPermission(
 export async function grantPermission(
   origin: string,
   eventKind: number,
-  duration: 'session' | 'always'
+  duration: '8h' | 'always'
 ): Promise<void> {
   const permissions = await loadPermissions();
 
@@ -78,8 +78,8 @@ export async function grantPermission(
     timestamp: Date.now(),
   };
 
-  if (duration === 'session') {
-    grant.expiry = Date.now() + (24 * 60 * 60 * 1000);
+  if (duration === '8h') {
+    grant.expiry = Date.now() + (8 * 60 * 60 * 1000);
   }
 
   await savePermissions([...filtered, grant]);

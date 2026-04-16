@@ -329,7 +329,7 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
       chrome.windows.onRemoved.removeListener(onRemovedHandler);
       if (val.approved && val.duration !== 'once') {
         try {
-          await grantPermission(origin, eventKind, val.duration === 'always' ? 'always' : 'session');
+          await grantPermission(origin, eventKind, val.duration === 'always' ? 'always' : '8h');
         } catch (e) { /* ignore */ }
       }
       originalResolve(val as any);
