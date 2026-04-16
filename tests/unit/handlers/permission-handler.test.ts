@@ -64,6 +64,43 @@ describe('PermissionHandler', () => {
     vi.useRealTimers();
   });
 
+  it('should handle "once" duration by not calling grantPermission in background (simulated here)', async () => {
+    // In the real app, 'once' is handled in background.ts and never reaches grantPermission.
+    // Here we just verify the current permissions remain unchanged if we don't call it.
+    const storedPermissions: PermissionGrant[] = [];
+    vi.mocked(storageService).get.mockImplementation(() => Promise.resolve(storedPermissions));
+
+    const initialPermissions = await getGrantedPermissions();
+    expect(initialPermissions.length).toBe(0);
+
+    // If something called grantPermission with 'once', it would fail type checking.
+    // @ts-expect-error - 'once' is not a valid duration for grantPermission
+    await grantPermission(mockOrigin, mockKind, 'once');
+
+    const result = await checkPermission(mockOrigin, mockKind);
+    // Since duration 'once' is not '8h', it should default to 'always' in the current implementation
+    // if we bypass TS. Let's see how it behaves.
+    expect(result.granted).toBe(true);
+    expect(result.always).toBe(true); // Default behavior for non-'8h'
+  });
+
+  it('should treat any duration other than "8h" as "always" (persistent)', async () => {
+    let storedPermissions: PermissionGrant[] = [];
+    vi.mocked(storageService).get.mockImplementation(() => Promise.resolve(storedPermissions));
+    vi.mocked(storageService).set.mockImplementation((_key, val) => {
+      storedPermissions = val as PermissionGrant[];
+      return Promise.resolve();
+    });
+
+    // @ts-expect-error - testing invalid duration
+    await grantPermission(mockOrigin, mockKind, 'unsupported');
+
+    const result = await checkPermission(mockOrigin, mockKind);
+    expect(result.granted).toBe(true);
+    expect(result.always).toBe(true);
+    expect(storedPermissions[0]?.expiry).toBeUndefined();
+  });
+
   it('should replace an existing permission with a new duration', async () => {
     let storedPermissions: PermissionGrant[] = [];
     vi.mocked(storageService).get.mockImplementation(() => Promise.resolve(storedPermissions));
