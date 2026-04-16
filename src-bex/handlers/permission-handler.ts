@@ -80,6 +80,9 @@ export async function grantPermission(
 
   if (duration === '8h') {
     grant.expiry = Date.now() + (8 * 60 * 60 * 1000);
+  } else if (duration !== 'always') {
+    // Unsupported duration reaching runtime
+    throw new Error(`Unsupported permission duration: ${duration}`);
   }
 
   await savePermissions([...filtered, grant]);

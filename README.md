@@ -67,4 +67,4 @@ The extension will now appear in your extensions list and be active.
 > your browsing data, including passwords and personal information. Only install extensions from trusted sources.
 
 
-## Test 
+

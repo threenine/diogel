@@ -66,39 +66,19 @@ describe('PermissionHandler', () => {
 
   it('should handle "once" duration by not calling grantPermission in background (simulated here)', async () => {
     // In the real app, 'once' is handled in background.ts and never reaches grantPermission.
-    // Here we just verify the current permissions remain unchanged if we don't call it.
+    // Here we verify that if it somehow reached grantPermission, it would now throw an error.
     const storedPermissions: PermissionGrant[] = [];
     vi.mocked(storageService).get.mockImplementation(() => Promise.resolve(storedPermissions));
 
     const initialPermissions = await getGrantedPermissions();
     expect(initialPermissions.length).toBe(0);
 
-    // If something called grantPermission with 'once', it would fail type checking.
     // @ts-expect-error - 'once' is not a valid duration for grantPermission
-    await grantPermission(mockOrigin, mockKind, 'once');
+    await expect(grantPermission(mockOrigin, mockKind, 'once'))
+      .rejects.toThrow('Unsupported permission duration: once');
 
     const result = await checkPermission(mockOrigin, mockKind);
-    // Since duration 'once' is not '8h', it should default to 'always' in the current implementation
-    // if we bypass TS. Let's see how it behaves.
-    expect(result.granted).toBe(true);
-    expect(result.always).toBe(true); // Default behavior for non-'8h'
-  });
-
-  it('should treat any duration other than "8h" as "always" (persistent)', async () => {
-    let storedPermissions: PermissionGrant[] = [];
-    vi.mocked(storageService).get.mockImplementation(() => Promise.resolve(storedPermissions));
-    vi.mocked(storageService).set.mockImplementation((_key, val) => {
-      storedPermissions = val as PermissionGrant[];
-      return Promise.resolve();
-    });
-
-    // @ts-expect-error - testing invalid duration
-    await grantPermission(mockOrigin, mockKind, 'unsupported');
-
-    const result = await checkPermission(mockOrigin, mockKind);
-    expect(result.granted).toBe(true);
-    expect(result.always).toBe(true);
-    expect(storedPermissions[0]?.expiry).toBeUndefined();
+    expect(result.granted).toBe(false);
   });
 
   it('should replace an existing permission with a new duration', async () => {
@@ -220,5 +200,19 @@ describe('PermissionHandler', () => {
     const thirdCall = await getGrantedPermissions();
     expect(thirdCall.length).toBe(1);
     expect(vi.mocked(storageService).get.mock.calls.length).toBe(2);
+  });
+
+  it('should reject unsupported duration values', async () => {
+    // @ts-expect-error - testing invalid duration
+    await expect(grantPermission(mockOrigin, mockKind, 'unsupported'))
+      .rejects.toThrow('Unsupported permission duration: unsupported');
+
+    // @ts-expect-error - Testing runtime rejection of invalid type
+    await expect(grantPermission(mockOrigin, mockKind, 'invalid'))
+      .rejects.toThrow('Unsupported permission duration: invalid');
+
+    // @ts-expect-error - Testing runtime rejection of another invalid type
+    await expect(grantPermission(mockOrigin, mockKind, '24h'))
+      .rejects.toThrow('Unsupported permission duration: 24h');
   });
 });

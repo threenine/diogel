@@ -238,7 +238,7 @@ async function initialize() {
     const restored = await restoreVaultState();
     if (restored) {
       startAutoLockTimer();
-      checkAutoLock();
+      await checkAutoLock();
     }
     // Seed relay catalog on startup
     void loadSeedRelays().then(result => {
@@ -329,8 +329,14 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
       chrome.windows.onRemoved.removeListener(onRemovedHandler);
       if (val.approved && val.duration !== 'once') {
         try {
-          await grantPermission(origin, eventKind, val.duration === 'always' ? 'always' : '8h');
-        } catch (e) { /* ignore */ }
+          if (val.duration === 'always' || val.duration === '8h') {
+            await grantPermission(origin, eventKind, val.duration);
+          } else {
+            console.warn(`[BEX] Received unsupported approval duration: ${val.duration}`);
+          }
+        } catch (e) {
+          console.error(`[BEX] Failed to grant permission: ${e}`);
+        }
       }
       originalResolve(val as any);
     };
