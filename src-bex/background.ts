@@ -8,7 +8,7 @@
  * 3. Import it in your background service worker (if available for your target browser).
  */
 import { createBridge } from '#q-app/bex/background';
-import { logService } from 'src/services/log-service';
+import { LogLevel, logService } from 'src/services/log-service';
 import {
   NOSTR_ACTIVE,
   storageService,
@@ -126,10 +126,10 @@ declare module '@quasar/app-vite' {
   }
 }
 
-console.log('[BEX] Initializing bridge...');
+logService.log(LogLevel.INFO, '[BEX] Initializing bridge...');
 let bridge: any;
 try {
-  bridge = createBridge({ debug: true });
+  bridge = createBridge({ debug: false });
   if (typeof window !== 'undefined') {
     (window as any).bridge = bridge;
     if ((window as any).$q) {
@@ -140,7 +140,7 @@ try {
     (globalThis as any).bridge = bridge;
   }
 } catch (e) {
-  console.error('[BEX] Failed to create bridge:', e);
+  logService.log(LogLevel.ERROR, '[BEX] Failed to create bridge:', { error: e });
 }
 
 bridge.on('ping', async (): Promise<BridgeResponsePayload<'ping'>> => {
@@ -242,10 +242,13 @@ async function initialize() {
     }
     // Seed relay catalog on startup
     void loadSeedRelays().then(result => {
-      console.log(`[BEX] Seeded relay catalog: ${result.added} added, ${result.updated} updated`);
+      logService.log(
+        LogLevel.INFO,
+        `[BEX] Seeded relay catalog: ${result.added} added, ${result.updated} updated`,
+      );
     });
   } catch (e) {
-    console.error('[BEX] Initialization error:', e);
+    logService.log(LogLevel.ERROR, '[BEX] Initialization error:', { error: e });
   }
 }
 
@@ -332,10 +335,10 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
           if (val.duration === 'always' || val.duration === '8h') {
             await grantPermission(origin, eventKind, val.duration);
           } else {
-            console.warn(`[BEX] Received unsupported approval duration: ${val.duration}`);
+            logService.log(LogLevel.WARN, `[BEX] Received unsupported approval duration: ${val.duration}`);
           }
         } catch (e) {
-          console.error(`[BEX] Failed to grant permission: ${e}`);
+          logService.log(LogLevel.ERROR, `[BEX] Failed to grant permission: ${e}`);
         }
       }
       originalResolve(val as any);

@@ -1,3 +1,5 @@
+const DEBUG = false; // Manually controlled as this script is injected into the page
+
 const nostr = {
   name: 'Diogel',
   getPublicKey: async () => {
@@ -20,7 +22,7 @@ const nostr = {
 
   // Internal call helper
   call: (type, payload) => {
-    console.log('[BEX] Provider calling:', type, payload);
+    if (DEBUG) console.log('[BEX] Provider calling:', type, payload);
     const id = Math.random().toString(36).substring(2);
     try {
       return new Promise((resolve, reject) => {
@@ -37,7 +39,7 @@ const nostr = {
             event.data.id === id &&
             event.data.response
           ) {
-            console.log(`[BEX] Provider received response for ID ${id}:`, event.data);
+            if (DEBUG) console.log(`[BEX] Provider received response for ID ${id}:`, event.data);
             clearTimeout(timeout);
             window.removeEventListener('message', handler);
             if (event.data.error) {
@@ -48,7 +50,7 @@ const nostr = {
           }
         };
         window.addEventListener('message', handler);
-        console.log(`[BEX] Provider posting message for ID ${id}:`, type);
+        if (DEBUG) console.log(`[BEX] Provider posting message for ID ${id}:`, type);
         window.postMessage(
           {
             id,
@@ -96,7 +98,7 @@ const nostr = {
 
 window.nostr = nostr;
 window.dispatchEvent(new CustomEvent('nostr-provider-ready'));
-console.log('[BEX] Nostr provider ready and events dispatched');
+if (DEBUG) console.log('[BEX] Nostr provider ready and events dispatched');
 window.dispatchEvent(
   new CustomEvent('nostr:registration', {
     detail: {

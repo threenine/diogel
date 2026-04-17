@@ -27,25 +27,41 @@ const bridge = createBridge({ debug: false });
 // Bridge event types - simplified for now to avoid import issues
 // Full type safety will be addressed in a future prompt
 
+const debug = process.env.DEBUG === 'true';
+
+const log = (message: string, ...args: any[]) => {
+  if (debug) {
+    console.log(message, ...args);
+  }
+};
+
+const warn = (message: string, ...args: any[]) => {
+  console.warn(message, ...args);
+};
+
+const error = (message: string, ...args: any[]) => {
+  console.error(message, ...args);
+};
+
 // Inject the NIP-07 provider script
-console.log('[BEX] Content script starting. document.readyState:', document.readyState);
+log('[BEX] Content script starting. document.readyState:', document.readyState);
 const injectProvider = () => {
-  console.log('[BEX] Injecting NIP-07 provider script...');
+  log('[BEX] Injecting NIP-07 provider script...');
   const script = document.createElement('script');
   script.src = chrome.runtime.getURL('nostr-provider.js');
-  console.log('[BEX] Script source URL:', script.src);
+  log('[BEX] Script source URL:', script.src);
   script.onerror = (e) => {
-    console.error('[BEX] Failed to load provider script:', e);
+    error('[BEX] Failed to load provider script:', e);
   };
   const container = document.head || document.documentElement;
   if (container) {
     container.appendChild(script);
     script.onload = () => {
-      console.log('[BEX] Provider script loaded and removed from DOM');
+      log('[BEX] Provider script loaded and removed from DOM');
       script.remove();
     };
   } else {
-    console.error('[BEX] Could not find container to inject script');
+    error('[BEX] Could not find container to inject script');
   }
 };
 
@@ -58,7 +74,7 @@ if (document.readyState === 'loading') {
 window.addEventListener('message', async (event: MessageEvent) => {
   // Broad logging for debugging
   if (event.data && event.data.type && event.data.type.startsWith('diogel')) {
-    console.log('[BEX] Content script received potential diogel message:', event.data);
+    log('[BEX] Content script received potential diogel message:', event.data);
   }
 
   // Valid message types we handle
@@ -70,16 +86,16 @@ window.addEventListener('message', async (event: MessageEvent) => {
   }
 
   if (event.data.type === MESSAGE_TYPE_PING) {
-    console.log(`[BEX] Content script received ping (${event.data.type}) from page`);
+    log(`[BEX] Content script received ping (${event.data.type}) from page`);
     window.postMessage({ id: event.data.id, response: true, result: 'pong' }, '*');
     return;
   }
 
   const { id, method, payload } = event.data;
-  console.log('[BEX] Content script received request from page:', method, payload);
+  log('[BEX] Content script received request from page:', method, payload);
 
   if (method === 'ping') {
-    console.log(`[BEX] Content script received ping (method=ping) for ID ${id}`);
+    log(`[BEX] Content script received ping (method=ping) for ID ${id}`);
     window.postMessage({ id, response: true, result: 'pong' }, '*');
     return;
   }
@@ -87,12 +103,12 @@ window.addEventListener('message', async (event: MessageEvent) => {
   const origin = window.location.origin;
 
   if (!bridge.isConnected) {
-    console.warn('[BEX] Bridge is not connected, attempting to connect...');
+    warn('[BEX] Bridge is not connected, attempting to connect...');
     try {
       await bridge.connectToBackground();
-      console.log('[BEX] Reconnected to background');
+      log('[BEX] Reconnected to background');
     } catch (err: any) {
-      console.error('[BEX] Failed to reconnect:', err);
+      error('[BEX] Failed to reconnect:', err);
       window.postMessage(
         {
           id,
@@ -112,7 +128,7 @@ window.addEventListener('message', async (event: MessageEvent) => {
       to: 'background',
       payload: { ...payload, origin } as any,
     });
-    console.log(`[BEX] Content script received response from background for ID ${id}:`, result);
+    log(`[BEX] Content script received response from background for ID ${id}:`, result);
     window.postMessage(
       {
         id,
@@ -121,13 +137,13 @@ window.addEventListener('message', async (event: MessageEvent) => {
       },
       '*',
     );
-  } catch (error: any) {
-    console.error(`[BEX] Content script received error from background for ID ${id}:`, error);
+  } catch (errorObj: any) {
+    error(`[BEX] Content script received error from background for ID ${id}:`, errorObj);
     window.postMessage(
       {
         id,
         response: true,
-        error: error.message || error,
+        error: errorObj.message || errorObj,
       },
       '*',
     );
@@ -158,8 +174,8 @@ bridge.on('some.event', ({ payload }) => {
 bridge
   .connectToBackground()
   .then(() => {
-    console.log('[BEX] Connected to background');
+    log('[BEX] Connected to background');
   })
   .catch((err) => {
-    console.error('[BEX] Failed to connect to background:', err);
+    error('[BEX] Failed to connect to background:', err);
   });

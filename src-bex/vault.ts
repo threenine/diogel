@@ -5,6 +5,7 @@ import {
   encryptWithKey,
 } from 'src/services/crypto';
 import { db } from 'src/services/database';
+import { LogLevel, logService } from 'src/services/log-service';
 import { storageService, VAULT_UNLOCKED } from 'src/services/storage-service';
 import { ErrorCode } from 'src/types/error-codes';
 
@@ -29,16 +30,14 @@ async function saveKeyToSession() {
         },
         'session',
       );
-      console.log('[Vault] Session state saved');
     } catch (e) {
-      console.error('[Vault] Failed to save key to session:', e);
+      logService.log(LogLevel.ERROR, '[Vault] Failed to save key to session:', { error: e });
     }
   }
 }
 
 async function clearSession() {
   await storageService.remove([SESSION_KEY, SESSION_SALT, VAULT_UNLOCKED], 'session');
-  console.log('[Vault] Session state cleared');
 }
 
 export async function restoreVaultState() {
@@ -53,11 +52,10 @@ export async function restoreVaultState() {
         'decrypt',
       ]);
       vaultSalt = saltData;
-      console.log('[Vault] Session state restored');
       return true;
     }
   } catch (e) {
-    console.error('[Vault] Failed to restore key from session:', e);
+    logService.log(LogLevel.ERROR, '[Vault] Failed to restore key from session:', { error: e });
   }
   return false;
 }
@@ -95,7 +93,7 @@ export async function unlockVault(password: string) {
   } catch (err) {
     clearVaultKey();
     await clearSession(); // Ensure session is also cleared in storage
-    console.error('Unlock vault error:', err);
+    logService.log(LogLevel.ERROR, 'Unlock vault error:', { error: err });
     return {
       success: false,
       error: 'Invalid password',
@@ -129,7 +127,7 @@ export async function createNewVault(password: string, vaultData: unknown) {
   } catch (err) {
     clearVaultKey();
     await clearSession();
-    console.error('Create vault error:', err);
+    logService.log(LogLevel.ERROR, 'Create vault error:', { error: err });
     return {
       success: false,
       error: (err as Error).message,
@@ -158,7 +156,7 @@ export async function updateVaultData(vaultData: unknown) {
 
     return { success: true };
   } catch (err) {
-    console.error('Update vault data error:', err);
+    logService.log(LogLevel.ERROR, 'Update vault data error:', { error: err });
     return {
       success: false,
       error: (err as Error).message,
@@ -189,7 +187,7 @@ export async function getVaultData() {
     const vaultData = await decryptWithKey(vault.encryptedData, vaultKey);
     return { success: true, vaultData };
   } catch (err) {
-    console.error('Get vault data error:', err);
+    logService.log(LogLevel.ERROR, 'Get vault data error:', { error: err });
     return {
       success: false,
       error: (err as Error).message,
@@ -210,7 +208,7 @@ export async function exportVault() {
     }
     return { success: true, encryptedData: vault.encryptedData };
   } catch (err) {
-    console.error('Export vault error:', err);
+    logService.log(LogLevel.ERROR, 'Export vault error:', { error: err });
     return {
       success: false,
       error: (err as Error).message,
@@ -242,7 +240,7 @@ export async function importVault(encryptedData: string) {
 
     return { success: true };
   } catch (err) {
-    console.error('Import vault error:', err);
+    logService.log(LogLevel.ERROR, 'Import vault error:', { error: err });
     return {
       success: false,
       error: (err as Error).message,

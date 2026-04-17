@@ -8,6 +8,12 @@ export enum LogLevel {
 }
 
 export class LogService {
+  private readonly debugMode: boolean;
+
+  constructor() {
+    this.debugMode = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'test';
+  }
+
   async logException(message: string, account?: string | null, hostname?: string | null) {
     try {
       await db.exceptions.add({
@@ -51,10 +57,19 @@ export class LogService {
         console.warn(formattedMessage, context);
         break;
       case LogLevel.DEBUG:
-        console.debug(formattedMessage, context);
+        if (this.debugMode) {
+          console.debug(formattedMessage, context);
+        }
+        break;
+      case LogLevel.INFO:
+        if (this.debugMode) {
+          console.log(formattedMessage, context);
+        }
         break;
       default:
-        console.log(formattedMessage, context);
+        if (this.debugMode) {
+          console.log(formattedMessage, context);
+        }
     }
   }
 
