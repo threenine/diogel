@@ -33,7 +33,10 @@ export const handleVaultUnlock = logWrapper(async (
   const result = await unlock(payload.password);
 
   if (result.success) {
-    return { success: true, data: { vaultData: result.vaultData } };
+    return {
+      success: true,
+      data: result.vaultData ? { vaultData: result.vaultData as VaultData } : {},
+    };
   }
 
   return { success: false, error: result.error || 'Unlock failed', code: result.errorCode as string };
@@ -79,7 +82,10 @@ export const handleVaultGetData = logWrapper(async (
   const result = await getVaultData();
 
   if (result.success) {
-    return { success: true, data: { vaultData: result.vaultData } };
+    return {
+      success: true,
+      data: result.vaultData ? { vaultData: result.vaultData as VaultData } : {},
+    };
   }
 
   return { success: false, error: result.error || 'Get data failed', code: result.errorCode as string };

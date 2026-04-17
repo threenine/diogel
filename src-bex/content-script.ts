@@ -68,8 +68,10 @@ const injectProvider = () => {
   const script = document.createElement('script');
   script.src = chrome.runtime.getURL('nostr-provider.js');
   log('[BEX] Script source URL', { src: script.src });
-  script.onerror = (event: Event) => {
-    error('[BEX] Failed to load provider script', { event });
+  script.onerror = (event) => {
+    error('[BEX] Failed to load provider script', {
+      event: typeof event === 'string' ? event : undefined,
+    });
   };
   const container = document.head || document.documentElement;
   if (container) {

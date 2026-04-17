@@ -9,8 +9,12 @@ import type { BridgeAction, BridgeRequestMap, BridgeResponsePayload, VaultData }
  * which is more reliable across different context lifetimes (popup vs options vs tab).
  */
 
+interface BridgeEnvelope<T> {
+  data: T;
+}
+
 interface BridgeLike {
-  send<T>(request: { event: BridgeAction; to: 'background'; payload?: unknown }): Promise<{ data: T } | T>;
+  send<T>(request: { event: BridgeAction; to: 'background'; payload?: unknown }): Promise<BridgeEnvelope<T> | T | null | undefined>;
 }
 
 const getBridge = (): BridgeLike | undefined => {
@@ -30,10 +34,13 @@ export async function sendBexMessage<T extends BridgeAction>(
   if (bridge) {
     try {
       const response = await Promise.race([
-        bridge.send<BridgeResponsePayload<T>>({ event: type, to: 'background', payload }),
+        bridge.send<BridgeResponsePayload<T>>({ event: type, to: 'background', payload }) as Promise<BridgeEnvelope<BridgeResponsePayload<T>> | BridgeResponsePayload<T>>,
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Bridge timeout')), 5000)),
       ]);
-      return 'data' in response ? response.data : response;
+      if (response && typeof response === 'object' && 'data' in response) {
+        return response.data;
+      }
+      return response;
     } catch (error: unknown) {
       logService.log(LogLevel.WARN, `[VaultService] Bridge call failed for ${type}, falling back to direct messaging`, {
         error: error instanceof Error ? error.message : String(error),
