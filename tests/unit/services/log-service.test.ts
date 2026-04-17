@@ -65,8 +65,8 @@ describe('LogService', () => {
         dateTime: expect.any(String),
       })
     );
-    expect(console.log).toHaveBeenCalledWith(
-      expect.stringContaining('[INFO] Approval granted for kind 1 on host1'),
+    expect(console.debug).toHaveBeenCalledWith(
+      expect.stringContaining('[DEBUG] Approval granted for kind 1 on host1'),
       { account: 'acc1' }
     );
   });
@@ -90,11 +90,11 @@ describe('LogService', () => {
     expect(result).toBe('success result');
     expect(console.debug).toHaveBeenCalledWith(
       expect.stringContaining('Calling TestService.testMethod'),
-      { args: ['arg1'] }
+      { argCount: 1 }
     );
     expect(console.debug).toHaveBeenCalledWith(
       expect.stringContaining('TestService.testMethod completed successfully'),
-      { result: 'success result' }
+      { resultType: 'string' }
     );
   });
 
@@ -107,7 +107,7 @@ describe('LogService', () => {
 
     expect(console.error).toHaveBeenCalledWith(
       expect.stringContaining('TestService.testMethod failed: fail'),
-      expect.any(Object)
+      undefined
     );
     // eslint-disable-next-line @typescript-eslint/unbound-method
     expect(db.exceptions.add).toHaveBeenCalled();
