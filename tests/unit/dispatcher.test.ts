@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { dispatchMessage } from 'app/src-bex/dispatcher';
 import { handleRelayBrowserList, handleRelayBrowserGetStatus } from 'app/src-bex/handlers/relay-browser-handler';
 import { handleVaultUnlock } from 'app/src-bex/handlers/vault-handler';
+import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 
 // Mock handlers
 vi.mock('app/src-bex/handlers/vault-handler', () => ({
@@ -53,8 +54,16 @@ describe('Dispatcher', () => {
   });
 
   it('should route relay.browser.list correctly', async () => {
-    const mockEntries = [{ url: 'wss://relay.com' }];
-    vi.mocked(handleRelayBrowserList).mockResolvedValue({ success: true, data: mockEntries as any });
+    const mockEntries: RelayCatalogEntry[] = [{
+      url: 'wss://relay.com',
+      hostname: 'relay.com',
+      isUserAdded: false,
+      isSeed: true,
+      status: 'online',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    }];
+    vi.mocked(handleRelayBrowserList).mockResolvedValue({ success: true, data: mockEntries });
 
     const result = await dispatchMessage('relay.browser.list', {});
 
@@ -72,8 +81,12 @@ describe('Dispatcher', () => {
   });
 
   it('should route relay.browser.getStatus correctly', async () => {
-    const mockStatus = { id: 'global', isDiscoveryInProgress: false };
-    vi.mocked(handleRelayBrowserGetStatus).mockResolvedValue({ success: true, data: mockStatus as any });
+    const mockStatus: RelayDiscoveryState = {
+      id: 'global',
+      isDiscoveryInProgress: false,
+      updatedAt: Date.now(),
+    };
+    vi.mocked(handleRelayBrowserGetStatus).mockResolvedValue({ success: true, data: mockStatus });
 
     const result = await dispatchMessage('relay.browser.getStatus', {});
 
@@ -102,7 +115,8 @@ describe('Dispatcher', () => {
   it('should await resetAutoLockTimer before starting timer on vault unlock', async () => {
     autoLockMocks.resetAutoLockTimer.mockResolvedValue(undefined);
     autoLockMocks.startAutoLockTimer.mockReturnValue(undefined);
-    vi.mocked(handleVaultUnlock).mockResolvedValue({ success: true, data: { vaultData: {} } } as any);
+    const mockVaultData = { vaultData: {} };
+    vi.mocked(handleVaultUnlock).mockResolvedValue({ success: true, data: mockVaultData });
 
     const result = await dispatchMessage('vault.unlock', { password: 'test-password' });
 
@@ -110,13 +124,12 @@ describe('Dispatcher', () => {
     expect(autoLockMocks.resetAutoLockTimer).toHaveBeenCalled();
     expect(autoLockMocks.startAutoLockTimer).toHaveBeenCalled();
     expect(
-      autoLockMocks.resetAutoLockTimer.mock.invocationCallOrder[0],
-    ).toBeLessThan(autoLockMocks.startAutoLockTimer.mock.invocationCallOrder[0]);
+      autoLockMocks.resetAutoLockTimer.mock.invocationCallOrder[0]!,
+    ).toBeLessThan(autoLockMocks.startAutoLockTimer.mock.invocationCallOrder[0]!);
   });
 
   it('should return null for unknown message type', async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await dispatchMessage('unknown.action' as any, {});
+    const result = await dispatchMessage('unknown.action' as never, {});
     expect(result).toBeNull();
   });
 });
