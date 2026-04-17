@@ -148,7 +148,10 @@ try {
   throw error;
 }
 
-bridge.on('ping', () => 'pong');
+bridge.on('ping', async (): Promise<BridgeResponsePayload<'ping'>> => {
+  const result = await dispatchMessage('ping', createBridgeRequest('ping', {}), '');
+  return (result || 'pong') as BridgeResponsePayload<'ping'>;
+});
 
 if (typeof self !== 'undefined') {
   self.addEventListener('error', async (event: ErrorEvent) => {
@@ -191,52 +194,43 @@ bridge.on('nostr.approval.respond', ({ payload }) => {
     approvalPromise.resolve({ approved: payload.approved, duration: payload.duration });
     approvalPromise = null;
   }
-  return true;
+  return Promise.resolve(true) as unknown as BridgeResponsePayload<'nostr.approval.respond'>;
 });
 
 bridge.on('vault.unlock', ({ payload }) => {
-  void dispatchMessage('vault.unlock', createBridgeRequest('vault.unlock', payload), '');
-  return { success: false, error: 'Bridge response handled asynchronously' };
+  return dispatchMessage('vault.unlock', createBridgeRequest('vault.unlock', payload), '') as unknown as BridgeResponsePayload<'vault.unlock'>;
 });
 
 bridge.on('vault.lock', () => {
-  void dispatchMessage('vault.lock', createBridgeRequest('vault.lock', {}), '');
-  return { success: true };
+  return dispatchMessage('vault.lock', createBridgeRequest('vault.lock', {}), '') as unknown as BridgeResponsePayload<'vault.lock'>;
 });
 
 bridge.on('vault.create', ({ payload }) => {
-  void dispatchMessage('vault.create', createBridgeRequest('vault.create', payload), '');
-  return { success: false, error: 'Bridge response handled asynchronously' };
+  return dispatchMessage('vault.create', createBridgeRequest('vault.create', payload), '') as unknown as BridgeResponsePayload<'vault.create'>;
 });
 
 bridge.on('vault.isUnlocked', () => {
-  void dispatchMessage('vault.isUnlocked', createBridgeRequest('vault.isUnlocked', {}), '');
-  return false;
+  return dispatchMessage('vault.isUnlocked', createBridgeRequest('vault.isUnlocked', {}), '') as unknown as BridgeResponsePayload<'vault.isUnlocked'>;
 });
 
 bridge.on('activity.mark', () => {
-  void dispatchMessage('activity.mark', createBridgeRequest('activity.mark', {}), '');
-  return undefined;
+  return dispatchMessage('activity.mark', createBridgeRequest('activity.mark', {}), '') as unknown as BridgeResponsePayload<'activity.mark'>;
 });
 
 bridge.on('vault.getData', () => {
-  void dispatchMessage('vault.getData', createBridgeRequest('vault.getData', {}), '');
-  return { success: false, error: 'Bridge response handled asynchronously' };
+  return dispatchMessage('vault.getData', createBridgeRequest('vault.getData', {}), '') as unknown as BridgeResponsePayload<'vault.getData'>;
 });
 
 bridge.on('vault.updateData', ({ payload }) => {
-  void dispatchMessage('vault.updateData', createBridgeRequest('vault.updateData', payload), '');
-  return { success: false, error: 'Bridge response handled asynchronously' };
+  return dispatchMessage('vault.updateData', createBridgeRequest('vault.updateData', payload), '') as unknown as BridgeResponsePayload<'vault.updateData'>;
 });
 
 bridge.on('vault.export', () => {
-  void dispatchMessage('vault.export', createBridgeRequest('vault.export', {}), '');
-  return { success: false, error: 'Bridge response handled asynchronously' };
+  return dispatchMessage('vault.export', createBridgeRequest('vault.export', {}), '') as unknown as BridgeResponsePayload<'vault.export'>;
 });
 
 bridge.on('vault.import', ({ payload }) => {
-  void dispatchMessage('vault.import', createBridgeRequest('vault.import', payload), '');
-  return { success: false, error: 'Bridge response handled asynchronously' };
+  return dispatchMessage('vault.import', createBridgeRequest('vault.import', payload), '') as unknown as BridgeResponsePayload<'vault.import'>;
 });
 
 async function initialize() {
@@ -372,9 +366,9 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
   return promise.then((res) => res.approved);
 }
 
-bridge.on('nostr.getPublicKey', ({ payload: { origin } }) => {
-  resetAutoLockTimer();
-  void (async () => {
+bridge.on('nostr.getPublicKey', ({ payload: { origin } }) => (
+  (async () => {
+    resetAutoLockTimer();
     const result = await handleGetPublicKey({}, origin);
     if (!result.success) {
       throw { code: result.error === 'Vault is locked' ? 'VAULT_LOCKED' : 'NOT_FOUND', message: result.error } as BridgeError;
@@ -383,13 +377,13 @@ bridge.on('nostr.getPublicKey', ({ payload: { origin } }) => {
     void logService.logApproval('get_public_key', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin, -1);
     if (!approved) throw { code: 'PERMISSION_DENIED', message: 'User rejected the request' } as BridgeError;
-  })();
-  return '';
-});
+    return result.data;
+  })() as unknown as BridgeResponsePayload<'nostr.getPublicKey'>
+));
 
-bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => {
-  resetAutoLockTimer();
-  void (async () => {
+bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => (
+  (async () => {
+    resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin, event.kind);
@@ -408,21 +402,13 @@ bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => {
         message: result.error,
       } as BridgeError;
     }
-  })();
-  return {
-    id: '',
-    pubkey: '',
-    sig: '',
-    created_at: event.created_at,
-    kind: event.kind,
-    tags: event.tags,
-    content: event.content,
-  };
-});
+    return result.data;
+  })() as unknown as BridgeResponsePayload<'nostr.signEvent'>
+));
 
-bridge.on('nostr.getRelays', ({ payload: { origin } }) => {
-  resetAutoLockTimer();
-  void (async () => {
+bridge.on('nostr.getRelays', ({ payload: { origin } }) => (
+  (async () => {
+    resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin, -1);
@@ -431,13 +417,13 @@ bridge.on('nostr.getRelays', ({ payload: { origin } }) => {
       if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
       throw new Error('User rejected the request');
     }
-  })();
-  return {};
-});
+    return await dispatchMessage('nostr.getRelays', createBridgeRequest('nostr.getRelays', { origin }), origin) ?? {};
+  })() as unknown as BridgeResponsePayload<'nostr.getRelays'>
+));
 
-bridge.on('nostr.nip04.encrypt', ({ payload }) => {
-  resetAutoLockTimer();
-  void (async () => {
+bridge.on('nostr.nip04.encrypt', ({ payload }) => (
+  (async () => {
+    resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_encrypt', getHostname(payload.origin), activeStoredKey?.alias);
     const approved = await requestApproval(payload.origin, -1);
@@ -446,14 +432,13 @@ bridge.on('nostr.nip04.encrypt', ({ payload }) => {
       if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
       throw new Error('User rejected the request');
     }
-    void dispatchMessage('nostr.nip04.encrypt', createBridgeRequest('nostr.nip04.encrypt', payload), payload.origin);
-  })();
-  return '';
-});
+    return await dispatchMessage('nostr.nip04.encrypt', createBridgeRequest('nostr.nip04.encrypt', payload), payload.origin) ?? '';
+  })() as unknown as BridgeResponsePayload<'nostr.nip04.encrypt'>
+));
 
-bridge.on('nostr.nip04.decrypt', ({ payload }) => {
-  resetAutoLockTimer();
-  void (async () => {
+bridge.on('nostr.nip04.decrypt', ({ payload }) => (
+  (async () => {
+    resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_decrypt', getHostname(payload.origin), activeStoredKey?.alias);
     const approved = await requestApproval(payload.origin, -1);
@@ -462,28 +447,23 @@ bridge.on('nostr.nip04.decrypt', ({ payload }) => {
       if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
       throw new Error('User rejected the request');
     }
-    void dispatchMessage('nostr.nip04.decrypt', createBridgeRequest('nostr.nip04.decrypt', payload), payload.origin);
-  })();
-  return '';
-});
+    return await dispatchMessage('nostr.nip04.decrypt', createBridgeRequest('nostr.nip04.decrypt', payload), payload.origin) ?? '';
+  })() as unknown as BridgeResponsePayload<'nostr.nip04.decrypt'>
+));
 
 bridge.on('blossom.upload', ({ payload }) => {
   resetAutoLockTimer();
-  void dispatchMessage('blossom.upload', createBridgeRequest('blossom.upload', payload), '');
-  return {};
+  return dispatchMessage('blossom.upload', createBridgeRequest('blossom.upload', payload), '') as unknown as BridgeResponsePayload<'blossom.upload'>;
 });
 
 bridge.on('relay.browser.list', () => {
-  void dispatchMessage('relay.browser.list', createBridgeRequest('relay.browser.list', {}), '');
-  return [];
+  return dispatchMessage('relay.browser.list', createBridgeRequest('relay.browser.list', {}), '') as unknown as BridgeResponsePayload<'relay.browser.list'>;
 });
 
 bridge.on('relay.browser.getStatus', () => {
-  void dispatchMessage('relay.browser.getStatus', createBridgeRequest('relay.browser.getStatus', {}), '');
-  return null;
+  return dispatchMessage('relay.browser.getStatus', createBridgeRequest('relay.browser.getStatus', {}), '') as unknown as BridgeResponsePayload<'relay.browser.getStatus'>;
 });
 
 bridge.on('relay.browser.refresh', ({ payload }) => {
-  void dispatchMessage('relay.browser.refresh', createBridgeRequest('relay.browser.refresh', payload), '');
-  return false;
+  return dispatchMessage('relay.browser.refresh', createBridgeRequest('relay.browser.refresh', payload), '') as unknown as BridgeResponsePayload<'relay.browser.refresh'>;
 });
