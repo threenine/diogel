@@ -3,6 +3,8 @@ import { dispatchMessage } from 'app/src-bex/dispatcher';
 import { handleRelayBrowserList, handleRelayBrowserGetStatus } from 'app/src-bex/handlers/relay-browser-handler';
 import { handleVaultUnlock } from 'app/src-bex/handlers/vault-handler';
 import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
+import { createBridgeRequest } from 'src/types/bridge';
+import type { VaultData } from 'src/types/bridge';
 
 // Mock handlers
 vi.mock('app/src-bex/handlers/vault-handler', () => ({
@@ -49,7 +51,7 @@ describe('Dispatcher', () => {
   });
 
   it('should route ping action correctly', async () => {
-    const result = await dispatchMessage('ping', {});
+    const result = await dispatchMessage('ping', createBridgeRequest('ping', {}));
     expect(result).toBe('pong');
   });
 
@@ -65,7 +67,7 @@ describe('Dispatcher', () => {
     }];
     vi.mocked(handleRelayBrowserList).mockResolvedValue({ success: true, data: mockEntries });
 
-    const result = await dispatchMessage('relay.browser.list', {});
+    const result = await dispatchMessage('relay.browser.list', createBridgeRequest('relay.browser.list', {}));
 
     expect(result).toEqual(mockEntries);
     expect(handleRelayBrowserList).toHaveBeenCalled();
@@ -74,7 +76,7 @@ describe('Dispatcher', () => {
   it('should return empty array for relay.browser.list when handler fails', async () => {
     vi.mocked(handleRelayBrowserList).mockResolvedValue({ success: false, error: 'Fail' });
 
-    const result = await dispatchMessage('relay.browser.list', {});
+    const result = await dispatchMessage('relay.browser.list', createBridgeRequest('relay.browser.list', {}));
 
     expect(result).toEqual([]);
     expect(handleRelayBrowserList).toHaveBeenCalled();
@@ -88,7 +90,7 @@ describe('Dispatcher', () => {
     };
     vi.mocked(handleRelayBrowserGetStatus).mockResolvedValue({ success: true, data: mockStatus });
 
-    const result = await dispatchMessage('relay.browser.getStatus', {});
+    const result = await dispatchMessage('relay.browser.getStatus', createBridgeRequest('relay.browser.getStatus', {}));
 
     expect(result).toEqual(mockStatus);
     expect(handleRelayBrowserGetStatus).toHaveBeenCalled();
@@ -97,7 +99,7 @@ describe('Dispatcher', () => {
   it('should return null for relay.browser.getStatus when handler fails', async () => {
     vi.mocked(handleRelayBrowserGetStatus).mockResolvedValue({ success: false, error: 'Fail' });
 
-    const result = await dispatchMessage('relay.browser.getStatus', {});
+    const result = await dispatchMessage('relay.browser.getStatus', createBridgeRequest('relay.browser.getStatus', {}));
 
     expect(result).toBeNull();
     expect(handleRelayBrowserGetStatus).toHaveBeenCalled();
@@ -106,7 +108,7 @@ describe('Dispatcher', () => {
   it('should await activity.mark auto-lock persistence', async () => {
     autoLockMocks.resetAutoLockTimer.mockResolvedValue(undefined);
 
-    const result = await dispatchMessage('activity.mark', {});
+    const result = await dispatchMessage('activity.mark', createBridgeRequest('activity.mark', {}));
 
     expect(result).toBe(true);
     expect(autoLockMocks.resetAutoLockTimer).toHaveBeenCalled();
@@ -115,12 +117,12 @@ describe('Dispatcher', () => {
   it('should await resetAutoLockTimer before starting timer on vault unlock', async () => {
     autoLockMocks.resetAutoLockTimer.mockResolvedValue(undefined);
     autoLockMocks.startAutoLockTimer.mockReturnValue(undefined);
-    const mockVaultData = { vaultData: {} };
+    const mockVaultData: { vaultData: VaultData } = { vaultData: { accounts: [] } };
     vi.mocked(handleVaultUnlock).mockResolvedValue({ success: true, data: mockVaultData });
 
-    const result = await dispatchMessage('vault.unlock', { password: 'test-password' });
+    const result = await dispatchMessage('vault.unlock', createBridgeRequest('vault.unlock', { password: 'test-password' }));
 
-    expect(result).toEqual({ success: true, vaultData: {} });
+    expect(result).toEqual({ success: true, vaultData: { accounts: [] } });
     expect(autoLockMocks.resetAutoLockTimer).toHaveBeenCalled();
     expect(autoLockMocks.startAutoLockTimer).toHaveBeenCalled();
     expect(
@@ -129,7 +131,7 @@ describe('Dispatcher', () => {
   });
 
   it('should return null for unknown message type', async () => {
-    const result = await dispatchMessage('unknown.action' as never, {});
+    const result = await dispatchMessage('unknown.action' as never, { id: 'test', action: 'unknown.action' } as never);
     expect(result).toBeNull();
   });
 });

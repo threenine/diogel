@@ -29,17 +29,17 @@ const bridge = createBridge({ debug: false });
 
 const debug = process.env.DEBUG === 'true';
 
-const log = (message: string, ...args: any[]) => {
+const log = (message: string, ...args: unknown[]) => {
   if (debug) {
     console.log(message, ...args);
   }
 };
 
-const warn = (message: string, ...args: any[]) => {
+const warn = (message: string, ...args: unknown[]) => {
   console.warn(message, ...args);
 };
 
-const error = (message: string, ...args: any[]) => {
+const error = (message: string, ...args: unknown[]) => {
   console.error(message, ...args);
 };
 
@@ -124,9 +124,9 @@ window.addEventListener('message', async (event: MessageEvent) => {
   try {
     const methodAction = `nostr.${method}` as BridgeAction;
     const result = await bridge.send({
-      event: methodAction as any,
+      event: methodAction,
       to: 'background',
-      payload: { ...payload, origin } as any,
+      payload: { ...payload, origin },
     });
     log(`[BEX] Content script received response from background for ID ${id}:`, result);
     window.postMessage(

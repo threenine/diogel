@@ -48,6 +48,7 @@ import {
 } from './handlers/nip07';
 import { loadSeedRelays } from 'src/services/relay-catalog';
 import { dispatchMessage } from './dispatcher';
+import { createBridgeRequest } from 'src/types/bridge';
 
 async function getActiveAlias() {
   return await storageService.get<string>(NOSTR_ACTIVE);
@@ -144,7 +145,7 @@ try {
 }
 
 bridge.on('ping', async (): Promise<BridgeResponsePayload<'ping'>> => {
-  const result = await dispatchMessage('ping', {}, '');
+  const result = await dispatchMessage('ping', createBridgeRequest('ping', {}), '');
   return (result || 'pong') as BridgeResponsePayload<'ping'>;
 });
 
@@ -199,7 +200,7 @@ bridge.on('vault.unlock', async ({ payload }: { payload: BridgeRequest<'vault.un
 });
 
 bridge.on('vault.lock', async () => {
-  return await dispatchMessage('vault.lock', {}, '');
+  return await dispatchMessage('vault.lock', createBridgeRequest('vault.lock', {}), '');
 });
 
 bridge.on('vault.create', async ({ payload }: { payload: BridgeRequest<'vault.create'> }) => {
@@ -207,17 +208,17 @@ bridge.on('vault.create', async ({ payload }: { payload: BridgeRequest<'vault.cr
 });
 
 bridge.on('vault.isUnlocked', async () => {
-  const result = await dispatchMessage('vault.isUnlocked', {}, '');
+  const result = await dispatchMessage('vault.isUnlocked', createBridgeRequest('vault.isUnlocked', {}), '');
   return (result !== null ? result : false) as BridgeResponsePayload<'vault.isUnlocked'>;
 });
 
 bridge.on('activity.mark', async () => {
-  const result = await dispatchMessage('activity.mark', {}, '');
+  const result = await dispatchMessage('activity.mark', createBridgeRequest('activity.mark', {}), '');
   return (result !== null ? result : undefined) as BridgeResponsePayload<'activity.mark'>;
 });
 
 bridge.on('vault.getData', async () => {
-  return await dispatchMessage('vault.getData', {}, '');
+  return await dispatchMessage('vault.getData', createBridgeRequest('vault.getData', {}), '');
 });
 
 bridge.on('vault.updateData', async ({ payload }: { payload: BridgeRequest<'vault.updateData'> }) => {
@@ -225,7 +226,7 @@ bridge.on('vault.updateData', async ({ payload }: { payload: BridgeRequest<'vaul
 });
 
 bridge.on('vault.export', async () => {
-  return await dispatchMessage('vault.export', {}, '');
+  return await dispatchMessage('vault.export', createBridgeRequest('vault.export', {}), '');
 });
 
 bridge.on('vault.import', async ({ payload }: { payload: BridgeRequest<'vault.import'> }) => {
@@ -409,7 +410,7 @@ bridge.on('nostr.getRelays', async ({ payload: { origin } }: { payload: BridgeRe
     if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
     throw new Error('User rejected the request');
   }
-  return await dispatchMessage('nostr.getRelays', { origin }, origin);
+  return await dispatchMessage('nostr.getRelays', createBridgeRequest('nostr.getRelays', { origin }), origin);
 });
 
 bridge.on('nostr.nip04.encrypt', async ({ payload }: { payload: BridgeRequest<'nostr.nip04.encrypt'> }) => {
@@ -444,11 +445,11 @@ bridge.on('blossom.upload', async ({ payload }: { payload: BridgeRequest<'blosso
 });
 
 bridge.on('relay.browser.list', async () => {
-  return await dispatchMessage('relay.browser.list', {}, '');
+  return await dispatchMessage('relay.browser.list', createBridgeRequest('relay.browser.list', {}), '');
 });
 
 bridge.on('relay.browser.getStatus', async () => {
-  return await dispatchMessage('relay.browser.getStatus', {}, '');
+  return await dispatchMessage('relay.browser.getStatus', createBridgeRequest('relay.browser.getStatus', {}), '');
 });
 
 bridge.on('relay.browser.refresh', async ({ payload }: { payload: BridgeRequest<'relay.browser.refresh'> }) => {

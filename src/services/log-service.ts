@@ -90,19 +90,17 @@ export class LogService {
   /**
    * Higher-order function to wrap an async call with logging
    */
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  wrapWithLogging<T extends (...args: any[]) => Promise<any>>(
-    fn: T,
+  wrapWithLogging<Args extends unknown[], R>(
+    fn: (...args: Args) => Promise<R>,
     serviceName: string,
     methodName: string
-  ): T {
-    return (async (...args: any[]) => {
-      /* eslint-enable @typescript-eslint/no-explicit-any */
+  ): (...args: Args) => Promise<R> {
+    return async (...args: Args) => {
       this.log(LogLevel.DEBUG, `Calling ${serviceName}.${methodName}`, { args });
       try {
         const result = await fn(...args);
         this.log(LogLevel.DEBUG, `${serviceName}.${methodName} completed successfully`, {
-          result: typeof result === 'object' ? '{...}' : result,
+          result: result && typeof result === 'object' ? '{...}' : result,
         });
         return result;
       } catch (error) {
@@ -112,7 +110,7 @@ export class LogService {
         void this.logException(`${serviceName}.${methodName} error: ${message}`);
         throw error;
       }
-    }) as T;
+    };
   }
 }
 

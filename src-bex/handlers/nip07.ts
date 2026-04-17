@@ -4,6 +4,7 @@
 
 import type { HandlerResult, UnsignedEvent, SignedEvent } from '../types/background';
 import type { StoredKey } from 'src/types';
+import type { VaultData } from 'src/types/bridge';
 import { finalizeEvent } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
 import { isVaultUnlocked, getVaultData } from '../vault';
@@ -13,10 +14,10 @@ import { resetAutoLockTimer } from '../services/auto-lock';
 import { logService } from 'src/services/log-service';
 import { ErrorCode } from 'src/types/error-codes';
 
-const logWrapper = <T extends (...args: any[]) => Promise<any>>(fn: T, name: string) =>
-  logService.wrapWithLogging(fn, 'Nip07Handler', name) as T;
+const logWrapper = <Args extends unknown[], R>(fn: (...args: Args) => Promise<R>, name: string) =>
+  logService.wrapWithLogging(fn, 'Nip07Handler', name);
 
-async function getActiveAccount() {
+async function getActiveAccount(): Promise<StoredKey | null> {
   const alias = await storageService.get<string>(NOSTR_ACTIVE);
 
   if (!alias) return null;
@@ -24,7 +25,7 @@ async function getActiveAccount() {
   const vaultDataRes = await getVaultData();
   if (!vaultDataRes.success || !vaultDataRes.vaultData) return null;
 
-  const data = vaultDataRes.vaultData as { accounts?: StoredKey[] };
+  const data = vaultDataRes.vaultData as VaultData;
   return data.accounts?.find((acc) => acc.alias === alias) || null;
 }
 

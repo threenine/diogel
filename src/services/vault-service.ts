@@ -8,15 +8,24 @@ import type { BridgeAction, BridgeRequestMap, BridgeResponsePayload, VaultData }
  * which is more reliable across different context lifetimes (popup vs options vs tab).
  */
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const getBridge = (): any => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (window as any).bridge || (window as any).$q?.bex;
+interface BexBridge {
+  send<K extends BridgeAction>(data: {
+    event: K;
+    to: 'background';
+    payload: Omit<BridgeRequestMap[K], 'id' | 'action'>;
+  }): Promise<BridgeResponsePayload<K>>;
+}
+
+const getBridge = (): BexBridge | undefined => {
+  return (window as unknown as { bridge?: BexBridge }).bridge || (window as unknown as { $q?: { bex?: BexBridge } }).$q?.bex;
 };
 
 export async function sendBexMessage<T extends BridgeAction>(
   type: T,
-  payload?: Omit<BridgeRequestMap[T], 'id' | 'action'>,
+  payload: Omit<BridgeRequestMap[T], 'id' | 'action'> = {} as Omit<
+    BridgeRequestMap[T],
+    'id' | 'action'
+  >,
 ): Promise<BridgeResponsePayload<T> | undefined> {
   const bridge = getBridge();
   if (bridge) {
