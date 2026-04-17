@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { dispatchMessage } from 'app/src-bex/dispatcher';
 import { handleRelayBrowserList, handleRelayBrowserGetStatus } from 'app/src-bex/handlers/relay-browser-handler';
+import { handleVaultUnlock } from 'app/src-bex/handlers/vault-handler';
 
 // Mock handlers
 vi.mock('app/src-bex/handlers/vault-handler', () => ({
@@ -14,11 +15,13 @@ vi.mock('app/src-bex/handlers/vault-handler', () => ({
   handleVaultImport: vi.fn(),
 }));
 
-vi.mock('app/src-bex/services/auto-lock', () => ({
+const autoLockMocks = vi.hoisted(() => ({
   resetAutoLockTimer: vi.fn(),
   startAutoLockTimer: vi.fn(),
   stopAutoLockTimer: vi.fn(),
 }));
+
+vi.mock('app/src-bex/services/auto-lock', () => autoLockMocks);
 
 vi.mock('app/src-bex/handlers/nip07', () => ({
   handleGetPublicKey: vi.fn(),
@@ -85,6 +88,30 @@ describe('Dispatcher', () => {
 
     expect(result).toBeNull();
     expect(handleRelayBrowserGetStatus).toHaveBeenCalled();
+  });
+
+  it('should await activity.mark auto-lock persistence', async () => {
+    autoLockMocks.resetAutoLockTimer.mockResolvedValue(undefined);
+
+    const result = await dispatchMessage('activity.mark', {});
+
+    expect(result).toBe(true);
+    expect(autoLockMocks.resetAutoLockTimer).toHaveBeenCalled();
+  });
+
+  it('should await resetAutoLockTimer before starting timer on vault unlock', async () => {
+    autoLockMocks.resetAutoLockTimer.mockResolvedValue(undefined);
+    autoLockMocks.startAutoLockTimer.mockReturnValue(undefined);
+    vi.mocked(handleVaultUnlock).mockResolvedValue({ success: true, data: { vaultData: {} } } as any);
+
+    const result = await dispatchMessage('vault.unlock', { password: 'test-password' });
+
+    expect(result).toEqual({ success: true, vaultData: {} });
+    expect(autoLockMocks.resetAutoLockTimer).toHaveBeenCalled();
+    expect(autoLockMocks.startAutoLockTimer).toHaveBeenCalled();
+    expect(
+      autoLockMocks.resetAutoLockTimer.mock.invocationCallOrder[0],
+    ).toBeLessThan(autoLockMocks.startAutoLockTimer.mock.invocationCallOrder[0]);
   });
 
   it('should return null for unknown message type', async () => {

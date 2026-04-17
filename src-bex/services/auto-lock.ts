@@ -16,8 +16,13 @@ let lastActivityAt = Date.now();
 const AUTO_LOCK_DEFAULT_MINUTES = 15;
 const AUTO_LOCK_CHECK_INTERVAL_MS = 15000;
 
-export function updateLastActivity(): void {
-  lastActivityAt = Date.now();
+async function persistLastActivity(timestamp: number): Promise<void> {
+  lastActivityAt = timestamp;
+  await storageService.set(VAULT_LAST_ACTIVITY, timestamp);
+}
+
+export async function updateLastActivity(): Promise<void> {
+  await persistLastActivity(Date.now());
 }
 
 export async function checkAutoLock(): Promise<void> {
@@ -61,8 +66,8 @@ export function stopAutoLockTimer(): void {
   }
 }
 
-export function resetAutoLockTimer(): void {
-  lastActivityAt = Date.now();
+export async function resetAutoLockTimer(): Promise<void> {
+  await persistLastActivity(Date.now());
   if (autoLockTimer) {
     stopAutoLockTimer();
     startAutoLockTimer();

@@ -85,7 +85,7 @@ export async function dispatchMessage<K extends BridgeAction>(
     case 'vault.unlock': {
       const result = (await handleVaultUnlock({ password: (payload as any).password }, origin)) as HandlerResult<{ vaultData?: unknown }>;
       if (result.success) {
-        resetAutoLockTimer();
+        await resetAutoLockTimer();
         startAutoLockTimer();
         return { success: true, vaultData: result.data.vaultData as VaultData } as BridgeResponsePayload<K>;
       }
@@ -153,7 +153,7 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'activity.mark': {
-      resetAutoLockTimer();
+      await resetAutoLockTimer();
       return true as BridgeResponsePayload<K>;
     }
 
