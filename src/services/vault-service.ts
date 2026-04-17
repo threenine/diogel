@@ -38,7 +38,7 @@ export async function sendBexMessage<T extends BridgeAction>(
         new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Bridge timeout')), 5000)),
       ]);
       if (response && typeof response === 'object' && 'data' in response) {
-        return response.data;
+        return response.data as BridgeResponsePayload<T>;
       }
       return response;
     } catch (error: unknown) {

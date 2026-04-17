@@ -23,7 +23,6 @@ import {
   checkAutoLock,
 } from './services/auto-lock';
 import type {
-  BridgeRequest,
   BridgeResponsePayload,
   VaultData,
   GetPublicKeyRequest,
@@ -149,10 +148,7 @@ try {
   throw error;
 }
 
-bridge.on('ping', async (): Promise<BridgeResponsePayload<'ping'>> => {
-  const result = await dispatchMessage('ping', createBridgeRequest('ping', {}), '');
-  return (result || 'pong') as BridgeResponsePayload<'ping'>;
-});
+bridge.on('ping', () => 'pong');
 
 if (typeof self !== 'undefined') {
   self.addEventListener('error', async (event: ErrorEvent) => {
@@ -190,57 +186,57 @@ interface ApprovalPromise {
 
 let approvalPromise: ApprovalPromise | null = null;
 
-bridge.on(
-  'nostr.approval.respond',
-  ({
-    payload: { approved, duration },
-  }: {
-    payload: BridgeRequest<'nostr.approval.respond'>;
-  }): Promise<BridgeResponsePayload<'nostr.approval.respond'>> => {
-    if (approvalPromise) {
-      approvalPromise.resolve({ approved, duration });
-      approvalPromise = null;
-    }
-    return Promise.resolve(true);
-  },
-);
-
-bridge.on('vault.unlock', async ({ payload }: { payload: BridgeRequest<'vault.unlock'> }) => {
-  return await dispatchMessage('vault.unlock', payload, '');
+bridge.on('nostr.approval.respond', ({ payload }) => {
+  if (approvalPromise) {
+    approvalPromise.resolve({ approved: payload.approved, duration: payload.duration });
+    approvalPromise = null;
+  }
+  return true;
 });
 
-bridge.on('vault.lock', async () => {
-  return await dispatchMessage('vault.lock', createBridgeRequest('vault.lock', {}), '');
+bridge.on('vault.unlock', ({ payload }) => {
+  void dispatchMessage('vault.unlock', createBridgeRequest('vault.unlock', payload), '');
+  return { success: false, error: 'Bridge response handled asynchronously' };
 });
 
-bridge.on('vault.create', async ({ payload }: { payload: BridgeRequest<'vault.create'> }) => {
-  return await dispatchMessage('vault.create', payload, '');
+bridge.on('vault.lock', () => {
+  void dispatchMessage('vault.lock', createBridgeRequest('vault.lock', {}), '');
+  return { success: true };
 });
 
-bridge.on('vault.isUnlocked', async () => {
-  const result = await dispatchMessage('vault.isUnlocked', createBridgeRequest('vault.isUnlocked', {}), '');
-  return (result !== null ? result : false) as BridgeResponsePayload<'vault.isUnlocked'>;
+bridge.on('vault.create', ({ payload }) => {
+  void dispatchMessage('vault.create', createBridgeRequest('vault.create', payload), '');
+  return { success: false, error: 'Bridge response handled asynchronously' };
 });
 
-bridge.on('activity.mark', async () => {
-  const result = await dispatchMessage('activity.mark', createBridgeRequest('activity.mark', {}), '');
-  return (result !== null ? result : undefined) as BridgeResponsePayload<'activity.mark'>;
+bridge.on('vault.isUnlocked', () => {
+  void dispatchMessage('vault.isUnlocked', createBridgeRequest('vault.isUnlocked', {}), '');
+  return false;
 });
 
-bridge.on('vault.getData', async () => {
-  return await dispatchMessage('vault.getData', createBridgeRequest('vault.getData', {}), '');
+bridge.on('activity.mark', () => {
+  void dispatchMessage('activity.mark', createBridgeRequest('activity.mark', {}), '');
+  return undefined;
 });
 
-bridge.on('vault.updateData', async ({ payload }: { payload: BridgeRequest<'vault.updateData'> }) => {
-  return await dispatchMessage('vault.updateData', payload, '');
+bridge.on('vault.getData', () => {
+  void dispatchMessage('vault.getData', createBridgeRequest('vault.getData', {}), '');
+  return { success: false, error: 'Bridge response handled asynchronously' };
 });
 
-bridge.on('vault.export', async () => {
-  return await dispatchMessage('vault.export', createBridgeRequest('vault.export', {}), '');
+bridge.on('vault.updateData', ({ payload }) => {
+  void dispatchMessage('vault.updateData', createBridgeRequest('vault.updateData', payload), '');
+  return { success: false, error: 'Bridge response handled asynchronously' };
 });
 
-bridge.on('vault.import', async ({ payload }: { payload: BridgeRequest<'vault.import'> }) => {
-  return await dispatchMessage('vault.import', payload, '');
+bridge.on('vault.export', () => {
+  void dispatchMessage('vault.export', createBridgeRequest('vault.export', {}), '');
+  return { success: false, error: 'Bridge response handled asynchronously' };
+});
+
+bridge.on('vault.import', ({ payload }) => {
+  void dispatchMessage('vault.import', createBridgeRequest('vault.import', payload), '');
+  return { success: false, error: 'Bridge response handled asynchronously' };
 });
 
 async function initialize() {
@@ -376,94 +372,118 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
   return promise.then((res) => res.approved);
 }
 
-bridge.on('nostr.getPublicKey', async ({ payload: { origin } }: { payload: BridgeRequest<'nostr.getPublicKey'> }) => {
+bridge.on('nostr.getPublicKey', ({ payload: { origin } }) => {
   resetAutoLockTimer();
-  const result = await handleGetPublicKey({}, origin);
-  if (!result.success) {
-    throw { code: result.error === 'Vault is locked' ? 'VAULT_LOCKED' : 'NOT_FOUND', message: result.error } as BridgeError;
-  }
-  const activeStoredKey = await getActiveStoredKey();
-  void logService.logApproval('get_public_key', getHostname(origin), activeStoredKey?.alias);
-  const approved = await requestApproval(origin, -1);
-  if (!approved) throw { code: 'PERMISSION_DENIED', message: 'User rejected the request' } as BridgeError;
-  return result.data;
-});
-
-bridge.on('nostr.signEvent', async ({ payload: { event, origin } }: { payload: BridgeRequest<'nostr.signEvent'> }) => {
-  resetAutoLockTimer();
-  const activeStoredKey = await getActiveStoredKey();
-  void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
-  const approved = await requestApproval(origin, event.kind);
-  if (!approved) {
-    const unlockedStatus = await handleVaultIsUnlocked({}, '');
-    if (!unlockedStatus.success || !unlockedStatus.data) {
-      throw { code: 'VAULT_LOCKED', message: 'Vault is locked. Open the extension to unlock.' } as BridgeError;
+  void (async () => {
+    const result = await handleGetPublicKey({}, origin);
+    if (!result.success) {
+      throw { code: result.error === 'Vault is locked' ? 'VAULT_LOCKED' : 'NOT_FOUND', message: result.error } as BridgeError;
     }
-    throw { code: 'PERMISSION_DENIED', message: 'User rejected the request' } as BridgeError;
-  }
-  const result = await handleSignEvent({ event }, origin);
-  if (!result.success) {
-    throw {
-      code: result.error === 'Vault is locked' ? 'VAULT_LOCKED' :
-            result.error === 'Permission denied' ? 'PERMISSION_DENIED' : 'SIGNING_FAILED',
-      message: result.error,
-    } as BridgeError;
-  }
-  return result.data;
+    const activeStoredKey = await getActiveStoredKey();
+    void logService.logApproval('get_public_key', getHostname(origin), activeStoredKey?.alias);
+    const approved = await requestApproval(origin, -1);
+    if (!approved) throw { code: 'PERMISSION_DENIED', message: 'User rejected the request' } as BridgeError;
+  })();
+  return '';
 });
 
-bridge.on('nostr.getRelays', async ({ payload: { origin } }: { payload: BridgeRequest<'nostr.getRelays'> }) => {
+bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => {
   resetAutoLockTimer();
-  const activeStoredKey = await getActiveStoredKey();
-  void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
-  const approved = await requestApproval(origin, -1);
-  if (!approved) {
-    const unlockedStatus = await handleVaultIsUnlocked({}, '');
-    if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
-    throw new Error('User rejected the request');
-  }
-  return await dispatchMessage('nostr.getRelays', createBridgeRequest('nostr.getRelays', { origin }), origin);
+  void (async () => {
+    const activeStoredKey = await getActiveStoredKey();
+    void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
+    const approved = await requestApproval(origin, event.kind);
+    if (!approved) {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) {
+        throw { code: 'VAULT_LOCKED', message: 'Vault is locked. Open the extension to unlock.' } as BridgeError;
+      }
+      throw { code: 'PERMISSION_DENIED', message: 'User rejected the request' } as BridgeError;
+    }
+    const result = await handleSignEvent({ event }, origin);
+    if (!result.success) {
+      throw {
+        code: result.error === 'Vault is locked' ? 'VAULT_LOCKED' :
+              result.error === 'Permission denied' ? 'PERMISSION_DENIED' : 'SIGNING_FAILED',
+        message: result.error,
+      } as BridgeError;
+    }
+  })();
+  return {
+    id: '',
+    pubkey: '',
+    sig: '',
+    created_at: event.created_at,
+    kind: event.kind,
+    tags: event.tags,
+    content: event.content,
+  };
 });
 
-bridge.on('nostr.nip04.encrypt', async ({ payload }: { payload: BridgeRequest<'nostr.nip04.encrypt'> }) => {
+bridge.on('nostr.getRelays', ({ payload: { origin } }) => {
   resetAutoLockTimer();
-  const activeStoredKey = await getActiveStoredKey();
-  void logService.logApproval('nip04_encrypt', getHostname(payload.origin), activeStoredKey?.alias);
-  const approved = await requestApproval(payload.origin, -1);
-  if (!approved) {
-    const unlockedStatus = await handleVaultIsUnlocked({}, '');
-    if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
-    throw new Error('User rejected the request');
-  }
-  return await dispatchMessage('nostr.nip04.encrypt', payload, payload.origin);
+  void (async () => {
+    const activeStoredKey = await getActiveStoredKey();
+    void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
+    const approved = await requestApproval(origin, -1);
+    if (!approved) {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
+      throw new Error('User rejected the request');
+    }
+  })();
+  return {};
 });
 
-bridge.on('nostr.nip04.decrypt', async ({ payload }: { payload: BridgeRequest<'nostr.nip04.decrypt'> }) => {
+bridge.on('nostr.nip04.encrypt', ({ payload }) => {
   resetAutoLockTimer();
-  const activeStoredKey = await getActiveStoredKey();
-  void logService.logApproval('nip04_decrypt', getHostname(payload.origin), activeStoredKey?.alias);
-  const approved = await requestApproval(payload.origin, -1);
-  if (!approved) {
-    const unlockedStatus = await handleVaultIsUnlocked({}, '');
-    if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
-    throw new Error('User rejected the request');
-  }
-  return await dispatchMessage('nostr.nip04.decrypt', payload, payload.origin);
+  void (async () => {
+    const activeStoredKey = await getActiveStoredKey();
+    void logService.logApproval('nip04_encrypt', getHostname(payload.origin), activeStoredKey?.alias);
+    const approved = await requestApproval(payload.origin, -1);
+    if (!approved) {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
+      throw new Error('User rejected the request');
+    }
+    void dispatchMessage('nostr.nip04.encrypt', createBridgeRequest('nostr.nip04.encrypt', payload), payload.origin);
+  })();
+  return '';
 });
 
-bridge.on('blossom.upload', async ({ payload }: { payload: BridgeRequest<'blossom.upload'> }) => {
+bridge.on('nostr.nip04.decrypt', ({ payload }) => {
   resetAutoLockTimer();
-  return await dispatchMessage('blossom.upload', payload, '');
+  void (async () => {
+    const activeStoredKey = await getActiveStoredKey();
+    void logService.logApproval('nip04_decrypt', getHostname(payload.origin), activeStoredKey?.alias);
+    const approved = await requestApproval(payload.origin, -1);
+    if (!approved) {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
+      throw new Error('User rejected the request');
+    }
+    void dispatchMessage('nostr.nip04.decrypt', createBridgeRequest('nostr.nip04.decrypt', payload), payload.origin);
+  })();
+  return '';
 });
 
-bridge.on('relay.browser.list', async () => {
-  return await dispatchMessage('relay.browser.list', createBridgeRequest('relay.browser.list', {}), '');
+bridge.on('blossom.upload', ({ payload }) => {
+  resetAutoLockTimer();
+  void dispatchMessage('blossom.upload', createBridgeRequest('blossom.upload', payload), '');
+  return {};
 });
 
-bridge.on('relay.browser.getStatus', async () => {
-  return await dispatchMessage('relay.browser.getStatus', createBridgeRequest('relay.browser.getStatus', {}), '');
+bridge.on('relay.browser.list', () => {
+  void dispatchMessage('relay.browser.list', createBridgeRequest('relay.browser.list', {}), '');
+  return [];
 });
 
-bridge.on('relay.browser.refresh', async ({ payload }: { payload: BridgeRequest<'relay.browser.refresh'> }) => {
-  return await dispatchMessage('relay.browser.refresh', payload, '');
+bridge.on('relay.browser.getStatus', () => {
+  void dispatchMessage('relay.browser.getStatus', createBridgeRequest('relay.browser.getStatus', {}), '');
+  return null;
+});
+
+bridge.on('relay.browser.refresh', ({ payload }) => {
+  void dispatchMessage('relay.browser.refresh', createBridgeRequest('relay.browser.refresh', payload), '');
+  return false;
 });
