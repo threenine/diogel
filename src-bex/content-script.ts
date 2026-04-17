@@ -5,7 +5,7 @@
  *   Do not remove the import statement below. It is required for the extension to work.
  *   If you don't need createBridge(), leave it as "import '#q-app/bex/content'".
  */
-import type { BridgeAction } from '../src/types/bridge';
+import type { BridgeAction, BridgeRequestMap } from '../src/types/bridge';
 import { createBridge } from '#q-app/bex/content';
 import { MESSAGE_TYPE_PING, MESSAGE_TYPE_REQUEST } from './constants';
 // Note: Bridge types are in src-bex/types, not src/types
@@ -29,29 +29,47 @@ const bridge = createBridge({ debug: false });
 
 const debug = process.env.DEBUG === 'true';
 
-const log = (message: string, ...args: unknown[]) => {
+type LogContext = Record<string, unknown>;
+
+const log = (message: string, context?: LogContext): void => {
   if (debug) {
-    console.log(message, ...args);
+    console.debug(message, context);
   }
 };
 
-const warn = (message: string, ...args: unknown[]) => {
-  console.warn(message, ...args);
+const warn = (message: string, context?: LogContext): void => {
+  console.warn(message, context);
 };
 
-const error = (message: string, ...args: unknown[]) => {
-  console.error(message, ...args);
+const error = (message: string, context?: LogContext): void => {
+  console.error(message, context);
+};
+
+interface DiogelWindowMessage {
+  id: string;
+  type: string;
+  method?: string;
+  payload?: Record<string, unknown>;
+}
+
+const isDiogelWindowMessage = (value: unknown): value is DiogelWindowMessage => {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.id === 'string' && typeof candidate.type === 'string';
 };
 
 // Inject the NIP-07 provider script
-log('[BEX] Content script starting. document.readyState:', document.readyState);
+log('[BEX] Content script starting', { readyState: document.readyState });
 const injectProvider = () => {
-  log('[BEX] Injecting NIP-07 provider script...');
+  log('[BEX] Injecting NIP-07 provider script');
   const script = document.createElement('script');
   script.src = chrome.runtime.getURL('nostr-provider.js');
-  log('[BEX] Script source URL:', script.src);
-  script.onerror = (e) => {
-    error('[BEX] Failed to load provider script:', e);
+  log('[BEX] Script source URL', { src: script.src });
+  script.onerror = (event: Event) => {
+    error('[BEX] Failed to load provider script', { event });
   };
   const container = document.head || document.documentElement;
   if (container) {
@@ -71,31 +89,29 @@ if (document.readyState === 'loading') {
   injectProvider();
 }
 
-window.addEventListener('message', async (event: MessageEvent) => {
-  // Broad logging for debugging
-  if (event.data && event.data.type && event.data.type.startsWith('diogel')) {
-    log('[BEX] Content script received potential diogel message:', event.data);
+window.addEventListener('message', async (event: MessageEvent<unknown>) => {
+  const message = event.data;
+  if (isDiogelWindowMessage(message) && message.type.startsWith('diogel')) {
+    log('[BEX] Content script received potential diogel message', { type: message.type });
   }
 
-  // Valid message types we handle
-  const VALID_MESSAGE_TYPES = new Set([MESSAGE_TYPE_REQUEST, MESSAGE_TYPE_PING]);
+  const validMessageTypes = new Set([MESSAGE_TYPE_REQUEST, MESSAGE_TYPE_PING]);
 
-  // Filter messages. We only want 'diogel-request' or 'diogel-ping' from the current window.
-  if (event.source !== window || !event.data || !VALID_MESSAGE_TYPES.has(event.data.type)) {
+  if (event.source !== window || !isDiogelWindowMessage(message) || !validMessageTypes.has(message.type)) {
     return;
   }
 
-  if (event.data.type === MESSAGE_TYPE_PING) {
-    log(`[BEX] Content script received ping (${event.data.type}) from page`);
-    window.postMessage({ id: event.data.id, response: true, result: 'pong' }, '*');
+  if (message.type === MESSAGE_TYPE_PING) {
+    log('[BEX] Content script received ping from page', { type: message.type });
+    window.postMessage({ id: message.id, response: true, result: 'pong' }, '*');
     return;
   }
 
-  const { id, method, payload } = event.data;
-  log('[BEX] Content script received request from page:', method, payload);
+  const { id, method, payload } = message;
+  log('[BEX] Content script received request from page', { method });
 
   if (method === 'ping') {
-    log(`[BEX] Content script received ping (method=ping) for ID ${id}`);
+    log('[BEX] Content script received ping (method=ping)', { id });
     window.postMessage({ id, response: true, result: 'pong' }, '*');
     return;
   }
@@ -107,13 +123,15 @@ window.addEventListener('message', async (event: MessageEvent) => {
     try {
       await bridge.connectToBackground();
       log('[BEX] Reconnected to background');
-    } catch (err: any) {
-      error('[BEX] Failed to reconnect:', err);
+    } catch (connectError: unknown) {
+      error('[BEX] Failed to reconnect', {
+        error: connectError instanceof Error ? connectError.message : String(connectError),
+      });
       window.postMessage(
         {
           id,
           response: true,
-          error: `Bridge connection failed: ${err.message || err}`,
+          error: `Bridge connection failed: ${connectError instanceof Error ? connectError.message : String(connectError)}`,
         },
         '*',
       );
@@ -123,12 +141,16 @@ window.addEventListener('message', async (event: MessageEvent) => {
 
   try {
     const methodAction = `nostr.${method}` as BridgeAction;
+    const bridgePayload = {
+      ...(payload ?? {}),
+      origin,
+    } as Omit<BridgeRequestMap[BridgeAction], 'id' | 'action'>;
     const result = await bridge.send({
       event: methodAction,
       to: 'background',
-      payload: { ...payload, origin },
+      payload: bridgePayload,
     });
-    log(`[BEX] Content script received response from background for ID ${id}:`, result);
+    log('[BEX] Content script received response from background', { id });
     window.postMessage(
       {
         id,
@@ -137,13 +159,16 @@ window.addEventListener('message', async (event: MessageEvent) => {
       },
       '*',
     );
-  } catch (errorObj: any) {
-    error(`[BEX] Content script received error from background for ID ${id}:`, errorObj);
+  } catch (bridgeError: unknown) {
+    error('[BEX] Content script received error from background', {
+      id,
+      error: bridgeError instanceof Error ? bridgeError.message : String(bridgeError),
+    });
     window.postMessage(
       {
         id,
         response: true,
-        error: errorObj.message || errorObj,
+        error: bridgeError instanceof Error ? bridgeError.message : String(bridgeError),
       },
       '*',
     );

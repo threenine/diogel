@@ -4,6 +4,7 @@
  */
 
 import type { HandlerResult } from '../types/background';
+import type { VaultData } from 'src/types/bridge';
 import {
   unlockVault as unlock,
   lockVault as lock,
@@ -15,23 +16,24 @@ import {
   updateVaultData,
   restoreVaultState,
 } from '../vault';
-import type { VaultData } from 'src/types/bridge';
 import { logService } from 'src/services/log-service';
 
 // Re-export restoreVaultState for use by background.ts
 export { restoreVaultState };
 
-const logWrapper = <Args extends unknown[], R>(fn: (...args: Args) => Promise<R>, name: string) =>
-  logService.wrapWithLogging(fn, 'VaultHandler', name);
+const logWrapper = <TArgs extends unknown[], TResult>(
+  fn: (...args: TArgs) => Promise<TResult>,
+  name: string,
+) => logService.wrapWithLogging(fn, 'VaultHandler', name);
 
 export const handleVaultUnlock = logWrapper(async (
   payload: { password: string },
   _origin: string
-): Promise<HandlerResult<{ vaultData?: VaultData | null }>> => {
+): Promise<HandlerResult<{ vaultData?: VaultData }>> => {
   const result = await unlock(payload.password);
 
   if (result.success) {
-    return { success: true, data: { vaultData: result.vaultData as VaultData } };
+    return { success: true, data: { vaultData: result.vaultData } };
   }
 
   return { success: false, error: result.error || 'Unlock failed', code: result.errorCode as string };
@@ -73,11 +75,11 @@ export const handleVaultCreate = logWrapper(async (
 export const handleVaultGetData = logWrapper(async (
   _payload: unknown,
   _origin: string
-): Promise<HandlerResult<{ vaultData?: VaultData | null }>> => {
+): Promise<HandlerResult<{ vaultData?: VaultData }>> => {
   const result = await getVaultData();
 
   if (result.success) {
-    return { success: true, data: { vaultData: result.vaultData as VaultData } };
+    return { success: true, data: { vaultData: result.vaultData } };
   }
 
   return { success: false, error: result.error || 'Get data failed', code: result.errorCode as string };

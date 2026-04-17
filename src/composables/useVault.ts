@@ -7,6 +7,7 @@ import * as nip06 from 'nostr-tools/nip06';
 import { getPublicKey } from 'nostr-tools';
 import { bytesToHex } from '@noble/hashes/utils';
 import { type ErrorCode, formatErrorForUser } from 'src/types/error-codes';
+import { LogLevel, logService } from 'src/services/log-service';
 
 export function useVault() {
   const vaultStore = useVaultStore();
@@ -40,8 +41,10 @@ export function useVault() {
           privkey: bytesToHex(sk),
         },
       };
-    } catch (e) {
-      console.error('[useVault] Failed to generate initial account:', e);
+    } catch (error: unknown) {
+      logService.log(LogLevel.ERROR, '[useVault] Failed to generate initial account', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
 
     const result = await vaultStore.create(
@@ -52,11 +55,10 @@ export function useVault() {
     );
     loading.value = false;
     if (result.success) {
-      console.log('[useVault] Vault created successfully, redirecting to home');
       $q.notify({ type: 'positive', message: 'Vault created successfully' });
       await router.push({ name: 'home' });
     } else {
-      console.error('[useVault] Failed to create vault:', result.error);
+      logService.log(LogLevel.ERROR, '[useVault] Failed to create vault', { error: result.error });
       loginError.value = formatErrorForUser(result.error, result.errorCode as ErrorCode);
       $q.notify({
         type: 'negative',
@@ -66,23 +68,19 @@ export function useVault() {
   }
 
   async function handleUnlock() {
-    console.log('[useVault] Attempting to unlock vault...');
     loading.value = true;
     loginError.value = '';
     const result = await vaultStore.unlock(password.value);
     loading.value = false;
     if (result.success) {
-      console.log('[useVault] Vault unlocked successfully');
       const redirect = route.query.redirect as string;
       if (redirect) {
-        console.log(`[useVault] Redirecting to: ${redirect}`);
         await router.push({ path: redirect, query: route.query });
       } else {
-        console.log('[useVault] Redirecting to home');
         await router.push({ name: 'home' });
       }
     } else {
-      console.error('[useVault] Failed to unlock vault:', result.error);
+      logService.log(LogLevel.ERROR, '[useVault] Failed to unlock vault', { error: result.error });
       loginError.value = formatErrorForUser(result.error, result.errorCode as ErrorCode);
       $q.notify({
         type: 'negative',

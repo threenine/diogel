@@ -1,6 +1,7 @@
 import { nip04 } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
 import { storageService, NOSTR_ACTIVE } from 'src/services/storage-service';
+import type { VaultData, StoredKey } from 'src/types/bridge';
 import type { HandlerResult } from '../types/background';
 import { handleVaultGetData, handleVaultIsUnlocked } from './vault-handler';
 
@@ -12,8 +13,11 @@ export async function handleNip04Encrypt(
     const secretKey = await getActiveSecretKey();
     const ciphertext = nip04.encrypt(secretKey, payload.pubkey, payload.plaintext);
     return { success: true, data: ciphertext };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
@@ -25,13 +29,16 @@ export async function handleNip04Decrypt(
     const secretKey = await getActiveSecretKey();
     const plaintext = nip04.decrypt(secretKey, payload.pubkey, payload.ciphertext);
     return { success: true, data: plaintext };
-  } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  } catch (error: unknown) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
 async function getActiveSecretKey(): Promise<Uint8Array> {
-  const isUnlockedResult = await handleVaultIsUnlocked({}, '');
+  const isUnlockedResult = (await handleVaultIsUnlocked({}, '')) as HandlerResult<boolean>;
   if (!isUnlockedResult.success || !isUnlockedResult.data) {
     throw new Error('Vault is locked');
   }
@@ -41,10 +48,10 @@ async function getActiveSecretKey(): Promise<Uint8Array> {
     throw new Error('No active account found');
   }
 
-  const vaultRes = await handleVaultGetData({}, '');
+  const vaultRes = (await handleVaultGetData({}, '')) as HandlerResult<{ vaultData?: VaultData }>;
   if (vaultRes.success && vaultRes.data.vaultData) {
     const vaultData = vaultRes.data.vaultData;
-    const storedKey = vaultData.accounts?.find((a) => a.alias === activeAlias);
+    const storedKey = vaultData.accounts?.find((account: StoredKey) => account.alias === activeAlias);
     if (storedKey) {
       return hexToBytes(storedKey.account.privkey);
     }

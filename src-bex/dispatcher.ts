@@ -1,4 +1,9 @@
-import type { BridgeAction, BridgeRequestMap, BridgeResponsePayload, VaultData } from 'src/types/bridge';
+import type {
+  BridgeAction,
+  BridgeRequestMap,
+  BridgeResponsePayload,
+  VaultData,
+} from 'src/types/bridge';
 import {
   handleVaultUnlock,
   handleVaultLock,
@@ -33,7 +38,9 @@ export async function dispatchMessage<K extends BridgeAction>(
   payload: BridgeRequestMap[K],
   origin: string = '',
 ): Promise<BridgeResponsePayload<K> | null> {
-  console.log(`[BEX] Dispatching message: ${String(type)}`, payload);
+  if (process.env.DEBUG === 'true') {
+    console.debug(`[BEX] Dispatching message: ${String(type)}`);
+  }
 
   switch (type) {
     case 'ping':
@@ -48,8 +55,8 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'nostr.signEvent': {
-      const p = payload as BridgeRequestMap['nostr.signEvent'];
-      const result = await handleSignEvent({ event: p.event }, origin);
+      const signPayload = payload as BridgeRequestMap['nostr.signEvent'];
+      const result = await handleSignEvent({ event: signPayload.event }, origin);
       if (result.success) {
         return result.data as BridgeResponsePayload<K>;
       }
@@ -82,8 +89,8 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'vault.unlock': {
-      const p = payload as BridgeRequestMap['vault.unlock'];
-      const result = await handleVaultUnlock({ password: p.password }, origin);
+      const unlockPayload = payload as BridgeRequestMap['vault.unlock'];
+      const result = await handleVaultUnlock({ password: unlockPayload.password }, origin);
       if (result.success) {
         await resetAutoLockTimer();
         startAutoLockTimer();
@@ -99,8 +106,11 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'vault.create': {
-      const p = payload as BridgeRequestMap['vault.create'];
-      const result = await handleVaultCreate({ password: p.password, vaultData: p.vaultData }, origin);
+      const createPayload = payload as BridgeRequestMap['vault.create'];
+      const result = await handleVaultCreate({
+        password: createPayload.password,
+        vaultData: createPayload.vaultData,
+      }, origin);
       if (result.success) {
         return {
           success: true,
@@ -119,8 +129,8 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'vault.updateData': {
-      const p = payload as BridgeRequestMap['vault.updateData'];
-      const result = await handleVaultUpdateData({ vaultData: p.vaultData }, origin);
+      const updatePayload = payload as BridgeRequestMap['vault.updateData'];
+      const result = await handleVaultUpdateData({ vaultData: updatePayload.vaultData }, origin);
       if (result.success) {
         return { success: true } as BridgeResponsePayload<K>;
       }
@@ -136,8 +146,8 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'vault.import': {
-      const p = payload as BridgeRequestMap['vault.import'];
-      const encryptedData = p.encryptedData || (p.payload && p.payload.encryptedData);
+      const importPayload = payload as BridgeRequestMap['vault.import'];
+      const encryptedData = importPayload.encryptedData || importPayload.payload?.encryptedData;
       if (!encryptedData) {
         return { success: false, error: 'Missing encrypted data', code: 'NOT_FOUND' } as unknown as BridgeResponsePayload<K>;
       }
@@ -149,20 +159,13 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'blossom.upload': {
-      const p = payload as BridgeRequestMap['blossom.upload'];
-      const blossomPayload: {
-        base64Data: string;
-        fileType: string;
-        blossomServer: string;
-        uploadId?: string;
-      } = {
-        base64Data: p.base64Data || '',
-        fileType: p.fileType || '',
-        blossomServer: p.blossomServer || '',
-      };
-      if (p.uploadId) blossomPayload.uploadId = p.uploadId;
-
-      const result = await handleBlossomUpload(blossomPayload, origin);
+      const blossomPayload = payload as BridgeRequestMap['blossom.upload'];
+      const result = await handleBlossomUpload({
+        base64Data: blossomPayload.base64Data || '',
+        fileType: blossomPayload.fileType || '',
+        blossomServer: blossomPayload.blossomServer || '',
+        ...(blossomPayload.uploadId ? { uploadId: blossomPayload.uploadId } : {}),
+      }, origin);
       if (result.success) {
         return { success: true, url: result.data } as unknown as BridgeResponsePayload<K>;
       }

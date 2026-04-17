@@ -8,6 +8,7 @@ import {
   VAULT_AUTO_LOCK_MINUTES,
   VAULT_LAST_ACTIVITY,
 } from 'src/services/storage-service';
+import { LogLevel, logService } from 'src/services/log-service';
 import { lockVault } from '../vault';
 
 let autoLockTimer: ReturnType<typeof setInterval> | null = null;
@@ -45,7 +46,7 @@ export async function checkAutoLock(): Promise<void> {
   const maxIdleMs = minutes * 60 * 1000;
 
   if (idleMs >= maxIdleMs) {
-    console.log(`[AutoLock] Auto-locking vault after ${minutes} minutes`);
+    logService.log(LogLevel.WARN, `[AutoLock] Auto-locking vault after ${minutes} minutes`);
     await lockVault();
     stopAutoLockTimer();
   }
@@ -53,7 +54,7 @@ export async function checkAutoLock(): Promise<void> {
 
 export function startAutoLockTimer(): void {
   if (autoLockTimer) return;
-  console.log('[AutoLock] Starting timer');
+  logService.log(LogLevel.DEBUG, '[AutoLock] Starting timer');
   autoLockTimer = setInterval(() => {
     void checkAutoLock();
   }, AUTO_LOCK_CHECK_INTERVAL_MS);

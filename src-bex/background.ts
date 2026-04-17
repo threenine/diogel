@@ -127,21 +127,26 @@ declare module '@quasar/app-vite' {
   }
 }
 
-logService.log(LogLevel.INFO, '[BEX] Initializing bridge...');
-let bridge: any;
+type BexBridge = ReturnType<typeof createBridge>;
+
+const bridgeHost = globalThis as typeof globalThis & {
+  bridge?: BexBridge;
+  $q?: { bex?: BexBridge };
+};
+
+logService.log(LogLevel.INFO, '[BEX] Initializing bridge');
+let bridge: BexBridge;
 try {
   bridge = createBridge({ debug: false });
-  if (typeof window !== 'undefined') {
-    (window as any).bridge = bridge;
-    if ((window as any).$q) {
-      (window as any).$q.bex = bridge;
-    }
+  bridgeHost.bridge = bridge;
+  if (bridgeHost.$q) {
+    bridgeHost.$q.bex = bridge;
   }
-  if (typeof globalThis !== 'undefined') {
-    (globalThis as any).bridge = bridge;
-  }
-} catch (e) {
-  logService.log(LogLevel.ERROR, '[BEX] Failed to create bridge:', { error: e });
+} catch (error: unknown) {
+  logService.log(LogLevel.ERROR, '[BEX] Failed to create bridge', {
+    error: error instanceof Error ? error.message : String(error),
+  });
+  throw error;
 }
 
 bridge.on('ping', async (): Promise<BridgeResponsePayload<'ping'>> => {
@@ -150,15 +155,15 @@ bridge.on('ping', async (): Promise<BridgeResponsePayload<'ping'>> => {
 });
 
 if (typeof self !== 'undefined') {
-  self.addEventListener('error', async (event: any) => {
+  self.addEventListener('error', async (event: ErrorEvent) => {
     const activeAlias = await getActiveAlias();
     void logService.logException(event.message || 'Unknown error', activeAlias, 'background');
   });
 
-  self.addEventListener('unhandledrejection', async (event: any) => {
+  self.addEventListener('unhandledrejection', async (event: PromiseRejectionEvent) => {
     const activeAlias = await getActiveAlias();
     void logService.logException(
-      event.reason?.message || String(event.reason),
+      event.reason instanceof Error ? event.reason.message : String(event.reason),
       activeAlias,
       'background',
     );
@@ -173,9 +178,14 @@ const getHostname = (origin: string) => {
   }
 };
 
+interface ApprovalResponse {
+  approved: boolean;
+  duration: string;
+}
+
 interface ApprovalPromise {
-  resolve: (value: { approved: boolean; duration: string }) => void;
-  reject: (reason?: any) => void;
+  resolve: (value: ApprovalResponse) => void;
+  reject: (reason?: unknown) => void;
 }
 
 let approvalPromise: ApprovalPromise | null = null;
@@ -307,7 +317,7 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
   const url = chrome.runtime.getURL(`www/index.html#/approve?origin=${encodeURIComponent(origin)}&kind=${eventKind}`);
   let windowId: number | undefined;
 
-  const promise = new Promise<{ approved: boolean; duration: string }>((resolve, reject) => {
+  const promise = new Promise<ApprovalResponse>((resolve, reject) => {
     approvalPromise = { resolve, reject };
     const timeout = setTimeout(() => {
       if (approvalPromise) {
@@ -328,7 +338,7 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
     };
     chrome.windows.onRemoved.addListener(onRemovedHandler);
 
-    approvalPromise.resolve = async (val) => {
+    approvalPromise.resolve = async (val: ApprovalResponse) => {
       clearTimeout(timeout);
       chrome.windows.onRemoved.removeListener(onRemovedHandler);
       if (val.approved && val.duration !== 'once') {
@@ -338,13 +348,15 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
           } else {
             logService.log(LogLevel.WARN, `[BEX] Received unsupported approval duration: ${val.duration}`);
           }
-        } catch (e) {
-          logService.log(LogLevel.ERROR, `[BEX] Failed to grant permission: ${e}`);
+        } catch (error: unknown) {
+          logService.log(LogLevel.ERROR, '[BEX] Failed to grant permission', {
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
       }
-      originalResolve(val as any);
+      originalResolve(val);
     };
-    approvalPromise.reject = (err) => {
+    approvalPromise.reject = (err: unknown) => {
       clearTimeout(timeout);
       chrome.windows.onRemoved.removeListener(onRemovedHandler);
       originalReject(err);

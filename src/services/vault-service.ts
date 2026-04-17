@@ -1,5 +1,6 @@
 import { db } from './database';
 import { ErrorCode } from 'src/types/error-codes';
+import { LogLevel, logService } from './log-service';
 import type { BridgeAction, BridgeRequestMap, BridgeResponsePayload, VaultData } from 'src/types/bridge';
 
 /**
@@ -8,44 +9,40 @@ import type { BridgeAction, BridgeRequestMap, BridgeResponsePayload, VaultData }
  * which is more reliable across different context lifetimes (popup vs options vs tab).
  */
 
-interface BexBridge {
-  send<K extends BridgeAction>(data: {
-    event: K;
-    to: 'background';
-    payload: Omit<BridgeRequestMap[K], 'id' | 'action'>;
-  }): Promise<BridgeResponsePayload<K>>;
+interface BridgeLike {
+  send<T>(request: { event: BridgeAction; to: 'background'; payload?: unknown }): Promise<{ data: T } | T>;
 }
 
-const getBridge = (): BexBridge | undefined => {
-  return (window as unknown as { bridge?: BexBridge }).bridge || (window as unknown as { $q?: { bex?: BexBridge } }).$q?.bex;
+const getBridge = (): BridgeLike | undefined => {
+  const bridgeHost = window as Window & {
+    bridge?: BridgeLike;
+    $q?: { bex?: BridgeLike };
+  };
+
+  return bridgeHost.bridge || bridgeHost.$q?.bex;
 };
 
 export async function sendBexMessage<T extends BridgeAction>(
   type: T,
-  payload: Omit<BridgeRequestMap[T], 'id' | 'action'> = {} as Omit<
-    BridgeRequestMap[T],
-    'id' | 'action'
-  >,
+  payload?: Omit<BridgeRequestMap[T], 'id' | 'action'>,
 ): Promise<BridgeResponsePayload<T> | undefined> {
   const bridge = getBridge();
   if (bridge) {
     try {
-      const response = (await Promise.race([
-        bridge.send({ event: type, to: 'background', payload }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Bridge timeout')), 5000)),
-      ])) as { data: BridgeResponsePayload<T> };
-      return response.data;
-    } catch (e) {
-      console.warn(
-        `[VaultService] Bridge call failed for ${type}, falling back to direct messaging`,
-        e,
-      );
+      const response = await Promise.race([
+        bridge.send<BridgeResponsePayload<T>>({ event: type, to: 'background', payload }),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Bridge timeout')), 5000)),
+      ]);
+      return 'data' in response ? response.data : response;
+    } catch (error: unknown) {
+      logService.log(LogLevel.WARN, `[VaultService] Bridge call failed for ${type}, falling back to direct messaging`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
-  // Fallback to direct chrome.runtime.sendMessage
   if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
-    console.log(`[VaultService] Using direct chrome.runtime.sendMessage for ${type}`);
+    logService.log(LogLevel.DEBUG, `[VaultService] Using direct chrome.runtime.sendMessage for ${type}`);
     return new Promise((resolve) => {
       chrome.runtime.sendMessage({ type, payload }, (response) => {
         resolve(response as BridgeResponsePayload<T>);
@@ -68,11 +65,13 @@ export async function unlockVault(
         code: ErrorCode.GEN_UNKNOWN,
       }
     );
-  } catch (e) {
-    console.error('[VaultService] Failed to unlock vault', e);
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[VaultService] Failed to unlock vault', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       success: false,
-      error: (e as Error).message,
+      error: error instanceof Error ? error.message : String(error),
       code: ErrorCode.GEN_UNKNOWN,
     };
   }
@@ -81,8 +80,10 @@ export async function unlockVault(
 export async function lockVault() {
   try {
     await sendBexMessage('vault.lock');
-  } catch (e) {
-    console.error('[VaultService] Failed to lock vault', e);
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[VaultService] Failed to lock vault', {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
@@ -109,11 +110,13 @@ export async function createVault(
         code: ErrorCode.GEN_UNKNOWN,
       }
     );
-  } catch (e) {
-    console.error('[VaultService] Failed to create vault', e);
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[VaultService] Failed to create vault', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       success: false,
-      error: (e as Error).message,
+      error: error instanceof Error ? error.message : String(error),
       code: ErrorCode.GEN_UNKNOWN,
     };
   }
@@ -123,8 +126,10 @@ export async function isVaultUnlocked(): Promise<boolean> {
   try {
     const data = await sendBexMessage('vault.isUnlocked');
     return !!data;
-  } catch (e) {
-    console.error('[VaultService] Failed to check if vault is unlocked', e);
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[VaultService] Failed to check if vault is unlocked', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return false;
   }
 }
@@ -149,11 +154,13 @@ export async function getVaultData(): Promise<{
         code: ErrorCode.GEN_UNKNOWN,
       }
     );
-  } catch (e) {
-    console.error('[VaultService] Failed to get vault data', e);
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[VaultService] Failed to get vault data', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       success: false,
-      error: (e as Error).message,
+      error: error instanceof Error ? error.message : String(error),
       code: ErrorCode.GEN_UNKNOWN,
     };
   }
@@ -171,27 +178,31 @@ export async function updateVaultData(
         code: ErrorCode.GEN_UNKNOWN,
       }
     );
-  } catch (e) {
-    console.error('[VaultService] Failed to update vault data', e);
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[VaultService] Failed to update vault data', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       success: false,
-      error: (e as Error).message,
+      error: error instanceof Error ? error.message : String(error),
       code: ErrorCode.GEN_UNKNOWN,
     };
   }
 }
 
 export async function hasVault() {
-  console.log('[VaultService] Checking if vault exists via direct DB access...');
+  logService.log(LogLevel.DEBUG, '[VaultService] Checking if vault exists via direct DB access');
   try {
     const vault = await Promise.race([
       db.vaults.get('master'),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Database timeout')), 2000)),
     ]);
-    console.log('[VaultService] hasVault result:', !!vault);
+    logService.log(LogLevel.DEBUG, '[VaultService] hasVault result', { exists: !!vault });
     return !!vault;
-  } catch (e) {
-    console.error('[VaultService] Failed to check if vault exists', e);
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[VaultService] Failed to check if vault exists', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return false;
   }
 }
@@ -216,11 +227,13 @@ export async function exportVault(): Promise<{
         code: ErrorCode.GEN_UNKNOWN,
       }
     );
-  } catch (e) {
-    console.error('[VaultService] Failed to export vault', e);
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[VaultService] Failed to export vault', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       success: false,
-      error: (e as Error).message,
+      error: error instanceof Error ? error.message : String(error),
       code: ErrorCode.GEN_UNKNOWN,
     };
   }
@@ -238,11 +251,13 @@ export async function importVault(
         code: ErrorCode.GEN_UNKNOWN,
       }
     );
-  } catch (e) {
-    console.error('[VaultService] Failed to import vault', e);
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[VaultService] Failed to import vault', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       success: false,
-      error: (e as Error).message,
+      error: error instanceof Error ? error.message : String(error),
       code: ErrorCode.GEN_UNKNOWN,
     };
   }

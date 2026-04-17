@@ -14,7 +14,7 @@ export class LogService {
     this.debugMode = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'test';
   }
 
-  async logException(message: string, account?: string | null, hostname?: string | null) {
+  async logException(message: string, account?: string | null, hostname?: string | null): Promise<void> {
     try {
       await db.exceptions.add({
         dateTime: new Date().toISOString(),
@@ -22,13 +22,15 @@ export class LogService {
         account: account || null,
         hostname: hostname || null,
       });
-      console.error(`[${LogLevel.ERROR}] ${message}`, { account, hostname });
-    } catch (e) {
-      console.error('[LogService] Failed to log exception:', e);
+      this.log(LogLevel.ERROR, message, { account, hostname });
+    } catch (error: unknown) {
+      this.log(LogLevel.ERROR, '[LogService] Failed to log exception', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
-  async logApproval(eventKind: number | string, hostname: string, account?: string | null) {
+  async logApproval(eventKind: number | string, hostname: string, account?: string | null): Promise<void> {
     try {
       await db.approvals.add({
         dateTime: new Date().toISOString(),
@@ -36,16 +38,15 @@ export class LogService {
         hostname,
         account: account || null,
       });
-      console.log(`[${LogLevel.INFO}] Approval granted for kind ${eventKind} on ${hostname}`, { account });
-    } catch (e) {
-      console.error('[LogService] Failed to log approval:', e);
+      this.log(LogLevel.DEBUG, `Approval granted for kind ${eventKind} on ${hostname}`, { account });
+    } catch (error: unknown) {
+      this.log(LogLevel.ERROR, '[LogService] Failed to log approval', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 
-  /**
-   * General purpose logging (currently to console, could be extended to DB)
-   */
-  log(level: LogLevel, message: string, context?: Record<string, unknown>) {
+  log(level: LogLevel, message: string, context?: Record<string, unknown>): void {
     const timestamp = new Date().toISOString();
     const formattedMessage = `[${timestamp}] [${level}] ${message}`;
 
@@ -56,20 +57,12 @@ export class LogService {
       case LogLevel.WARN:
         console.warn(formattedMessage, context);
         break;
+      case LogLevel.INFO:
       case LogLevel.DEBUG:
         if (this.debugMode) {
           console.debug(formattedMessage, context);
         }
         break;
-      case LogLevel.INFO:
-        if (this.debugMode) {
-          console.log(formattedMessage, context);
-        }
-        break;
-      default:
-        if (this.debugMode) {
-          console.log(formattedMessage, context);
-        }
     }
   }
 
@@ -87,26 +80,24 @@ export class LogService {
     return await db.approvals.orderBy('dateTime').reverse().toArray();
   }
 
-  /**
-   * Higher-order function to wrap an async call with logging
-   */
-  wrapWithLogging<Args extends unknown[], R>(
-    fn: (...args: Args) => Promise<R>,
+  wrapWithLogging<TArgs extends unknown[], TResult>(
+    fn: (...args: TArgs) => Promise<TResult>,
     serviceName: string,
-    methodName: string
-  ): (...args: Args) => Promise<R> {
-    return async (...args: Args) => {
-      this.log(LogLevel.DEBUG, `Calling ${serviceName}.${methodName}`, { args });
+    methodName: string,
+  ): (...args: TArgs) => Promise<TResult> {
+    return async (...args: TArgs): Promise<TResult> => {
+      this.log(LogLevel.DEBUG, `Calling ${serviceName}.${methodName}`, {
+        argCount: args.length,
+      });
       try {
         const result = await fn(...args);
         this.log(LogLevel.DEBUG, `${serviceName}.${methodName} completed successfully`, {
-          result: result && typeof result === 'object' ? '{...}' : result,
+          resultType: typeof result,
         });
         return result;
-      } catch (error) {
+      } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        this.log(LogLevel.ERROR, `${serviceName}.${methodName} failed: ${message}`, { error });
-        // We also log it as an exception in the DB if it's an error
+        this.log(LogLevel.ERROR, `${serviceName}.${methodName} failed: ${message}`);
         void this.logException(`${serviceName}.${methodName} error: ${message}`);
         throw error;
       }
