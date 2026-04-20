@@ -58,7 +58,6 @@ export function useVault() {
       $q.notify({ type: 'positive', message: 'Vault created successfully' });
       await router.push({ name: 'home' });
     } else {
-      logService.log(LogLevel.ERROR, '[useVault] Failed to create vault', { error: result.error });
       loginError.value = formatErrorForUser(result.error, result.errorCode as ErrorCode);
       $q.notify({
         type: 'negative',
@@ -80,7 +79,6 @@ export function useVault() {
         await router.push({ name: 'home' });
       }
     } else {
-      logService.log(LogLevel.ERROR, '[useVault] Failed to unlock vault', { error: result.error });
       loginError.value = formatErrorForUser(result.error, result.errorCode as ErrorCode);
       $q.notify({
         type: 'negative',

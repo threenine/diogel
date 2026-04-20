@@ -38,10 +38,6 @@ export async function dispatchMessage<K extends BridgeAction>(
   payload: BridgeRequestMap[K],
   origin: string = '',
 ): Promise<BridgeResponsePayload<K> | null> {
-  if (process.env.DEBUG === 'true') {
-    console.debug(`[BEX] Dispatching message: ${String(type)}`);
-  }
-
   switch (type) {
     case 'ping':
       return 'pong' as BridgeResponsePayload<K>;
@@ -202,7 +198,6 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     default:
-      console.warn(`[BEX] No dispatcher handled for message type: ${String(type)}`);
       return null;
   }
 }

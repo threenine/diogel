@@ -133,7 +133,6 @@ const bridgeHost = globalThis as typeof globalThis & {
   $q?: { bex?: BexBridge };
 };
 
-logService.log(LogLevel.INFO, '[BEX] Initializing bridge');
 let bridge: BexBridge;
 try {
   bridge = createBridge({ debug: false });
@@ -186,6 +185,8 @@ interface ApprovalPromise {
   resolve: (value: ApprovalResponse) => void;
   reject: (reason?: unknown) => void;
 }
+
+const getApprovalPromise = (): ApprovalPromise | null => approvalPromise;
 
 let approvalPromise: ApprovalPromise | null = null;
 
@@ -241,12 +242,10 @@ async function initialize() {
       startAutoLockTimer();
       await checkAutoLock();
     }
-    // Seed relay catalog on startup
-    void loadSeedRelays().then(result => {
-      logService.log(
-        LogLevel.INFO,
-        `[BEX] Seeded relay catalog: ${result.added} added, ${result.updated} updated`,
-      );
+    void loadSeedRelays().catch((error: unknown) => {
+      logService.log(LogLevel.ERROR, '[BEX] Failed to seed relay catalog', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     });
   } catch (e) {
     logService.log(LogLevel.ERROR, '[BEX] Initialization error:', { error: e });
@@ -297,7 +296,7 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
         };
         chrome.windows.onRemoved.addListener(onRemoved);
       });
-    } catch (e) {
+    } catch {
       return false;
     }
   }
@@ -356,10 +355,10 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
   try {
     const win = await chrome.windows.create({ url, type: 'popup', width: 450, height: 700, focused: true });
     windowId = win.id;
-  } catch (err) {
-    const currentPromise = approvalPromise as ApprovalPromise | null;
-    if (currentPromise) {
-      currentPromise.reject(err);
+  } catch (error: unknown) {
+    const pendingApproval = getApprovalPromise();
+    if (pendingApproval) {
+      pendingApproval.reject(error);
       approvalPromise = null;
     }
   }

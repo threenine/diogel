@@ -15,24 +15,28 @@ let vaultSalt: Uint8Array | null = null;
 const SESSION_KEY = 'vault:session-key' as const;
 const SESSION_SALT = 'vault:session-salt' as const;
 
-async function saveKeyToSession() {
-  if (vaultKey && vaultSalt) {
-    try {
-      const rawKey = await crypto.subtle.exportKey('raw', vaultKey);
-      const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
-      const saltBase64 = btoa(String.fromCharCode(...vaultSalt));
+async function saveKeyToSession(): Promise<void> {
+  if (!vaultKey || !vaultSalt) {
+    return;
+  }
 
-      await storageService.setMultiple(
-        {
-          [SESSION_KEY]: keyBase64,
-          [SESSION_SALT]: saltBase64,
-          [VAULT_UNLOCKED]: true,
-        },
-        'session',
-      );
-    } catch (e) {
-      logService.log(LogLevel.ERROR, '[Vault] Failed to save key to session:', { error: e });
-    }
+  try {
+    const rawKey = await crypto.subtle.exportKey('raw', vaultKey);
+    const keyBase64 = btoa(String.fromCharCode(...new Uint8Array(rawKey)));
+    const saltBase64 = btoa(String.fromCharCode(...vaultSalt));
+
+    await storageService.setMultiple(
+      {
+        [SESSION_KEY]: keyBase64,
+        [SESSION_SALT]: saltBase64,
+        [VAULT_UNLOCKED]: true,
+      },
+      'session',
+    );
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[Vault] Failed to persist unlock session', {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
@@ -40,12 +44,12 @@ async function clearSession() {
   await storageService.remove([SESSION_KEY, SESSION_SALT, VAULT_UNLOCKED], 'session');
 }
 
-export async function restoreVaultState() {
+export async function restoreVaultState(): Promise<boolean> {
   try {
     const items = await storageService.getMultiple([SESSION_KEY, SESSION_SALT], 'session');
     if (items[SESSION_KEY] && items[SESSION_SALT]) {
-      const keyData = Uint8Array.from(atob(items[SESSION_KEY] as string), (c) => c.charCodeAt(0));
-      const saltData = Uint8Array.from(atob(items[SESSION_SALT] as string), (c) => c.charCodeAt(0));
+      const keyData = Uint8Array.from(atob(items[SESSION_KEY] as string), (character) => character.charCodeAt(0));
+      const saltData = Uint8Array.from(atob(items[SESSION_SALT] as string), (character) => character.charCodeAt(0));
 
       vaultKey = await crypto.subtle.importKey('raw', keyData.buffer, 'AES-GCM', true, [
         'encrypt',
@@ -54,13 +58,15 @@ export async function restoreVaultState() {
       vaultSalt = saltData;
       return true;
     }
-  } catch (e) {
-    logService.log(LogLevel.ERROR, '[Vault] Failed to restore key from session:', { error: e });
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[Vault] Failed to restore unlock session', {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
   return false;
 }
 
-export function isVaultUnlocked() {
+export function isVaultUnlocked(): boolean {
   return vaultKey !== null && vaultSalt !== null;
 }
 
@@ -90,10 +96,9 @@ export async function unlockVault(password: string) {
     await saveKeyToSession();
 
     return { success: true, vaultData };
-  } catch (err) {
+  } catch {
     clearVaultKey();
-    await clearSession(); // Ensure session is also cleared in storage
-    logService.log(LogLevel.ERROR, 'Unlock vault error:', { error: err });
+    await clearSession();
     return {
       success: false,
       error: 'Invalid password',
@@ -124,13 +129,12 @@ export async function createNewVault(password: string, vaultData: unknown) {
     });
 
     return { success: true, encryptedVault };
-  } catch (err) {
+  } catch (error: unknown) {
     clearVaultKey();
     await clearSession();
-    logService.log(LogLevel.ERROR, 'Create vault error:', { error: err });
     return {
       success: false,
-      error: (err as Error).message,
+      error: error instanceof Error ? error.message : 'Failed to create vault',
       errorCode: ErrorCode.GEN_UNKNOWN,
     };
   }
@@ -155,11 +159,13 @@ export async function updateVaultData(vaultData: unknown) {
     });
 
     return { success: true };
-  } catch (err) {
-    logService.log(LogLevel.ERROR, 'Update vault data error:', { error: err });
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[Vault] Failed to update stored vault data', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       success: false,
-      error: (err as Error).message,
+      error: error instanceof Error ? error.message : 'Failed to update vault data',
       errorCode: ErrorCode.GEN_UNKNOWN
     };
   }
@@ -186,11 +192,13 @@ export async function getVaultData() {
 
     const vaultData = await decryptWithKey(vault.encryptedData, vaultKey);
     return { success: true, vaultData };
-  } catch (err) {
-    logService.log(LogLevel.ERROR, 'Get vault data error:', { error: err });
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[Vault] Failed to read vault data', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       success: false,
-      error: (err as Error).message,
+      error: error instanceof Error ? error.message : 'Failed to read vault data',
       errorCode: ErrorCode.GEN_UNKNOWN
     };
   }
@@ -207,11 +215,13 @@ export async function exportVault() {
       };
     }
     return { success: true, encryptedData: vault.encryptedData };
-  } catch (err) {
-    logService.log(LogLevel.ERROR, 'Export vault error:', { error: err });
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[Vault] Failed to export vault', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       success: false,
-      error: (err as Error).message,
+      error: error instanceof Error ? error.message : 'Failed to export vault',
       errorCode: ErrorCode.GEN_UNKNOWN
     };
   }
@@ -239,11 +249,13 @@ export async function importVault(encryptedData: string) {
     await clearSession();
 
     return { success: true };
-  } catch (err) {
-    logService.log(LogLevel.ERROR, 'Import vault error:', { error: err });
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[Vault] Failed to import vault', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       success: false,
-      error: (err as Error).message,
+      error: error instanceof Error ? error.message : 'Failed to import vault',
       errorCode: ErrorCode.GEN_UNKNOWN
     };
   }

@@ -32,7 +32,6 @@ export class DiogelDatabase extends Dexie {
 
   constructor() {
     super('DiogelDatabase');
-    console.debug('[Database] Initializing DiogelDatabase v7...');
     this.version(3)
       .stores({
         vaults: 'id',
@@ -66,10 +65,6 @@ export class DiogelDatabase extends Dexie {
       approvals: '++id, dateTime, eventKind, hostname, account',
       relayCatalog: 'url, hostname, status, lastSeen, createdAt',
       relayDiscoveryState: 'id, lastGlobalDiscoveryAt',
-    });
-
-    this.on('ready', () => {
-      console.debug('[Database] Dexie is ready');
     });
   }
 }
