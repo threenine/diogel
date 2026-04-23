@@ -7,8 +7,9 @@ import { handleVaultGetData, handleVaultIsUnlocked } from './vault-handler';
 
 export async function handleNip04Encrypt(
   payload: { pubkey: string; plaintext: string },
-  _origin: string = '',
+  _origin?: string,
 ): Promise<HandlerResult<string>> {
+  void _origin;
   try {
     const secretKey = await getActiveSecretKey();
     const ciphertext = nip04.encrypt(secretKey, payload.pubkey, payload.plaintext);
@@ -23,8 +24,9 @@ export async function handleNip04Encrypt(
 
 export async function handleNip04Decrypt(
   payload: { pubkey: string; ciphertext: string },
-  _origin: string = '',
+  _origin?: string,
 ): Promise<HandlerResult<string>> {
+  void _origin;
   try {
     const secretKey = await getActiveSecretKey();
     const plaintext = nip04.decrypt(secretKey, payload.pubkey, payload.ciphertext);
@@ -38,7 +40,7 @@ export async function handleNip04Decrypt(
 }
 
 async function getActiveSecretKey(): Promise<Uint8Array> {
-  const isUnlockedResult = (await handleVaultIsUnlocked({}, '')) as HandlerResult<boolean>;
+  const isUnlockedResult = await handleVaultIsUnlocked({}, '');
   if (!isUnlockedResult.success || !isUnlockedResult.data) {
     throw new Error('Vault is locked');
   }

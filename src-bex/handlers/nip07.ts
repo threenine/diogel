@@ -18,7 +18,7 @@ const logWrapper = <TArgs extends unknown[], TResult>(
   name: string,
 ) => logService.wrapWithLogging(fn, 'Nip07Handler', name);
 
-async function getActiveAccount() {
+async function getActiveAccount(): Promise<StoredKey | null> {
   const alias = await storageService.get<string>(NOSTR_ACTIVE);
 
   if (!alias) return null;
@@ -34,6 +34,8 @@ export const handleGetPublicKey = logWrapper(async (
   _payload: unknown,
   _origin: string
 ): Promise<HandlerResult<string>> => {
+  void _payload;
+  void _origin;
   if (!isVaultUnlocked()) {
     return { success: false, error: 'Vault is locked', code: ErrorCode.VLT_LOCKED as string };
   }
@@ -43,8 +45,7 @@ export const handleGetPublicKey = logWrapper(async (
     return { success: false, error: 'No active account', code: ErrorCode.SIG_NO_ACTIVE_KEY as string };
   }
 
-  // Reset auto-lock timer on activity
-  resetAutoLockTimer();
+  void resetAutoLockTimer();
 
   return { success: true, data: account.id };
 }, 'getPublicKey');
@@ -78,11 +79,10 @@ export const handleSignEvent = logWrapper(async (
     const sk = hexToBytes(account.account.privkey);
     const signed = finalizeEvent(payload.event, sk);
 
-    // Reset auto-lock timer
-    resetAutoLockTimer();
+    void resetAutoLockTimer();
 
     return { success: true, data: signed as SignedEvent };
-  } catch (error) {
+  } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to sign event';
     return { success: false, error: message, code: ErrorCode.SIG_FAILED as string };
   }

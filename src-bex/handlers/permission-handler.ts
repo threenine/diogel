@@ -27,29 +27,27 @@ async function savePermissions(permissions: PermissionGrant[]): Promise<void> {
 
 export async function checkPermission(
   origin: string,
-  eventKind: number
+  eventKind: number,
 ): Promise<{ granted: boolean; always?: boolean }> {
   const permissions = await loadPermissions();
 
-  // Check for exact match
   const exactMatch = permissions.find(
-    p => p.origin === origin && p.eventKind === eventKind
+    (permission) => permission.origin === origin && permission.eventKind === eventKind,
   );
 
   if (exactMatch) {
-    // Check if expired
     if (exactMatch.expiry && exactMatch.expiry < Date.now()) {
       return { granted: false };
     }
+
     return {
       granted: true,
-      always: !exactMatch.expiry
+      always: !exactMatch.expiry,
     };
   }
 
-  // Check for wildcard permission
   const wildcardMatch = permissions.find(
-    p => p.origin === origin && p.eventKind === PERMISSION_ALWAYS
+    (permission) => permission.origin === origin && permission.eventKind === PERMISSION_ALWAYS,
   );
 
   if (wildcardMatch) {
@@ -62,13 +60,12 @@ export async function checkPermission(
 export async function grantPermission(
   origin: string,
   eventKind: number,
-  duration: '8h' | 'always'
+  duration: '8h' | 'always',
 ): Promise<void> {
   const permissions = await loadPermissions();
 
-  // Remove any existing permission for this origin+kind
   const filtered = permissions.filter(
-    p => !(p.origin === origin && p.eventKind === eventKind)
+    (permission) => !(permission.origin === origin && permission.eventKind === eventKind),
   );
 
   const grant: PermissionGrant = {
@@ -79,10 +76,9 @@ export async function grantPermission(
   };
 
   if (duration === '8h') {
-    grant.expiry = Date.now() + (8 * 60 * 60 * 1000);
+    grant.expiry = Date.now() + 8 * 60 * 60 * 1000;
   } else if (duration !== 'always') {
-    // Unsupported duration reaching runtime
-    throw new Error(`Unsupported permission duration: ${duration}`);
+    throw new Error(`Unsupported permission duration: ${String(duration)}`);
   }
 
   await savePermissions([...filtered, grant]);
@@ -90,11 +86,11 @@ export async function grantPermission(
 
 export async function revokePermission(
   origin: string,
-  eventKind: number
+  eventKind: number,
 ): Promise<void> {
   const permissions = await loadPermissions();
   const filtered = permissions.filter(
-    p => !(p.origin === origin && p.eventKind === eventKind)
+    (permission) => !(permission.origin === origin && permission.eventKind === eventKind),
   );
   await savePermissions(filtered);
 }
@@ -103,7 +99,6 @@ export async function getGrantedPermissions(): Promise<PermissionGrant[]> {
   return loadPermissions();
 }
 
-// Clear cache (useful for testing)
 export function clearPermissionCache(): void {
   permissionCache = null;
 }

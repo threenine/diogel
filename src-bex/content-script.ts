@@ -17,15 +17,7 @@ const bridge = createBridge({ debug: false });
  *   and <number> is a unique instance number (1-10000).
  */
 
-const debug = process.env.DEBUG === 'true';
-
 type LogContext = Record<string, unknown>;
-
-const log = (message: string, context?: LogContext): void => {
-  if (debug) {
-    console.debug(message, context);
-  }
-};
 
 const warn = (message: string, context?: LogContext): void => {
   console.warn(message, context);
@@ -71,12 +63,14 @@ const injectProvider = () => {
 };
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', injectProvider);
+  document.addEventListener('DOMContentLoaded', () => {
+    injectProvider();
+  });
 } else {
   injectProvider();
 }
 
-window.addEventListener('message', async (event: MessageEvent<unknown>) => {
+async function handleWindowMessage(event: MessageEvent<unknown>): Promise<void> {
   const message = event.data;
   const validMessageTypes = new Set([MESSAGE_TYPE_REQUEST, MESSAGE_TYPE_PING]);
 
@@ -150,6 +144,10 @@ window.addEventListener('message', async (event: MessageEvent<unknown>) => {
       '*',
     );
   }
+}
+
+window.addEventListener('message', (event: MessageEvent<unknown>) => {
+  void handleWindowMessage(event);
 });
 
 bridge.connectToBackground().catch((connectError: unknown) => {

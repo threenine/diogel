@@ -1,6 +1,5 @@
 import { relayCatalogService } from 'src/services/relay-catalog';
 import { relayBrowserOrchestrator } from 'src/services/relay-browser-orchestrator';
-import { db } from 'src/services/database';
 import { logService, LogLevel } from 'src/services/log-service';
 import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 import type { HandlerResult } from '../types/background';
@@ -49,24 +48,28 @@ export async function handleRelayBrowserGetStatus(): Promise<HandlerResult<Relay
  * Handles the 'relay.browser.refresh' action.
  * Triggers the relay browser refresh flow.
  */
-export async function handleRelayBrowserRefresh(payload?: { force?: boolean }): Promise<HandlerResult<void>> {
+export function handleRelayBrowserRefresh(payload?: { force?: boolean }): Promise<HandlerResult<void>> {
   try {
     const force = payload?.force || false;
     // We don't await the full refresh here to avoid blocking the BEX response,
     // as it can take a long time. The UI should poll getStatus to see progress.
-    relayBrowserOrchestrator.refreshCatalog(force).catch(err => {
-      logService.log(LogLevel.ERROR, '[RelayBrowserHandler] Async refresh failed', { error: err });
+    void relayBrowserOrchestrator.refreshCatalog(force).catch((error: unknown) => {
+      logService.log(LogLevel.ERROR, '[RelayBrowserHandler] Async refresh failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     });
 
-    return {
+    return Promise.resolve({
       success: true,
       data: undefined,
-    };
-  } catch (error) {
-    logService.log(LogLevel.ERROR, '[RelayBrowserHandler] Failed to trigger refresh', { error });
-    return {
+    });
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[RelayBrowserHandler] Failed to trigger refresh', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return Promise.resolve({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error triggering refresh',
-    };
+    });
   }
 }

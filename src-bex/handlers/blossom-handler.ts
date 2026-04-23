@@ -16,6 +16,7 @@ export async function handleBlossomUpload(
   },
   _origin: string = '',
 ): Promise<HandlerResult<string>> {
+  void _origin;
   const { base64Data, fileType, blossomServer, uploadId } = payload;
 
   const uploadStatusKey = uploadId
@@ -182,7 +183,7 @@ export async function handleBlossomUpload(
 }
 
 async function getActiveStoredKey(): Promise<StoredKey | null> {
-  const isUnlockedResult = (await handleVaultIsUnlocked({}, '')) as HandlerResult<boolean>;
+  const isUnlockedResult = await handleVaultIsUnlocked({}, '');
   if (!isUnlockedResult.success || !isUnlockedResult.data) {
     return null;
   }

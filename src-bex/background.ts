@@ -30,8 +30,8 @@ import type {
   SignEventRequest,
   SignEventResponse,
   BridgeError,
+  StoredKey,
 } from 'src/types/bridge';
-import type { HandlerResult } from './types/background';
 import {
   handleVaultIsUnlocked,
   handleVaultGetData,
@@ -49,21 +49,31 @@ import { loadSeedRelays } from 'src/services/relay-catalog';
 import { dispatchMessage } from './dispatcher';
 import { createBridgeRequest } from 'src/types/bridge';
 
-async function getActiveAlias() {
-  return await storageService.get<string>(NOSTR_ACTIVE);
+class BackgroundBridgeError extends Error implements BridgeError {
+  code: string;
+
+  constructor(code: string, message: string) {
+    super(message);
+    this.name = 'BackgroundBridgeError';
+    this.code = code;
+  }
 }
 
-async function getActiveStoredKey() {
-  const isUnlockedResult = (await handleVaultIsUnlocked({}, '')) as HandlerResult<boolean>;
+async function getActiveAlias(): Promise<string | null> {
+  return (await storageService.get<string>(NOSTR_ACTIVE)) ?? null;
+}
+
+async function getActiveStoredKey(): Promise<StoredKey | null> {
+  const isUnlockedResult = await handleVaultIsUnlocked({}, '');
   if (!isUnlockedResult.success || !isUnlockedResult.data) {
     return null;
   }
   const activeAlias = await getActiveAlias();
 
   if (!activeAlias) {
-    const vaultDataRes = (await handleVaultGetData({}, '')) as HandlerResult<{ vaultData?: unknown }>;
+    const vaultDataRes = await handleVaultGetData({}, '');
     if (vaultDataRes.success && vaultDataRes.data.vaultData) {
-      const vaultData = vaultDataRes.data.vaultData as VaultData;
+      const vaultData = vaultDataRes.data.vaultData;
       const accounts = vaultData.accounts || [];
       if (accounts.length > 0) {
         const fallbackAccount = accounts[0];
@@ -76,12 +86,12 @@ async function getActiveStoredKey() {
     return null;
   }
 
-  const vaultRes = (await handleVaultGetData({}, '')) as HandlerResult<{ vaultData?: unknown }>;
+  const vaultRes = await handleVaultGetData({}, '');
   if (!vaultRes.success || !vaultRes.data.vaultData) {
     return null;
   }
 
-  const vaultData = vaultRes.data.vaultData as VaultData;
+  const vaultData = vaultRes.data.vaultData;
   return (vaultData.accounts || []).find((acc) => acc.alias === activeAlias) || null;
 }
 
@@ -149,29 +159,33 @@ try {
 
 bridge.on('ping', async (): Promise<BridgeResponsePayload<'ping'>> => {
   const result = await dispatchMessage('ping', createBridgeRequest('ping', {}), '');
-  return (result || 'pong') as BridgeResponsePayload<'ping'>;
+  return result || 'pong';
 });
 
 if (typeof self !== 'undefined') {
-  self.addEventListener('error', async (event: ErrorEvent) => {
-    const activeAlias = await getActiveAlias();
-    void logService.logException(event.message || 'Unknown error', activeAlias, 'background');
+  self.addEventListener('error', (event: ErrorEvent) => {
+    void (async () => {
+      const activeAlias = await getActiveAlias();
+      await logService.logException(event.message || 'Unknown error', activeAlias, 'background');
+    })();
   });
 
-  self.addEventListener('unhandledrejection', async (event: PromiseRejectionEvent) => {
-    const activeAlias = await getActiveAlias();
-    void logService.logException(
-      event.reason instanceof Error ? event.reason.message : String(event.reason),
-      activeAlias,
-      'background',
-    );
+  self.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+    void (async () => {
+      const activeAlias = await getActiveAlias();
+      await logService.logException(
+        event.reason instanceof Error ? event.reason.message : String(event.reason),
+        activeAlias,
+        'background',
+      );
+    })();
   });
 }
 
-const getHostname = (origin: string) => {
+const getHostname = (origin: string): string => {
   try {
     return new URL(origin).hostname;
-  } catch (e) {
+  } catch {
     return origin;
   }
 };
@@ -195,7 +209,7 @@ bridge.on('nostr.approval.respond', ({ payload }) => {
     approvalPromise.resolve({ approved: payload.approved, duration: payload.duration });
     approvalPromise = null;
   }
-  return Promise.resolve(true) as unknown as BridgeResponsePayload<'nostr.approval.respond'>;
+  return true;
 });
 
 bridge.on('vault.unlock', ({ payload }) => {
@@ -234,7 +248,7 @@ bridge.on('vault.import', ({ payload }) => {
   return dispatchMessage('vault.import', createBridgeRequest('vault.import', payload), '') as unknown as BridgeResponsePayload<'vault.import'>;
 });
 
-async function initialize() {
+async function initialize(): Promise<void> {
   try {
     await restoreLastActivity();
     const restored = await restoreVaultState();
@@ -247,19 +261,27 @@ async function initialize() {
         error: error instanceof Error ? error.message : String(error),
       });
     });
-  } catch (e) {
-    logService.log(LogLevel.ERROR, '[BEX] Initialization error:', { error: e });
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[BEX] Initialization error:', {
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 }
 
 void initialize();
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  dispatchMessage(message.type, message.payload || {}, '')
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  void dispatchMessage(message.type, message.payload || {}, '')
     .then((response) => {
       if (response !== null) {
         sendResponse(response);
       }
+    })
+    .catch((error: unknown) => {
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
     });
   return true;
 });
@@ -278,13 +300,14 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
       const windowId = win.id;
 
       return new Promise<boolean>((resolve) => {
-        const checkStatus = setInterval(async () => {
-          const status = await handleVaultIsUnlocked({}, '');
-          if (status.success && status.data) {
-            clearInterval(checkStatus);
-            chrome.windows.onRemoved.removeListener(onRemoved);
-            resolve(requestApproval(origin, eventKind));
-          }
+        const checkStatus = setInterval(() => {
+          void handleVaultIsUnlocked({}, '').then((status) => {
+            if (status.success && status.data) {
+              clearInterval(checkStatus);
+              chrome.windows.onRemoved.removeListener(onRemoved);
+              void requestApproval(origin, eventKind).then(resolve);
+            }
+          });
         }, 1000);
 
         const onRemoved = (closedWindowId: number) => {
@@ -316,8 +339,14 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
       }
     }, REQUEST_TIMEOUT_MS);
 
-    const originalResolve = approvalPromise!.resolve;
-    const originalReject = approvalPromise!.reject;
+    const currentApprovalPromise = approvalPromise;
+    if (!currentApprovalPromise) {
+      reject(new Error('Approval request state was not initialized'));
+      return;
+    }
+
+    const originalResolve = currentApprovalPromise.resolve;
+    const originalReject = currentApprovalPromise.reject;
 
     const onRemovedHandler = (closedWindowId: number) => {
       if (closedWindowId === windowId && approvalPromise) {
@@ -327,23 +356,25 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
     };
     chrome.windows.onRemoved.addListener(onRemovedHandler);
 
-    approvalPromise.resolve = async (val: ApprovalResponse) => {
+    approvalPromise.resolve = (val: ApprovalResponse) => {
       clearTimeout(timeout);
       chrome.windows.onRemoved.removeListener(onRemovedHandler);
-      if (val.approved && val.duration !== 'once') {
-        try {
-          if (val.duration === 'always' || val.duration === '8h') {
-            await grantPermission(origin, eventKind, val.duration);
-          } else {
-            logService.log(LogLevel.WARN, `[BEX] Received unsupported approval duration: ${val.duration}`);
+      void (async () => {
+        if (val.approved && val.duration !== 'once') {
+          try {
+            if (val.duration === 'always' || val.duration === '8h') {
+              await grantPermission(origin, eventKind, val.duration);
+            } else {
+              logService.log(LogLevel.WARN, `[BEX] Received unsupported approval duration: ${val.duration}`);
+            }
+          } catch (error: unknown) {
+            logService.log(LogLevel.ERROR, '[BEX] Failed to grant permission', {
+              error: error instanceof Error ? error.message : String(error),
+            });
           }
-        } catch (error: unknown) {
-          logService.log(LogLevel.ERROR, '[BEX] Failed to grant permission', {
-            error: error instanceof Error ? error.message : String(error),
-          });
         }
-      }
-      originalResolve(val);
+        originalResolve(val);
+      })();
     };
     approvalPromise.reject = (err: unknown) => {
       clearTimeout(timeout);
@@ -367,39 +398,47 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
 
 bridge.on('nostr.getPublicKey', ({ payload: { origin } }) => (
   (async () => {
-    resetAutoLockTimer();
+    void resetAutoLockTimer();
     const result = await handleGetPublicKey({}, origin);
     if (!result.success) {
-      throw { code: result.error === 'Vault is locked' ? 'VAULT_LOCKED' : 'NOT_FOUND', message: result.error } as BridgeError;
+      throw new BackgroundBridgeError(
+        result.error === 'Vault is locked' ? 'VAULT_LOCKED' : 'NOT_FOUND',
+        result.error,
+      );
     }
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('get_public_key', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin, -1);
-    if (!approved) throw { code: 'PERMISSION_DENIED', message: 'User rejected the request' } as BridgeError;
+    if (!approved) {
+      throw new BackgroundBridgeError('PERMISSION_DENIED', 'User rejected the request');
+    }
     return result.data;
   })() as unknown as BridgeResponsePayload<'nostr.getPublicKey'>
 ));
 
 bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => (
   (async () => {
-    resetAutoLockTimer();
+    void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin, event.kind);
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
       if (!unlockedStatus.success || !unlockedStatus.data) {
-        throw { code: 'VAULT_LOCKED', message: 'Vault is locked. Open the extension to unlock.' } as BridgeError;
+        throw new BackgroundBridgeError('VAULT_LOCKED', 'Vault is locked. Open the extension to unlock.');
       }
-      throw { code: 'PERMISSION_DENIED', message: 'User rejected the request' } as BridgeError;
+      throw new BackgroundBridgeError('PERMISSION_DENIED', 'User rejected the request');
     }
     const result = await handleSignEvent({ event }, origin);
     if (!result.success) {
-      throw {
-        code: result.error === 'Vault is locked' ? 'VAULT_LOCKED' :
-              result.error === 'Permission denied' ? 'PERMISSION_DENIED' : 'SIGNING_FAILED',
-        message: result.error,
-      } as BridgeError;
+      throw new BackgroundBridgeError(
+        result.error === 'Vault is locked'
+          ? 'VAULT_LOCKED'
+          : result.error === 'Permission denied'
+            ? 'PERMISSION_DENIED'
+            : 'SIGNING_FAILED',
+        result.error,
+      );
     }
     return result.data;
   })() as unknown as BridgeResponsePayload<'nostr.signEvent'>
@@ -407,7 +446,7 @@ bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => (
 
 bridge.on('nostr.getRelays', ({ payload: { origin } }) => (
   (async () => {
-    resetAutoLockTimer();
+    void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin, -1);
@@ -422,7 +461,7 @@ bridge.on('nostr.getRelays', ({ payload: { origin } }) => (
 
 bridge.on('nostr.nip04.encrypt', ({ payload }) => (
   (async () => {
-    resetAutoLockTimer();
+    void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_encrypt', getHostname(payload.origin), activeStoredKey?.alias);
     const approved = await requestApproval(payload.origin, -1);
@@ -437,7 +476,7 @@ bridge.on('nostr.nip04.encrypt', ({ payload }) => (
 
 bridge.on('nostr.nip04.decrypt', ({ payload }) => (
   (async () => {
-    resetAutoLockTimer();
+    void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_decrypt', getHostname(payload.origin), activeStoredKey?.alias);
     const approved = await requestApproval(payload.origin, -1);
@@ -451,7 +490,7 @@ bridge.on('nostr.nip04.decrypt', ({ payload }) => (
 ));
 
 bridge.on('blossom.upload', ({ payload }) => {
-  resetAutoLockTimer();
+  void resetAutoLockTimer();
   return dispatchMessage('blossom.upload', createBridgeRequest('blossom.upload', payload), '') as unknown as BridgeResponsePayload<'blossom.upload'>;
 });
 
