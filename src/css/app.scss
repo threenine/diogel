@@ -462,6 +462,37 @@ html.extension-popup body {
   max-width: 840px;
 }
 
+.dashboard-layout {
+  .q-page-container {
+    min-height: calc(100vh - var(--header-height, 56px));
+  }
+}
+
+.dashboard-layout__drawer {
+  .dashboard-layout__drawer-content {
+    min-height: 100%;
+  }
+}
+
+.dashboard-page-shell {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 20px 24px 32px;
+}
+
+.dashboard-page-shell__toolbar {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 1023px) {
+  .dashboard-page-shell {
+    padding: 16px;
+  }
+}
+
 .warning-card {
   width: 100%;
 }
