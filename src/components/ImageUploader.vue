@@ -28,6 +28,25 @@ const { t } = useI18n();
 const uploading = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
+interface UploadStatus {
+  uploading?: boolean;
+  url?: string;
+  error?: string;
+}
+
+function isUploadStatus(value: unknown): value is UploadStatus {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  const hasValidUploading = record.uploading === undefined || typeof record.uploading === 'boolean';
+  const hasValidUrl = record.url === undefined || typeof record.url === 'string';
+  const hasValidError = record.error === undefined || typeof record.error === 'string';
+
+  return hasValidUploading && hasValidUrl && hasValidError;
+}
+
 const BLOSSOM_UPLOAD_STATUS = props.uploadId
   ? `blossom:upload_status:${props.uploadId}`
   : 'blossom:upload_status';
@@ -141,11 +160,6 @@ async function uploadImage(file: File) {
 
 onMounted(async () => {
   // Check for ongoing or recently completed uploads
-  interface UploadStatus {
-    uploading?: boolean;
-    url?: string;
-    error?: string;
-  }
   const status = await storageService.get<UploadStatus>(BLOSSOM_UPLOAD_STATUS);
   if (status) {
     if (status.uploading) {
@@ -173,7 +187,7 @@ onMounted(async () => {
       const statusChange = changes[BLOSSOM_UPLOAD_STATUS];
       if (statusChange) {
         const status = statusChange.newValue;
-        if (status) {
+        if (isUploadStatus(status)) {
           if (status.uploading) {
             uploading.value = true;
             emitStatus('uploading', true);
