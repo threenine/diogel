@@ -32,6 +32,7 @@ Allow only these kinds in MVP:
 - `1` (`text_note`)
 - `3` (`contacts`)
 - `7` (`reaction`)
+- `30023` (`long-form`)
 
 Rationale:
 

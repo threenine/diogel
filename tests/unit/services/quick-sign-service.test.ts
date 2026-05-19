@@ -1,16 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { get, getActive } from 'src/services/dexie-storage';
-import { db } from 'src/services/database';
 import { isVaultUnlocked } from 'src/services/vault-service';
-import { buildQuickSignPreviewEvent, getQuickSignAvailability, validateQuickSignInput } from 'src/services/quick-sign-service';
+import {
+  buildQuickSignPreviewEvent,
+  getQuickSignAvailability,
+  listQuickSignAccounts,
+  listQuickSignOnlineRelayUrls,
+  validateQuickSignInput,
+} from 'src/services/quick-sign-service';
 
 vi.mock('src/services/dexie-storage', () => ({
   get: vi.fn(),
   getActive: vi.fn(),
 }));
 
-const { relayCountMock } = vi.hoisted(() => ({
+const { relayCountMock, relayToArrayMock } = vi.hoisted(() => ({
   relayCountMock: vi.fn(),
+  relayToArrayMock: vi.fn(),
 }));
 
 vi.mock('src/services/database', () => ({
@@ -19,6 +25,7 @@ vi.mock('src/services/database', () => ({
       where: vi.fn().mockReturnValue({
         equals: vi.fn().mockReturnValue({
           count: relayCountMock,
+          toArray: relayToArrayMock,
         }),
       }),
     },
@@ -44,6 +51,7 @@ describe('quick-sign-service', () => {
       },
     });
     relayCountMock.mockResolvedValue(1);
+    relayToArrayMock.mockResolvedValue([{ url: 'wss://relay.example', status: 'online' }]);
   });
 
   it('returns locked state when vault is locked', async () => {
@@ -68,22 +76,47 @@ describe('quick-sign-service', () => {
     await expect(getQuickSignAvailability(false)).resolves.toEqual({ state: 'ready' });
   });
 
-  it('validates empty content and invalid kind', () => {
+  it('validates missing account, malformed JSON and empty relay selection', () => {
     const result = validateQuickSignInput({
-      kind: 2 as 1,
-      content: '   ',
-      publish: false,
+      accountAlias: ' ',
+      eventJson: '{',
+      publish: true,
+      selectedRelayUrls: [],
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors).toHaveLength(2);
+    expect(result.errors).toHaveLength(3);
   });
 
-  it('builds preview event for confirmation with validation metadata', () => {
-    const prepared = buildQuickSignPreviewEvent('pubkey-test', {
-      kind: 1,
-      content: 'hello nostr',
+  it('accepts supported kind and valid event JSON', () => {
+    const result = validateQuickSignInput({
+      accountAlias: 'alpha',
+      eventJson: JSON.stringify({
+        kind: 30023,
+        content: 'hello nostr',
+        tags: [['title', 'example']],
+      }),
       publish: false,
+      selectedRelayUrls: [],
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('builds preview event with sanitized pubkey and generated signature fields', () => {
+    const prepared = buildQuickSignPreviewEvent('pubkey-test', {
+      accountAlias: 'alpha',
+      eventJson: JSON.stringify({
+        kind: 1,
+        content: 'hello nostr',
+        tags: [['e', '123']],
+        id: 'forged-id',
+        sig: 'forged-sig',
+        pubkey: 'forged-pubkey',
+      }),
+      publish: false,
+      selectedRelayUrls: [],
     });
 
     expect(prepared.validation.valid).toBe(true);
@@ -91,8 +124,22 @@ describe('quick-sign-service', () => {
       kind: 1,
       content: 'hello nostr',
       pubkey: 'pubkey-test',
-      tags: [],
+      tags: [['e', '123']],
     });
+    expect('id' in prepared.event).toBe(false);
+    expect('sig' in prepared.event).toBe(false);
     expect(typeof prepared.event.created_at).toBe('number');
+  });
+
+  it('lists quick sign accounts and online relay urls', async () => {
+    await expect(listQuickSignAccounts()).resolves.toEqual([
+      {
+        label: 'alpha (npub1alpha)',
+        value: 'alpha',
+        npub: 'npub1alpha',
+      },
+    ]);
+
+    await expect(listQuickSignOnlineRelayUrls()).resolves.toEqual(['wss://relay.example']);
   });
 });

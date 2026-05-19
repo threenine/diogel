@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { get, getActive } from 'src/services/dexie-storage';
 import {
   buildQuickSignPreviewEvent,
   getQuickSignAvailability,
+  listQuickSignAccounts,
+  listQuickSignOnlineRelayUrls,
   quickSignEvent,
+  type QuickSignAccountOption,
   type QuickSignFormInput,
   type QuickSignPreparedEvent,
 } from 'src/services/quick-sign-service';
@@ -13,13 +16,31 @@ import {
 const { t } = useI18n();
 
 const loading = ref(false);
-const kind = ref<1>(1);
-const content = ref('');
+const accountAlias = ref('');
+const accounts = ref<QuickSignAccountOption[]>([]);
+const eventJson = ref(
+  JSON.stringify(
+    {
+      kind: 1,
+      content: '',
+      tags: [],
+    },
+    null,
+    2,
+  ),
+);
 const publish = ref(false);
+const relayOptions = ref<string[]>([]);
+const selectedRelayUrls = ref<string[]>([]);
 const showPreviewDialog = ref(false);
 const errorMessage = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
 const previewEvent = ref<QuickSignPreparedEvent | null>(null);
+
+const selectedAccountLabel = computed(() => {
+  const selected = accounts.value.find((account) => account.value === accountAlias.value);
+  return selected?.label ?? '-';
+});
 
 const stateMessage = computed(() => {
   if (errorMessage.value) {
@@ -30,11 +51,40 @@ const stateMessage = computed(() => {
 
 function buildInput(): QuickSignFormInput {
   return {
-    kind: kind.value,
-    content: content.value,
+    accountAlias: accountAlias.value,
+    eventJson: eventJson.value,
     publish: publish.value,
+    selectedRelayUrls: selectedRelayUrls.value,
   };
 }
+
+async function loadOptions(): Promise<void> {
+  const [loadedAccounts, loadedRelayUrls, activeAlias] = await Promise.all([
+    listQuickSignAccounts(),
+    listQuickSignOnlineRelayUrls(),
+    getActive(),
+  ]);
+
+  accounts.value = loadedAccounts;
+  relayOptions.value = loadedRelayUrls;
+  selectedRelayUrls.value = loadedRelayUrls;
+
+  if (activeAlias && loadedAccounts.some((account) => account.value === activeAlias)) {
+    accountAlias.value = activeAlias;
+    return;
+  }
+
+  accountAlias.value = loadedAccounts[0]?.value ?? '';
+}
+
+watch(publish, (enabled) => {
+  if (!enabled) {
+    selectedRelayUrls.value = [];
+    return;
+  }
+
+  selectedRelayUrls.value = relayOptions.value;
+});
 
 async function openPreview(): Promise<void> {
   successMessage.value = null;
@@ -57,24 +107,23 @@ async function openPreview(): Promise<void> {
       return;
     }
 
+    if (availability.state === 'invalid-account') {
+      errorMessage.value = t('dashboard.widgets.quickSign.states.invalidAccount');
+      return;
+    }
+
     errorMessage.value = t('dashboard.widgets.quickSign.states.error');
     return;
   }
 
-  const activeAlias = await getActive();
-  if (!activeAlias) {
-    errorMessage.value = t('dashboard.widgets.quickSign.states.noAccount');
-    return;
-  }
-
   const keys = await get();
-  const activeAccount = keys[activeAlias];
-  if (!activeAccount) {
-    errorMessage.value = t('dashboard.widgets.quickSign.states.noAccount');
+  const selectedAccount = keys[accountAlias.value];
+  if (!selectedAccount) {
+    errorMessage.value = t('dashboard.widgets.quickSign.states.invalidAccount');
     return;
   }
 
-  const prepared = buildQuickSignPreviewEvent(activeAccount.id, buildInput());
+  const prepared = buildQuickSignPreviewEvent(selectedAccount.id, buildInput());
   if (!prepared.validation.valid) {
     errorMessage.value = prepared.validation.errors.join(' ');
     return;
@@ -98,7 +147,7 @@ async function confirmSign(): Promise<void> {
   successMessage.value = null;
 
   try {
-    const result = await quickSignEvent(previewEvent.value.event, publish.value);
+    const result = await quickSignEvent(previewEvent.value.event, publish.value, selectedRelayUrls.value);
     if (!result.success || !result.signedEvent) {
       errorMessage.value = result.error || t('dashboard.widgets.quickSign.signFailure');
       return;
@@ -107,12 +156,24 @@ async function confirmSign(): Promise<void> {
     successMessage.value = result.published
       ? t('dashboard.widgets.quickSign.signPublishSuccess')
       : t('dashboard.widgets.quickSign.signSuccess');
-    content.value = '';
+    eventJson.value = JSON.stringify(
+      {
+        kind: 1,
+        content: '',
+        tags: [],
+      },
+      null,
+      2,
+    );
     showPreviewDialog.value = false;
   } finally {
     loading.value = false;
   }
 }
+
+onMounted(async () => {
+  await loadOptions();
+});
 </script>
 
 <template>
@@ -126,9 +187,9 @@ async function confirmSign(): Promise<void> {
       <p class="quick-sign-card__caption">{{ t('dashboard.widgets.quickSign.caption') }}</p>
 
       <q-select
-        v-model="kind"
-        :label="t('dashboard.widgets.quickSign.kind')"
-        :options="[{ label: t('dashboard.widgets.quickSign.kindTextNote'), value: 1 }]"
+        v-model="accountAlias"
+        :label="t('dashboard.widgets.quickSign.account')"
+        :options="accounts"
         option-label="label"
         option-value="value"
         emit-value
@@ -138,15 +199,28 @@ async function confirmSign(): Promise<void> {
       />
 
       <q-input
-        v-model="content"
-        :label="t('dashboard.widgets.quickSign.content')"
+        v-model="eventJson"
+        :label="t('dashboard.widgets.quickSign.eventJson')"
         outlined
         type="textarea"
         autogrow
         dense
       />
 
+      <p class="quick-sign-card__hint">{{ t('dashboard.widgets.quickSign.supportedKinds') }}</p>
+
       <q-toggle v-model="publish" :label="t('dashboard.widgets.quickSign.publish')" />
+
+      <q-select
+        v-if="publish"
+        v-model="selectedRelayUrls"
+        :label="t('dashboard.widgets.quickSign.relays')"
+        :options="relayOptions"
+        outlined
+        dense
+        multiple
+        use-chips
+      />
 
       <q-btn color="primary" :label="t('dashboard.widgets.quickSign.preview')" @click="openPreview" />
 
@@ -162,6 +236,13 @@ async function confirmSign(): Promise<void> {
       </q-card-section>
 
       <q-card-section>
+        <p class="quick-sign-preview__meta">
+          {{ t('dashboard.widgets.quickSign.previewAccount') }} <strong>{{ selectedAccountLabel }}</strong>
+        </p>
+        <p class="quick-sign-preview__meta" v-if="publish">
+          {{ t('dashboard.widgets.quickSign.previewRelays') }}
+          <strong>{{ selectedRelayUrls.length ? selectedRelayUrls.join(', ') : '-' }}</strong>
+        </p>
         <pre class="quick-sign-preview__json">{{ JSON.stringify(previewEvent?.event, null, 2) }}</pre>
       </q-card-section>
 
@@ -206,6 +287,12 @@ async function confirmSign(): Promise<void> {
   line-height: 1.5;
 }
 
+.quick-sign-card__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+}
+
 .quick-sign-preview {
   min-width: min(90vw, 640px);
 }
@@ -218,5 +305,9 @@ async function confirmSign(): Promise<void> {
   color: #e9e9e9;
   padding: 12px;
   border-radius: 8px;
+}
+
+.quick-sign-preview__meta {
+  margin: 0 0 8px;
 }
 </style>
