@@ -31,11 +31,21 @@ function openEventHistory() {
     </section>
 
     <section class="dashboard-widget-grid">
-      <QuickSignCard />
-      <TotalSignedEventsCard />
-      <ActiveKeysCard clickable @open="openKeyManagement" />
-      <ConnectedRelaysCard clickable @open="openRelayManagement" />
-      <RecentActivityCard clickable @open="openEventHistory" />
+      <div class="dashboard-widget-grid__item dashboard-widget-grid__item--total-signed">
+        <TotalSignedEventsCard />
+      </div>
+      <div class="dashboard-widget-grid__item dashboard-widget-grid__item--active-keys">
+        <ActiveKeysCard clickable @open="openKeyManagement" />
+      </div>
+      <div class="dashboard-widget-grid__item dashboard-widget-grid__item--connected-relays">
+        <ConnectedRelaysCard clickable @open="openRelayManagement" />
+      </div>
+      <div class="dashboard-widget-grid__item dashboard-widget-grid__item--recent-activity">
+        <RecentActivityCard clickable @open="openEventHistory" />
+      </div>
+      <div class="dashboard-widget-grid__item dashboard-widget-grid__item--quick-sign">
+        <QuickSignCard />
+      </div>
     </section>
   </q-page>
 </template>
@@ -44,6 +54,57 @@ function openEventHistory() {
 .dashboard-widget-grid {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-areas:
+    'totalSigned activeKeys connectedRelays'
+    'recentActivity recentActivity quickSign';
+  align-items: start;
+}
+
+.dashboard-widget-grid__item {
+  min-width: 0;
+}
+
+.dashboard-widget-grid__item--total-signed {
+  grid-area: totalSigned;
+}
+
+.dashboard-widget-grid__item--active-keys {
+  grid-area: activeKeys;
+}
+
+.dashboard-widget-grid__item--connected-relays {
+  grid-area: connectedRelays;
+}
+
+.dashboard-widget-grid__item--recent-activity {
+  grid-area: recentActivity;
+}
+
+.dashboard-widget-grid__item--quick-sign {
+  grid-area: quickSign;
+}
+
+@media (max-width: 1023px) {
+  .dashboard-widget-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      'totalSigned activeKeys'
+      'connectedRelays connectedRelays'
+      'recentActivity recentActivity'
+      'quickSign quickSign';
+  }
+}
+
+@media (max-width: 699px) {
+  .dashboard-widget-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'totalSigned'
+      'activeKeys'
+      'connectedRelays'
+      'recentActivity'
+      'quickSign';
+  }
 }
 </style>
