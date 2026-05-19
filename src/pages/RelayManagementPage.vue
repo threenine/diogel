@@ -9,12 +9,20 @@ const accountStore = useAccountStore();
 
 const activeStoredKey = computed(() => {
   const activeAlias = accountStore.activeKey;
-  if (!activeAlias) return undefined;
-  return Array.from(accountStore.storedKeys).find((k) => k.alias === activeAlias);
+  const keys = Array.from(accountStore.storedKeys);
+  if (!activeAlias) {
+    return keys[0];
+  }
+
+  return keys.find((k) => k.alias === activeAlias) ?? keys[0];
 });
 
 onMounted(async () => {
   await accountStore.getKeys();
+
+  if (!accountStore.activeKey && activeStoredKey.value) {
+    await accountStore.setActiveKey(activeStoredKey.value.alias);
+  }
 });
 </script>
 

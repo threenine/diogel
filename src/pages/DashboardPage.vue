@@ -1,9 +1,19 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
+
+type WidgetId = 'activity' | 'insights' | 'status' | 'quickActions';
+
+interface WidgetPlaceholder {
+  id: WidgetId;
+  icon: string;
+  routeName?: 'relays';
+}
 
 const { t } = useI18n();
+const router = useRouter();
 
-const widgetPlaceholders = [
+const widgetPlaceholders: WidgetPlaceholder[] = [
   {
     id: 'activity',
     icon: 'dashboard_customize',
@@ -15,12 +25,21 @@ const widgetPlaceholders = [
   {
     id: 'status',
     icon: 'monitor_heart',
+    routeName: 'relays',
   },
   {
     id: 'quickActions',
     icon: 'bolt',
   },
-] as const;
+];
+
+function openWidgetDestination(widget: WidgetPlaceholder) {
+  if (!widget.routeName) {
+    return;
+  }
+
+  void router.push({ name: widget.routeName });
+}
 </script>
 
 <template>
@@ -36,6 +55,8 @@ const widgetPlaceholders = [
         :key="widget.id"
         class="dashboard-card dashboard-widget-placeholder"
         flat
+        :clickable="Boolean(widget.routeName)"
+        @click="openWidgetDestination(widget)"
       >
         <q-card-section class="dashboard-widget-placeholder__content">
           <q-icon :name="widget.icon" color="grey-6" size="md" />
