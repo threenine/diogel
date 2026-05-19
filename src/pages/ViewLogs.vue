@@ -79,77 +79,97 @@ const formatDateTime = (val: string) => {
 </script>
 
 <template>
-  <q-page padding>
-    <div class="q-mb-md flex justify-between items-center">
-      <div class="text-h6">{{ t('logs.title') }}</div>
-      <q-btn class="diogel-btn-ghost" round icon="refresh" @click="fetchLogs" />
-    </div>
+  <q-page class="dashboard-page logs-page">
+    <section class="dashboard-hero">
+      <div>
+        <h1 class="dashboard-hero-title">{{ t('logs.title') }}</h1>
+      </div>
+      <q-btn
+        class="dashboard-hero-action diogel-btn-ghost"
+        round
+        icon="refresh"
+        @click="fetchLogs"
+      />
+    </section>
 
-    <q-tabs
-      v-model="tab"
-      dense
-      class="text-grey"
-      active-color="primary"
-      indicator-color="primary"
-      align="justify"
-      narrow-indicator
-    >
-      <q-tab name="approvals" :label="t('logs.tabs.approvals')" />
-      <q-tab name="exceptions" :label="t('logs.tabs.exceptions')" />
-    </q-tabs>
+    <q-card class="dashboard-card logs-page__card">
+      <q-tabs
+        v-model="tab"
+        active-color="primary"
+        align="justify"
+        class="dashboard-tabs text-primary text-caption"
+        dense
+        indicator-color="primary"
+        inline-label
+        narrow-indicator
+      >
+        <q-tab name="approvals" :label="t('logs.tabs.approvals')" />
+        <q-tab name="exceptions" :label="t('logs.tabs.exceptions')" />
+      </q-tabs>
 
-    <q-separator />
+      <q-tab-panels v-model="tab" animated class="logs-page__tab-panels">
+        <q-tab-panel name="approvals" class="q-pa-none">
+          <q-table
+            :rows="approvals"
+            :columns="approvalColumns"
+            row-key="id"
+            flat
+            bordered
+            :no-data-label="t('logs.noData')"
+            :pagination="{ rowsPerPage: 10 }"
+          >
+            <template v-slot:body-cell-dateTime="props">
+              <q-td :props="props">
+                {{ formatDateTime(props.value) }}
+              </q-td>
+            </template>
+          </q-table>
+        </q-tab-panel>
 
-    <q-tab-panels v-model="tab" animated>
-      <q-tab-panel name="approvals" class="q-pa-none">
-        <q-table
-          :rows="approvals"
-          :columns="approvalColumns"
-          row-key="id"
-          flat
-          bordered
-          :no-data-label="t('logs.noData')"
-          :pagination="{ rowsPerPage: 10 }"
-        >
-          <template v-slot:body-cell-dateTime="props">
-            <q-td :props="props">
-              {{ formatDateTime(props.value) }}
-            </q-td>
-          </template>
-        </q-table>
-      </q-tab-panel>
-
-      <q-tab-panel name="exceptions" class="q-pa-none">
-        <q-table
-          :rows="exceptions"
-          :columns="exceptionColumns"
-          row-key="id"
-          flat
-          bordered
-          :no-data-label="t('logs.noData')"
-          :pagination="{ rowsPerPage: 10 }"
-        >
-          <template v-slot:body-cell-dateTime="props">
-            <q-td :props="props">
-              {{ formatDateTime(props.value) }}
-            </q-td>
-          </template>
-          <template v-slot:body-cell-message="props">
-            <q-td
-              :props="props"
-              class="text-wrap"
-              style="word-break: break-all; white-space: normal"
-            >
-              {{ props.value }}
-            </q-td>
-          </template>
-        </q-table>
-      </q-tab-panel>
-    </q-tab-panels>
+        <q-tab-panel name="exceptions" class="q-pa-none">
+          <q-table
+            :rows="exceptions"
+            :columns="exceptionColumns"
+            row-key="id"
+            flat
+            bordered
+            :no-data-label="t('logs.noData')"
+            :pagination="{ rowsPerPage: 10 }"
+          >
+            <template v-slot:body-cell-dateTime="props">
+              <q-td :props="props">
+                {{ formatDateTime(props.value) }}
+              </q-td>
+            </template>
+            <template v-slot:body-cell-message="props">
+              <q-td
+                :props="props"
+                class="text-wrap"
+                style="word-break: break-all; white-space: normal"
+              >
+                {{ props.value }}
+              </q-td>
+            </template>
+          </q-table>
+        </q-tab-panel>
+      </q-tab-panels>
+    </q-card>
   </q-page>
 </template>
 
 <style scoped>
+.logs-page {
+  width: 100%;
+}
+
+.logs-page__card {
+  overflow: hidden;
+}
+
+.logs-page__tab-panels {
+  background: transparent;
+}
+
 .text-wrap {
   max-width: 400px;
 }
