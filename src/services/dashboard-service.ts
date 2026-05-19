@@ -1,6 +1,9 @@
 import type { ApprovalLog, ExceptionLog } from './database';
 import { db } from './database';
 import { get, getActive } from './dexie-storage';
+import { parseRelayListEvent, normalizeAndDeduplicateRelays } from './relay-discovery';
+import useSettingsStore from 'src/stores/settings-store';
+import { SimplePool } from 'nostr-tools';
 import { isVaultUnlocked } from './vault-service';
 
 export type DashboardActivityType = 'approval' | 'exception';
@@ -18,13 +21,46 @@ export interface DashboardActivityItem {
 }
 
 export type DashboardDataState = 'ready' | 'locked' | 'no-account';
+export type ConnectedRelaysDataState = 'ready' | 'unavailable';
 
 export interface DashboardSummary {
   state: DashboardDataState;
   signedEvents: number;
   activeKeys: number;
   connectedRelays: number;
+  connectedRelaysState: ConnectedRelaysDataState;
   recentActivity: DashboardActivityItem[];
+}
+
+const relayMetadataPool = new SimplePool();
+
+async function getKind10002RelayCount(pubkey: string): Promise<number | null> {
+  const settingsStore = useSettingsStore();
+  if (settingsStore.fallbackRelays.length === 0) {
+    await settingsStore.getSettings();
+  }
+
+  const relays = settingsStore.fallbackRelays;
+  if (relays.length === 0) {
+    // Without relay endpoints we cannot fetch kind 10002 relay-list metadata for this account.
+    return null;
+  }
+
+  try {
+    const event = await relayMetadataPool.get(relays, {
+      kinds: [10002],
+      authors: [pubkey],
+    });
+
+    if (!event) {
+      return null;
+    }
+
+    const relayUrls = parseRelayListEvent(event);
+    return normalizeAndDeduplicateRelays(relayUrls).length;
+  } catch {
+    return null;
+  }
 }
 
 async function getDashboardDataState(): Promise<DashboardDataState> {
@@ -83,18 +119,36 @@ export async function getSignedEventCountForActiveKey(): Promise<number> {
 }
 
 export async function getConnectedRelayCountForActiveKey(): Promise<number> {
+  const relaySummary = await getConnectedRelaySummaryForActiveKey();
+  return relaySummary.count;
+}
+
+export async function getConnectedRelaySummaryForActiveKey(): Promise<{
+  count: number;
+  state: ConnectedRelaysDataState;
+}> {
   const state = await getDashboardDataState();
   if (state !== 'ready') {
-    return 0;
+    return { count: 0, state: 'unavailable' };
   }
 
   const activeAccount = await getActiveAccountAlias();
   if (!activeAccount) {
-    return 0;
+    return { count: 0, state: 'unavailable' };
   }
 
-  const relayEntries = await db.relayCatalog.toArray();
-  return relayEntries.filter((entry) => entry.status === 'online').length;
+  const keys = await get();
+  const activeKey = keys[activeAccount];
+  if (!activeKey?.id) {
+    return { count: 0, state: 'unavailable' };
+  }
+
+  const count = await getKind10002RelayCount(activeKey.id);
+  if (count === null) {
+    return { count: 0, state: 'unavailable' };
+  }
+
+  return { count, state: 'ready' };
 }
 
 function toRecentApprovalActivity(log: ApprovalLog): DashboardActivityItem {
@@ -157,13 +211,14 @@ export async function getDashboardSummary(activityLimit = 5): Promise<DashboardS
       signedEvents: 0,
       activeKeys,
       connectedRelays: 0,
+      connectedRelaysState: 'unavailable',
       recentActivity: [],
     };
   }
 
-  const [signedEvents, connectedRelays, recentActivity] = await Promise.all([
+  const [signedEvents, connectedRelaysSummary, recentActivity] = await Promise.all([
     getSignedEventCountForActiveKey(),
-    getConnectedRelayCountForActiveKey(),
+    getConnectedRelaySummaryForActiveKey(),
     getRecentActivityForActiveKey(activityLimit),
   ]);
 
@@ -171,7 +226,8 @@ export async function getDashboardSummary(activityLimit = 5): Promise<DashboardS
     state,
     signedEvents,
     activeKeys,
-    connectedRelays,
+    connectedRelays: connectedRelaysSummary.count,
+    connectedRelaysState: connectedRelaysSummary.state,
     recentActivity,
   };
 }

@@ -1,7 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { getDashboardSummary, type DashboardDataState } from 'src/services/dashboard-service';
+import {
+  getDashboardSummary,
+  type ConnectedRelaysDataState,
+  type DashboardDataState,
+} from 'src/services/dashboard-service';
 
 const props = withDefaults(
   defineProps<{
@@ -21,6 +25,7 @@ const { t } = useI18n();
 const loading = ref(true);
 const error = ref<string | null>(null);
 const state = ref<DashboardDataState>('no-account');
+const connectedRelaysState = ref<ConnectedRelaysDataState>('unavailable');
 const total = ref(0);
 
 const statusText = computed(() => {
@@ -36,7 +41,19 @@ const statusText = computed(() => {
     return t('dashboard.widgets.common.noAccount');
   }
 
+  if (connectedRelaysState.value === 'unavailable') {
+    return t('dashboard.widgets.connectedRelays.unavailable');
+  }
+
   return t('dashboard.widgets.connectedRelays.ready');
+});
+
+const metricText = computed(() => {
+  if (connectedRelaysState.value === 'unavailable') {
+    return '—';
+  }
+
+  return String(total.value);
 });
 
 function onClick() {
@@ -55,6 +72,7 @@ async function loadSummary() {
     const summary = await getDashboardSummary();
     state.value = summary.state;
     total.value = summary.connectedRelays;
+    connectedRelaysState.value = summary.connectedRelaysState;
   } catch {
     error.value = t('dashboard.widgets.common.error');
   } finally {
@@ -77,7 +95,7 @@ onMounted(() => {
 
       <div class="dashboard-widget-card__metric">
         <q-spinner v-if="loading" color="primary" size="24px" />
-        <span v-else>{{ total }}</span>
+        <span v-else>{{ metricText }}</span>
       </div>
 
       <p class="dashboard-widget-card__caption">{{ statusText }}</p>

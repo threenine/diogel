@@ -1,13 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  getActiveKeyCount,
-  getConnectedRelayCountForActiveKey,
-  getRecentActivityForActiveKey,
-  getSignedEventCountForActiveKey,
-} from 'src/services/dashboard-service';
-import { get, getActive } from 'src/services/dexie-storage';
-import { db } from 'src/services/database';
-import { isVaultUnlocked } from 'src/services/vault-service';
+
+import type * as DashboardService from 'src/services/dashboard-service';
+import type * as DexieStorage from 'src/services/dexie-storage';
+import type * as VaultService from 'src/services/vault-service';
 
 vi.mock('src/services/dexie-storage', () => ({
   get: vi.fn(),
@@ -23,56 +18,105 @@ const { approvalsToArrayMock, exceptionsToArrayMock } = vi.hoisted(() => ({
   exceptionsToArrayMock: vi.fn(),
 }));
 
+const {
+  relayMetadataGetMock,
+  fallbackRelays,
+  getSettingsMock,
+  parseRelayListEventMock,
+  normalizeAndDeduplicateRelaysMock,
+} = vi.hoisted(() => ({
+  relayMetadataGetMock: vi.fn(),
+  fallbackRelays: [] as string[],
+  getSettingsMock: vi.fn(async () => undefined),
+  parseRelayListEventMock: vi.fn(),
+  normalizeAndDeduplicateRelaysMock: vi.fn(),
+}));
+
 vi.mock('src/services/database', () => ({
   db: {
     approvals: {
-      where: vi.fn().mockReturnValue({
-        equals: vi.fn().mockReturnValue({
+      where: () => ({
+        equals: () => ({
           toArray: approvalsToArrayMock,
         }),
       }),
     },
     exceptions: {
-      where: vi.fn().mockReturnValue({
-        equals: vi.fn().mockReturnValue({
+      where: () => ({
+        equals: () => ({
           toArray: exceptionsToArrayMock,
         }),
       }),
     },
-    relayCatalog: {
-      toArray: vi.fn(),
-    },
   },
 }));
 
+vi.mock('src/stores/settings-store', () => ({
+  default: () => ({
+    fallbackRelays,
+    getSettings: getSettingsMock,
+  }),
+}));
+
+vi.mock('nostr-tools', () => ({
+  SimplePool: class {
+    get = relayMetadataGetMock;
+  },
+}));
+
+vi.mock('src/services/relay-discovery', () => ({
+  parseRelayListEvent: parseRelayListEventMock,
+  normalizeAndDeduplicateRelays: normalizeAndDeduplicateRelaysMock,
+}));
+
 describe('dashboard-service', () => {
+  let dashboardService: typeof DashboardService;
+  let dexieStorage: typeof DexieStorage;
+  let vaultService: typeof VaultService;
+
   beforeEach(() => {
+    vi.resetModules();
     vi.clearAllMocks();
     approvalsToArrayMock.mockResolvedValue([]);
     exceptionsToArrayMock.mockResolvedValue([]);
-    vi.mocked(isVaultUnlocked).mockResolvedValue(true);
-    vi.mocked(get).mockResolvedValue({});
-    vi.mocked(getActive).mockResolvedValue(undefined);
+    relayMetadataGetMock.mockReset();
+    relayMetadataGetMock.mockResolvedValue(undefined);
+    parseRelayListEventMock.mockReset();
+    parseRelayListEventMock.mockReturnValue([]);
+    normalizeAndDeduplicateRelaysMock.mockReset();
+    normalizeAndDeduplicateRelaysMock.mockImplementation((urls: string[]) => urls);
+    fallbackRelays.splice(0, fallbackRelays.length, 'wss://relay.default');
+    getSettingsMock.mockClear();
+  });
+
+  beforeEach(async () => {
+    dashboardService = await import('src/services/dashboard-service');
+    dexieStorage = await import('src/services/dexie-storage');
+    vaultService = await import('src/services/vault-service');
+
+    vi.mocked(vaultService.isVaultUnlocked).mockResolvedValue(true);
+    vi.mocked(dexieStorage.get).mockResolvedValue({});
+    vi.mocked(dexieStorage.getActive).mockResolvedValue(undefined);
   });
 
   it('getActiveKeyCount returns total stored keys', async () => {
-    vi.mocked(get).mockResolvedValue({
+    vi.mocked(dexieStorage.get).mockResolvedValue({
       alpha: { id: 'npub1', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
       beta: { id: 'npub2', alias: 'beta', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
     });
 
-    await expect(getActiveKeyCount()).resolves.toBe(2);
+    await expect(dashboardService.getActiveKeyCount()).resolves.toBe(2);
   });
 
   it('returns 0 signed events when no active account', async () => {
-    vi.mocked(getActive).mockResolvedValue(undefined);
+    vi.mocked(dexieStorage.getActive).mockResolvedValue(undefined);
 
-    await expect(getSignedEventCountForActiveKey()).resolves.toBe(0);
+    await expect(dashboardService.getSignedEventCountForActiveKey()).resolves.toBe(0);
   });
 
   it('counts signed events from approval logs for active account', async () => {
-    vi.mocked(getActive).mockResolvedValue('alpha');
-    vi.mocked(get).mockResolvedValue({
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+    vi.mocked(dexieStorage.get).mockResolvedValue({
       alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
     });
     approvalsToArrayMock.mockResolvedValue([
@@ -81,53 +125,113 @@ describe('dashboard-service', () => {
     ]);
 
     // This intentionally reflects the documented approximation: local approval logs only.
-    await expect(getSignedEventCountForActiveKey()).resolves.toBe(2);
+    await expect(dashboardService.getSignedEventCountForActiveKey()).resolves.toBe(2);
   });
 
   it('returns 0 connected relays when no active account', async () => {
-    vi.mocked(getActive).mockResolvedValue(undefined);
+    vi.mocked(dexieStorage.getActive).mockResolvedValue(undefined);
 
-    await expect(getConnectedRelayCountForActiveKey()).resolves.toBe(0);
+    await expect(dashboardService.getConnectedRelayCountForActiveKey()).resolves.toBe(0);
   });
 
-  it('counts online relays for connected relay metric', async () => {
-    vi.mocked(getActive).mockResolvedValue('alpha');
-    vi.mocked(get).mockResolvedValue({
+  it('counts relays from active account kind 10002 metadata', async () => {
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+    vi.mocked(dexieStorage.get).mockResolvedValue({
       alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
     });
-    vi.mocked(db.relayCatalog.toArray).mockResolvedValue([
-      {
-        url: 'wss://relay.one',
-        hostname: 'relay.one',
-        isUserAdded: false,
-        isSeed: true,
-        status: 'online',
-        createdAt: 1,
-        updatedAt: 1,
-      },
-      {
-        url: 'wss://relay.two',
-        hostname: 'relay.two',
-        isUserAdded: true,
-        isSeed: false,
-        status: 'offline',
-        createdAt: 1,
-        updatedAt: 1,
-      },
-    ]);
+    const event = { id: 'evt-1', tags: [] };
+    relayMetadataGetMock.mockResolvedValue(event);
+    parseRelayListEventMock.mockReturnValue(['wss://relay.one', 'wss://relay.two']);
+    normalizeAndDeduplicateRelaysMock.mockReturnValue(['wss://relay.one', 'wss://relay.two']);
 
-    await expect(getConnectedRelayCountForActiveKey()).resolves.toBe(1);
+    await expect(dashboardService.getConnectedRelayCountForActiveKey()).resolves.toBe(2);
+  });
+
+  it('deduplicates relay urls for connected relay metric', async () => {
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+    vi.mocked(dexieStorage.get).mockResolvedValue({
+      alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
+    });
+    const event = { id: 'evt-2', tags: [] };
+    relayMetadataGetMock.mockResolvedValue(event);
+    parseRelayListEventMock.mockReturnValue([
+      'wss://relay.one',
+      'wss://relay.one',
+      'wss://relay.two',
+      'wss://relay.two',
+    ]);
+    normalizeAndDeduplicateRelaysMock.mockReturnValue(['wss://relay.one', 'wss://relay.two']);
+
+    await expect(dashboardService.getConnectedRelayCountForActiveKey()).resolves.toBe(2);
+  });
+
+  it('ignores malformed relay urls through normalization', async () => {
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+    vi.mocked(dexieStorage.get).mockResolvedValue({
+      alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
+    });
+    const event = { id: 'evt-3', tags: [] };
+    relayMetadataGetMock.mockResolvedValue(event);
+    parseRelayListEventMock.mockReturnValue(['wss://relay.good', 'bad-url']);
+    normalizeAndDeduplicateRelaysMock.mockReturnValue(['wss://relay.good']);
+
+    await expect(dashboardService.getConnectedRelayCountForActiveKey()).resolves.toBe(1);
+  });
+
+  it('returns unavailable when no kind 10002 metadata exists', async () => {
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+    vi.mocked(dexieStorage.get).mockResolvedValue({
+      alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
+    });
+    relayMetadataGetMock.mockResolvedValue(undefined);
+
+    await expect(dashboardService.getConnectedRelaySummaryForActiveKey()).resolves.toEqual({
+      count: 0,
+      state: 'unavailable',
+    });
+  });
+
+  it('returns unavailable when vault is locked', async () => {
+    vi.mocked(vaultService.isVaultUnlocked).mockResolvedValue(false);
+
+    await expect(dashboardService.getConnectedRelaySummaryForActiveKey()).resolves.toEqual({
+      count: 0,
+      state: 'unavailable',
+    });
+  });
+
+  it('returns unavailable when no active account', async () => {
+    vi.mocked(dexieStorage.getActive).mockResolvedValue(undefined);
+
+    await expect(dashboardService.getConnectedRelaySummaryForActiveKey()).resolves.toEqual({
+      count: 0,
+      state: 'unavailable',
+    });
+  });
+
+  it('returns unavailable when fallback relays are missing', async () => {
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+    vi.mocked(dexieStorage.get).mockResolvedValue({
+      alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
+    });
+    fallbackRelays.splice(0, fallbackRelays.length);
+
+    await expect(dashboardService.getConnectedRelaySummaryForActiveKey()).resolves.toEqual({
+      count: 0,
+      state: 'unavailable',
+    });
+    expect(getSettingsMock).toHaveBeenCalledTimes(1);
   });
 
   it('returns empty recent activity when no active account', async () => {
-    vi.mocked(getActive).mockResolvedValue(undefined);
+    vi.mocked(dexieStorage.getActive).mockResolvedValue(undefined);
 
-    await expect(getRecentActivityForActiveKey(5)).resolves.toEqual([]);
+    await expect(dashboardService.getRecentActivityForActiveKey(5)).resolves.toEqual([]);
   });
 
   it('returns merged and sorted recent activity for active account with limit', async () => {
-    vi.mocked(getActive).mockResolvedValue('alpha');
-    vi.mocked(get).mockResolvedValue({
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+    vi.mocked(dexieStorage.get).mockResolvedValue({
       alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
     });
     approvalsToArrayMock.mockResolvedValue([
@@ -144,7 +248,7 @@ describe('dashboard-service', () => {
       },
     ]);
 
-    const result = await getRecentActivityForActiveKey(2);
+    const result = await dashboardService.getRecentActivityForActiveKey(2);
 
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ type: 'exception', detail: 'approval timeout' });
