@@ -1,6 +1,7 @@
 <script lang="ts" setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import useAccountStore from '../stores/account-store';
 import ProfileImage from '../components/ProfileImage.vue';
 import ProfileEditor from '../components/ProfileEditor.vue';
@@ -12,8 +13,30 @@ import WarningCard from 'components/WarningCard.vue';
 
 const { t } = useI18n();
 const accountStore = useAccountStore();
+const route = useRoute();
+const router = useRouter();
 
-const tab = ref('profile');
+type ProfileTab = 'profile' | 'images' | 'relays' | 'keys';
+
+function resolveTabFromRoute(): ProfileTab {
+  const routeTab = route.query.tab;
+
+  if (routeTab === 'profile' || routeTab === 'images' || routeTab === 'relays' || routeTab === 'keys') {
+    return routeTab;
+  }
+
+  if (route.path.startsWith('/keys')) {
+    return 'keys';
+  }
+
+  if (route.path.startsWith('/relays')) {
+    return 'relays';
+  }
+
+  return 'profile';
+}
+
+const tab = ref<ProfileTab>(resolveTabFromRoute());
 
 const activeStoredKey = computed(() => {
   const activeAlias = accountStore.activeKey;
@@ -23,6 +46,33 @@ const activeStoredKey = computed(() => {
 
 onMounted(async () => {
   await accountStore.getKeys();
+});
+
+watch(
+  () => [route.path, route.query.tab],
+  () => {
+    const resolvedTab = resolveTabFromRoute();
+
+    if (tab.value !== resolvedTab) {
+      tab.value = resolvedTab;
+    }
+  },
+);
+
+watch(tab, (newTab) => {
+  const currentTab = typeof route.query.tab === 'string' ? route.query.tab : undefined;
+  const queryTab = newTab === 'profile' ? undefined : newTab;
+
+  if (currentTab === queryTab) {
+    return;
+  }
+
+  void router.replace({
+    query: {
+      ...route.query,
+      tab: queryTab,
+    },
+  });
 });
 </script>
 

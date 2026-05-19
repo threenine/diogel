@@ -101,6 +101,32 @@ export default {
       },
     },
   },
+  navigation: {
+    dashboard: {
+      label: 'Dashboard',
+      caption: 'Overview and quick shortcuts',
+    },
+    keys: {
+      label: 'Key Management',
+      caption: 'Manage account keys and backups',
+    },
+    profile: {
+      label: 'Profile Management',
+      caption: 'Manage your profile details and media',
+    },
+    relays: {
+      label: 'Relay Management',
+      caption: 'Configure relay connections',
+    },
+    logs: {
+      label: 'Event History',
+      caption: 'Review extension activity and approvals',
+    },
+    settings: {
+      label: 'Settings',
+      caption: 'Configure extension preferences',
+    },
+  },
   settings: {
     vaultManagement: 'Vault Management',
     exportVault: 'Export Vault',

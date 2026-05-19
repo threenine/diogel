@@ -1,18 +1,30 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useVault } from 'src/composables/useVault';
 
-type NavigationRouteName = 'dashboard' | 'profile' | 'settings' | 'logs';
+type NavigationRouteName = 'dashboard' | 'profile' | 'settings' | 'logs' | 'edit-account';
+type ProfileTab = 'profile' | 'images' | 'relays' | 'keys';
+
+interface NavigationTarget {
+  name: NavigationRouteName;
+  query?: {
+    tab?: ProfileTab;
+  };
+}
 
 interface NavigationItem {
-  name: NavigationRouteName;
+  id: 'dashboard' | 'keys' | 'profile' | 'relays' | 'logs' | 'settings';
   icon: string;
   label: string;
   caption: string;
+  target: NavigationTarget;
+  isActive: () => boolean;
 }
 
 const { handleLock } = useVault();
+const { t } = useI18n();
 const router = useRouter();
 const route = useRoute();
 
@@ -25,59 +37,97 @@ const props = withDefaults(
   },
 );
 
-const navigationItems: NavigationItem[] = [
-  {
-    name: 'dashboard',
-    icon: 'dashboard',
-    label: 'Dashboard',
-    caption: 'Overview and quick shortcuts',
-  },
-  {
-    name: 'profile',
-    icon: 'person',
-    label: 'Profile',
-    caption: 'Manage your account details',
-  },
-  {
-    name: 'settings',
-    icon: 'settings',
-    label: 'Extension Settings',
-    caption: 'Configure extension preferences',
-  },
-  {
-    name: 'logs',
-    icon: 'flaky',
-    label: 'Logs',
-    caption: 'Review extension activity',
-  },
-];
+const routeName = computed(() => (typeof route.name === 'string' ? route.name : ''));
+const activeProfileTab = computed(() => {
+  const routeTab = route.query.tab;
 
-const activeRouteName = computed(() => {
-  const currentRouteName = route.name;
-
-  if (typeof currentRouteName === 'string') {
-    return currentRouteName;
+  if (
+    routeTab === 'profile' ||
+    routeTab === 'images' ||
+    routeTab === 'relays' ||
+    routeTab === 'keys'
+  ) {
+    return routeTab;
   }
 
-  return '';
+  if (route.path.startsWith('/keys')) {
+    return 'keys';
+  }
+
+  if (route.path.startsWith('/relays')) {
+    return 'relays';
+  }
+
+  return 'profile';
 });
 
-function openInTab(name: string) {
-  const resolved = router.resolve({ name });
-  const url = chrome.runtime.getURL(`www/index.html${resolved.href}`);
-  void chrome.tabs.create({ url });
-}
+const navigationItems = computed<NavigationItem[]>(() => [
+  {
+    id: 'dashboard',
+    icon: 'dashboard',
+    label: t('navigation.dashboard.label'),
+    caption: t('navigation.dashboard.caption'),
+    target: { name: 'dashboard' },
+    isActive: () => routeName.value === 'dashboard',
+  },
+  {
+    id: 'keys',
+    icon: 'key',
+    label: t('navigation.keys.label'),
+    caption: t('navigation.keys.caption'),
+    target: { name: 'profile', query: { tab: 'keys' } },
+    isActive: () =>
+      routeName.value === 'edit-account' ||
+      (routeName.value === 'profile' && activeProfileTab.value === 'keys'),
+  },
+  {
+    id: 'profile',
+    icon: 'person',
+    label: t('navigation.profile.label'),
+    caption: t('navigation.profile.caption'),
+    target: { name: 'profile', query: { tab: 'profile' } },
+    isActive: () =>
+      routeName.value === 'profile' &&
+      activeProfileTab.value !== 'keys' &&
+      activeProfileTab.value !== 'relays',
+  },
+  {
+    id: 'relays',
+    icon: 'hub',
+    label: t('navigation.relays.label'),
+    caption: t('navigation.relays.caption'),
+    target: { name: 'profile', query: { tab: 'relays' } },
+    isActive: () => routeName.value === 'profile' && activeProfileTab.value === 'relays',
+  },
+  {
+    id: 'logs',
+    icon: 'flaky',
+    label: t('navigation.logs.label'),
+    caption: t('navigation.logs.caption'),
+    target: { name: 'logs' },
+    isActive: () => routeName.value === 'logs',
+  },
+  {
+    id: 'settings',
+    icon: 'settings',
+    label: t('navigation.settings.label'),
+    caption: t('navigation.settings.caption'),
+    target: { name: 'settings' },
+    isActive: () => routeName.value === 'settings',
+  },
+]);
 
-function navigateTo(name: NavigationRouteName) {
-  if (props.vertical) {
-    if (activeRouteName.value !== name) {
-      void router.push({ name });
-    }
-
+function navigateTo(item: NavigationItem) {
+  if (item.isActive()) {
     return;
   }
 
-  openInTab(name);
+  void router.push(item.target);
+
+  if (props.vertical) {
+
+    return;
+  }
 }
 </script>
 
@@ -85,13 +135,13 @@ function navigateTo(name: NavigationRouteName) {
   <q-list v-if="vertical" class="main-navigation main-navigation--vertical">
     <q-item
       v-for="item in navigationItems"
-      :key="item.name"
+      :key="item.id"
       v-ripple
       clickable
-      :active="activeRouteName === item.name"
+      :active="item.isActive()"
       active-class="main-navigation__item--active"
       class="main-navigation__item"
-      @click="navigateTo(item.name)"
+      @click="navigateTo(item)"
     >
       <q-item-section avatar>
         <q-icon :name="item.icon" size="sm" />
@@ -120,13 +170,13 @@ function navigateTo(name: NavigationRouteName) {
       <q-list style="max-width: 300px" class="main-navigation">
         <q-item
           v-for="item in navigationItems"
-          :key="item.name"
+          :key="item.id"
           v-ripple
           clickable
-          :active="activeRouteName === item.name"
+          :active="item.isActive()"
           active-class="main-navigation__item--active"
           class="main-navigation__item"
-          @click="navigateTo(item.name)"
+          @click="navigateTo(item)"
         >
           <q-item-section avatar>
             <q-icon :name="item.icon" size="sm" />
