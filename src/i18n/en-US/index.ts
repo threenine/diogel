@@ -164,6 +164,19 @@ export default {
       label: 'Settings',
       caption: 'Configure extension preferences',
     },
+    support: {
+      label: 'Support',
+      caption: 'Support link coming soon',
+    },
+    documentation: {
+      label: 'Documentation',
+      caption: 'Documentation link coming soon',
+    },
+    lock: {
+      label: 'Lock',
+      caption: 'Lock the vault immediately',
+    },
+    newSignature: 'New Signature',
   },
   settings: {
     vaultManagement: 'Vault Management',

@@ -30,6 +30,14 @@ interface NavigationItem {
   isActive: () => boolean;
 }
 
+interface UtilityLinkItem {
+  id: 'support' | 'documentation';
+  icon: string;
+  label: string;
+  caption: string;
+  href: string;
+}
+
 const { handleLock } = useVault();
 const { t } = useI18n();
 const router = useRouter();
@@ -45,6 +53,24 @@ const props = withDefaults(
 );
 
 const routeName = computed(() => (typeof route.name === 'string' ? route.name : ''));
+const appVersion = process.env.APP_VERSION;
+
+const utilityLinks = computed<UtilityLinkItem[]>(() => [
+  {
+    id: 'support',
+    icon: 'support_agent',
+    label: t('navigation.support.label'),
+    caption: t('navigation.support.caption'),
+    href: '#',
+  },
+  {
+    id: 'documentation',
+    icon: 'description',
+    label: t('navigation.documentation.label'),
+    caption: t('navigation.documentation.caption'),
+    href: '#',
+  },
+]);
 
 const navigationItems = computed<NavigationItem[]>(() => [
   {
@@ -109,40 +135,94 @@ function navigateTo(item: NavigationItem) {
     return;
   }
 }
+
+function openNewSignature() {
+  void router.push({ name: 'dashboard', hash: '#quick-sign' });
+}
+
+function openUtilityLink(item: UtilityLinkItem) {
+  if (item.href === '#') {
+    return;
+  }
+
+  window.open(item.href, '_blank', 'noopener,noreferrer');
+}
 </script>
 
 <template>
   <q-list v-if="vertical" class="main-navigation main-navigation--vertical">
-    <q-item
-      v-for="item in navigationItems"
-      :key="item.id"
-      v-ripple
-      clickable
-      :active="item.isActive()"
-      active-class="main-navigation__item--active"
-      class="main-navigation__item"
-      @click="navigateTo(item)"
-    >
-      <q-item-section avatar>
-        <q-icon :name="item.icon" size="sm" />
-      </q-item-section>
-      <q-item-section>
-        <q-item-label>{{ item.label }}</q-item-label>
-        <q-item-label caption>{{ item.caption }}</q-item-label>
-      </q-item-section>
-    </q-item>
+    <div class="main-navigation__brand">
+      <img src="/images/diogel.svg" alt="Diogel" class="main-navigation__brand-logo" />
+      <div class="main-navigation__brand-content">
+        <p class="main-navigation__brand-title">Diogel</p>
+        <p class="main-navigation__brand-version">{{ t('footer.version') }} {{ appVersion }}</p>
+      </div>
+    </div>
 
     <q-separator class="main-navigation__separator" />
 
-    <q-item v-ripple clickable class="main-navigation__item" @click="handleLock">
-      <q-item-section avatar>
-        <q-icon name="lock" size="sm" />
-      </q-item-section>
-      <q-item-section>
-        <q-item-label>Lock</q-item-label>
-        <q-item-label caption>Lock the vault immediately</q-item-label>
-      </q-item-section>
-    </q-item>
+    <div class="main-navigation__primary-list">
+      <q-item
+        v-for="item in navigationItems"
+        :key="item.id"
+        v-ripple
+        clickable
+        :active="item.isActive()"
+        active-class="main-navigation__item--active"
+        class="main-navigation__item"
+        @click="navigateTo(item)"
+      >
+        <q-item-section avatar>
+          <q-icon :name="item.icon" size="sm" />
+        </q-item-section>
+        <q-item-section>
+          <q-item-label>{{ item.label }}</q-item-label>
+          <q-item-label caption>{{ item.caption }}</q-item-label>
+        </q-item-section>
+      </q-item>
+    </div>
+
+    <div class="main-navigation__footer">
+      <q-btn
+        color="primary"
+        class="main-navigation__new-signature"
+        icon="edit_note"
+        no-caps
+        unelevated
+        :label="t('navigation.newSignature')"
+        @click="openNewSignature"
+      />
+
+      <q-separator class="main-navigation__separator" />
+
+      <q-item
+        v-for="item in utilityLinks"
+        :key="item.id"
+        v-ripple
+        clickable
+        :disable="item.href === '#'"
+        class="main-navigation__item"
+        @click="openUtilityLink(item)"
+      >
+        <q-item-section avatar>
+          <q-icon :name="item.icon" size="sm" />
+        </q-item-section>
+        <q-item-section>
+          <q-item-label>{{ item.label }}</q-item-label>
+          <q-item-label caption>{{ item.caption }}</q-item-label>
+        </q-item-section>
+      </q-item>
+
+      <q-item v-ripple clickable class="main-navigation__item" @click="handleLock">
+        <q-item-section avatar>
+          <q-icon name="lock" size="sm" />
+        </q-item-section>
+        <q-item-section>
+          <q-item-label>{{ t('navigation.lock.label') }}</q-item-label>
+          <q-item-label caption>{{ t('navigation.lock.caption') }}</q-item-label>
+        </q-item-section>
+      </q-item>
+    </div>
   </q-list>
 
   <q-btn v-else class="diogel-btn-ghost" dense icon="menu" round>
@@ -166,11 +246,33 @@ function navigateTo(item: NavigationItem) {
 
         <q-separator class="main-navigation__separator" />
 
+        <q-item v-ripple clickable class="main-navigation__item" @click="openNewSignature">
+          <q-item-section avatar>
+            <q-icon name="edit_note" size="sm" />
+          </q-item-section>
+          <q-item-section>{{ t('navigation.newSignature') }}</q-item-section>
+        </q-item>
+
+        <q-item
+          v-for="item in utilityLinks"
+          :key="item.id"
+          v-ripple
+          clickable
+          :disable="item.href === '#'"
+          class="main-navigation__item"
+          @click="openUtilityLink(item)"
+        >
+          <q-item-section avatar>
+            <q-icon :name="item.icon" size="sm" />
+          </q-item-section>
+          <q-item-section>{{ item.label }}</q-item-section>
+        </q-item>
+
         <q-item v-ripple clickable class="main-navigation__item" @click="handleLock">
           <q-item-section avatar>
             <q-icon name="lock" size="sm" />
           </q-item-section>
-          <q-item-section>Lock</q-item-section>
+          <q-item-section>{{ t('navigation.lock.label') }}</q-item-section>
         </q-item>
       </q-list>
     </q-menu>

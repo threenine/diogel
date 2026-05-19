@@ -116,7 +116,7 @@ async function confirmSign(): Promise<void> {
 </script>
 
 <template>
-  <q-card class="dashboard-card quick-sign-card">
+  <q-card id="quick-sign" class="dashboard-card quick-sign-card">
     <q-card-section class="dashboard-card-section quick-sign-card__section">
       <div class="quick-sign-card__header">
         <q-icon name="edit_note" size="sm" color="primary" />
