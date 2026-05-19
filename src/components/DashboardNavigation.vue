@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useVault } from 'src/composables/useVault';
 
-type NavigationRouteName = 'profile' | 'settings' | 'logs';
+type NavigationRouteName = 'dashboard' | 'profile' | 'settings' | 'logs';
 
 interface NavigationItem {
   name: NavigationRouteName;
@@ -26,6 +26,12 @@ const props = withDefaults(
 );
 
 const navigationItems: NavigationItem[] = [
+  {
+    name: 'dashboard',
+    icon: 'dashboard',
+    label: 'Dashboard',
+    caption: 'Overview and quick shortcuts',
+  },
   {
     name: 'profile',
     icon: 'person',

@@ -78,6 +78,29 @@ export default {
     themeCaption: 'Use light or dark mode',
     edit: 'edit',
   },
+  dashboard: {
+    title: 'Dashboard',
+    caption: 'Welcome to your workspace. Widget areas below are placeholders for upcoming features.',
+    placeholderBadge: 'Placeholder only',
+    widgets: {
+      activity: {
+        title: 'Recent Activity',
+        caption: 'Future widget area for account and extension activity summaries.',
+      },
+      insights: {
+        title: 'Insights',
+        caption: 'Future widget area for relay, profile, and usage insights.',
+      },
+      status: {
+        title: 'System Status',
+        caption: 'Future widget area for vault and connectivity status signals.',
+      },
+      quickActions: {
+        title: 'Quick Actions',
+        caption: 'Future widget area for shortcuts to common dashboard workflows.',
+      },
+    },
+  },
   settings: {
     vaultManagement: 'Vault Management',
     exportVault: 'Export Vault',

@@ -57,6 +57,27 @@ const addLog = (msg: string) => {
   logService.log(LogLevel.DEBUG, `[App] ${msg}`);
 };
 
+type LoginContext = 'dashboard' | 'extension';
+
+function resolveLoginContextFromRoute(): LoginContext {
+  const routeName = route.name;
+  if (
+    routeName === 'dashboard' ||
+    routeName === 'settings' ||
+    routeName === 'profile' ||
+    routeName === 'logs' ||
+    routeName === 'edit-account'
+  ) {
+    return 'dashboard';
+  }
+
+  return 'extension';
+}
+
+function resolvePostLoginRouteName(): 'dashboard' | 'home' {
+  return route.query.loginContext === 'extension' ? 'home' : 'dashboard';
+}
+
 vaultStore.isLoading = true;
 
 onMounted(async () => {
@@ -131,7 +152,13 @@ onMounted(async () => {
         if (isAtApprove) {
           query.redirect = '/approve';
         }
-        await router.push({ path: '/login', query }); // Use path to be explicit
+        await router.push({
+          path: '/login',
+          query: {
+            ...query,
+            loginContext: resolveLoginContextFromRoute(),
+          },
+        }); // Use path to be explicit
         addLog(
           `Redirection call finished. New path: ${String(route.path)}, name: ${String(route.name)}`,
         );
@@ -139,8 +166,8 @@ onMounted(async () => {
         addLog(`Redirection failed: ${String(err)}`);
       }
     } else if (vaultStore.isUnlocked && isAtLogin) {
-      addLog('Vault is unlocked but on login page, redirecting to home');
-      void router.push({ path: '/' });
+      addLog('Vault is unlocked but on login page, redirecting by login context');
+      void router.push({ name: resolvePostLoginRouteName() });
     } else {
       addLog('On correct page or no redirect needed');
     }
@@ -164,10 +191,15 @@ watch(
 
     if (newPath === '/' && !vaultStore.isUnlocked) {
       addLog('WARNING: At home page while locked. Redirecting to login...');
-      void router.push({ path: '/login' });
+      void router.push({
+        path: '/login',
+        query: {
+          loginContext: resolveLoginContextFromRoute(),
+        },
+      });
     } else if (newPath === '/login' && vaultStore.isUnlocked) {
-      addLog('WARNING: At login page while unlocked. Redirecting to home...');
-      void router.push({ path: '/' });
+      addLog('WARNING: At login page while unlocked. Redirecting by login context...');
+      void router.push({ name: resolvePostLoginRouteName() });
     }
   },
   { immediate: false },
@@ -184,10 +216,15 @@ watch(
 
     if (newName === 'home' && !vaultStore.isUnlocked) {
       addLog('WARNING: At home route while locked. Redirecting to login...');
-      void router.push({ path: '/login' });
+      void router.push({
+        path: '/login',
+        query: {
+          loginContext: resolveLoginContextFromRoute(),
+        },
+      });
     } else if (newName === 'login' && vaultStore.isUnlocked) {
-      addLog('WARNING: At login route while unlocked. Redirecting to home...');
-      void router.push({ path: '/' });
+      addLog('WARNING: At login route while unlocked. Redirecting by login context...');
+      void router.push({ name: resolvePostLoginRouteName() });
     }
   },
   { immediate: false },
@@ -213,10 +250,15 @@ watch(
 
     if (!isUnlocked && route.path !== '/login' && route.name !== 'login') {
       addLog('Redirecting to login via watcher');
-      void router.push({ path: '/login' });
+      void router.push({
+        path: '/login',
+        query: {
+          loginContext: resolveLoginContextFromRoute(),
+        },
+      });
     } else if (isUnlocked && (route.path === '/login' || route.name === 'login')) {
-      addLog('Redirecting to home via watcher');
-      void router.push({ path: '/' });
+      addLog('Redirecting from login via watcher using login context');
+      void router.push({ name: resolvePostLoginRouteName() });
     }
   },
 );

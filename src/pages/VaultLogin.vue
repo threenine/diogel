@@ -87,6 +87,7 @@ const {
   loginError,
   handleCreate,
   handleUnlock,
+  getPostLoginRouteName,
 } = useVault();
 
 const router = useRouter();
@@ -99,7 +100,7 @@ onMounted(async () => {
   await vaultStore.checkVaultStatus();
 
   if (vaultStore.isUnlocked && (route.path === '/login' || route.name === 'login')) {
-    await router.push({ name: 'home' });
+    await router.push({ name: getPostLoginRouteName() });
   }
 });
 
@@ -111,7 +112,7 @@ watch(
       if (redirect) {
         void router.push({ path: redirect, query: route.query });
       } else {
-        void router.push({ name: 'home' });
+        void router.push({ name: getPostLoginRouteName() });
       }
     }
   },
