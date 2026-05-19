@@ -61,6 +61,30 @@ function formatDate(value: string): string {
   return d(date, 'short');
 }
 
+function formatActivityStatus(activity: DashboardActivityItem): string {
+  if (activity.status === 'approved') {
+    return t('dashboard.widgets.recentActivity.status.approved');
+  }
+
+  return t('dashboard.widgets.recentActivity.status.exception');
+}
+
+function formatActivityKind(activity: DashboardActivityItem): string | null {
+  if (typeof activity.eventKind === 'undefined') {
+    return null;
+  }
+
+  return t('dashboard.widgets.recentActivity.kind', { kind: String(activity.eventKind) });
+}
+
+function formatActivityHost(activity: DashboardActivityItem): string {
+  if (!activity.hostname) {
+    return t('dashboard.widgets.recentActivity.unknownHost');
+  }
+
+  return activity.hostname;
+}
+
 async function loadSummary() {
   loading.value = true;
   error.value = null;
@@ -90,10 +114,28 @@ onMounted(() => {
       </div>
 
       <q-list v-if="!loading && items.length > 0" dense class="dashboard-widget-card__list">
-        <q-item v-for="activity in items" :key="`${activity.dateTime}:${activity.message}`" class="dashboard-widget-card__list-item">
+        <q-item
+          v-for="activity in items"
+          :key="`${activity.dateTime}:${activity.type}:${activity.detail ?? activity.title}`"
+          class="dashboard-widget-card__list-item"
+        >
           <q-item-section>
-            <q-item-label>{{ activity.message }}</q-item-label>
-            <q-item-label caption>{{ formatDate(activity.dateTime) }}</q-item-label>
+            <q-item-label class="dashboard-widget-card__line dashboard-widget-card__line--title">
+              {{ activity.title }}
+            </q-item-label>
+            <q-item-label
+              v-if="activity.detail"
+              caption
+              class="dashboard-widget-card__line dashboard-widget-card__line--detail"
+            >
+              {{ activity.detail }}
+            </q-item-label>
+            <q-item-label caption class="dashboard-widget-card__meta">
+              <span>{{ formatActivityStatus(activity) }}</span>
+              <span>{{ formatActivityHost(activity) }}</span>
+              <span v-if="formatActivityKind(activity)">{{ formatActivityKind(activity) }}</span>
+              <span>{{ formatDate(activity.dateTime) }}</span>
+            </q-item-label>
           </q-item-section>
         </q-item>
       </q-list>
@@ -140,9 +182,44 @@ onMounted(() => {
 }
 
 .dashboard-widget-card__list-item {
-  min-height: 44px;
+  min-height: 56px;
   padding-left: 0;
   padding-right: 0;
+}
+
+.dashboard-widget-card__line {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-widget-card__line--title {
+  font-weight: 500;
+}
+
+.dashboard-widget-card__line--detail {
+  margin-top: 2px;
+}
+
+.dashboard-widget-card__meta {
+  margin-top: 2px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.dashboard-widget-card__meta > span {
+  min-width: 0;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dashboard-widget-card__meta > span:not(:last-child)::after {
+  content: '•';
+  margin-left: 4px;
+  color: var(--text-muted);
 }
 
 .dashboard-widget-card__state {

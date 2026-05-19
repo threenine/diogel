@@ -103,9 +103,15 @@ export default {
       },
       recentActivity: {
         title: 'Recent Activity',
-        ready: 'Most recent approvals and exceptions for your active account.',
-        empty: 'No recent activity available for this account yet.',
+        ready: 'Latest approval and exception events recorded for your active account.',
+        empty: 'No approvals or exceptions yet. Open Event History to review activity as it appears.',
         action: 'Open Event History',
+        unknownHost: 'Unknown host',
+        kind: 'Kind {kind}',
+        status: {
+          approved: 'Approved',
+          exception: 'Exception',
+        },
       },
     },
   },

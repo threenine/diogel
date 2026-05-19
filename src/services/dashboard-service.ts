@@ -5,10 +5,14 @@ import { isVaultUnlocked } from './vault-service';
 
 export type DashboardActivityType = 'approval' | 'exception';
 
+export type DashboardActivityStatus = 'approved' | 'exception';
+
 export interface DashboardActivityItem {
   type: DashboardActivityType;
+  status: DashboardActivityStatus;
   dateTime: string;
-  message: string;
+  title: string;
+  detail?: string;
   eventKind?: number | string;
   hostname?: string | null;
 }
@@ -96,8 +100,10 @@ export async function getConnectedRelayCountForActiveKey(): Promise<number> {
 function toRecentApprovalActivity(log: ApprovalLog): DashboardActivityItem {
   return {
     type: 'approval',
+    status: 'approved',
     dateTime: log.dateTime,
-    message: `Approved event kind ${String(log.eventKind)}`,
+    title: 'Approval request accepted',
+    detail: `Event kind ${String(log.eventKind)}`,
     eventKind: log.eventKind,
     hostname: log.hostname,
   };
@@ -108,8 +114,10 @@ function toRecentExceptionActivity(log: ExceptionLog): DashboardActivityItem {
 
   return {
     type: 'exception',
+    status: 'exception',
     dateTime: log.dateTime,
-    message: log.message,
+    title: 'Extension exception',
+    detail: log.message,
     hostname,
   };
 }
