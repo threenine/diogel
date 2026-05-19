@@ -4,6 +4,8 @@ import { get, getActive } from './dexie-storage';
 import { LogLevel, logService } from './log-service';
 import { sendBexMessage } from './vault-service';
 import { isVaultUnlocked } from './vault-service';
+import { parseRelayListEvent, normalizeAndDeduplicateRelays } from './relay-discovery';
+import useSettingsStore from 'src/stores/settings-store';
 import { ErrorCode } from 'src/types/error-codes';
 import type { StoredKey } from 'src/types/bridge';
 
@@ -69,7 +71,7 @@ function hasBexSuccess(value: unknown): value is { success: boolean; event?: Nos
   return typeof value.success === 'boolean';
 }
 
-export async function getQuickSignAvailability(publish: boolean): Promise<QuickSignAvailabilityResult> {
+export async function getQuickSignAvailability(publish: boolean, relayUrls: string[] = []): Promise<QuickSignAvailabilityResult> {
   const unlocked = await isVaultUnlocked();
   if (!unlocked) {
     return { state: 'locked' };
@@ -86,8 +88,8 @@ export async function getQuickSignAvailability(publish: boolean): Promise<QuickS
   }
 
   if (publish) {
-    const onlineRelayCount = (await db.relayCatalog.where('status').equals('online').count()) || 0;
-    if (onlineRelayCount <= 0) {
+    const hasEligibleRelay = relayUrls.some((url) => url.trim().length > 0);
+    if (!hasEligibleRelay) {
       return { state: 'no-relay' };
     }
   }
@@ -112,6 +114,50 @@ export async function listQuickSignOnlineRelayUrls(): Promise<string[]> {
     .toArray();
 
   return onlineRelays.map((entry) => entry.url);
+}
+
+export async function listQuickSignAccountRelayUrls(accountAlias: string): Promise<string[]> {
+  const alias = accountAlias.trim();
+  if (!alias) {
+    return [];
+  }
+
+  const keys = await get();
+  const selectedAccount = keys[alias];
+  if (!selectedAccount) {
+    return [];
+  }
+
+  const settingsStore = useSettingsStore();
+  if (settingsStore.fallbackRelays.length === 0) {
+    await settingsStore.getSettings();
+  }
+
+  const fallbackRelays = settingsStore.fallbackRelays;
+  if (fallbackRelays.length === 0) {
+    return [];
+  }
+
+  const { SimplePool } = await import('nostr-tools');
+  const pool = new SimplePool();
+
+  try {
+    const event = await pool.get(fallbackRelays, {
+      kinds: [10002],
+      authors: [selectedAccount.id],
+    });
+
+    if (!event) {
+      return [];
+    }
+
+    const relayUrls = parseRelayListEvent(event);
+    return normalizeAndDeduplicateRelays(relayUrls);
+  } catch {
+    return [];
+  } finally {
+    pool.close(fallbackRelays);
+  }
 }
 
 function isQuickSignSupportedKind(kind: number): kind is QuickSignSupportedKind {

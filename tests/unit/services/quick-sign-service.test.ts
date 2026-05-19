@@ -5,31 +5,12 @@ import {
   buildQuickSignPreviewEvent,
   getQuickSignAvailability,
   listQuickSignAccounts,
-  listQuickSignOnlineRelayUrls,
   validateQuickSignInput,
 } from 'src/services/quick-sign-service';
 
 vi.mock('src/services/dexie-storage', () => ({
   get: vi.fn(),
   getActive: vi.fn(),
-}));
-
-const { relayCountMock, relayToArrayMock } = vi.hoisted(() => ({
-  relayCountMock: vi.fn(),
-  relayToArrayMock: vi.fn(),
-}));
-
-vi.mock('src/services/database', () => ({
-  db: {
-    relayCatalog: {
-      where: vi.fn().mockReturnValue({
-        equals: vi.fn().mockReturnValue({
-          count: relayCountMock,
-          toArray: relayToArrayMock,
-        }),
-      }),
-    },
-  },
 }));
 
 vi.mock('src/services/vault-service', () => ({
@@ -50,8 +31,6 @@ describe('quick-sign-service', () => {
         createdAt: '2026-01-01',
       },
     });
-    relayCountMock.mockResolvedValue(1);
-    relayToArrayMock.mockResolvedValue([{ url: 'wss://relay.example', status: 'online' }]);
   });
 
   it('returns locked state when vault is locked', async () => {
@@ -66,14 +45,16 @@ describe('quick-sign-service', () => {
     await expect(getQuickSignAvailability(false)).resolves.toEqual({ state: 'no-account' });
   });
 
-  it('returns no-relay state when publish requested and no online relay exists', async () => {
-    relayCountMock.mockResolvedValue(0);
-
-    await expect(getQuickSignAvailability(true)).resolves.toEqual({ state: 'no-relay' });
+  it('returns no-relay state when publish requested and no relay selection exists', async () => {
+    await expect(getQuickSignAvailability(true, [])).resolves.toEqual({ state: 'no-relay' });
   });
 
-  it('returns ready state for valid account and relay context', async () => {
-    await expect(getQuickSignAvailability(false)).resolves.toEqual({ state: 'ready' });
+  it('returns ready state for valid account and one relay context', async () => {
+    await expect(getQuickSignAvailability(true, ['wss://relay.example'])).resolves.toEqual({ state: 'ready' });
+  });
+
+  it('returns ready state for valid account and multiple relay context', async () => {
+    await expect(getQuickSignAvailability(true, ['wss://relay-a.example', 'wss://relay-b.example'])).resolves.toEqual({ state: 'ready' });
   });
 
   it('validates missing account, malformed JSON and empty relay selection', () => {
@@ -131,7 +112,7 @@ describe('quick-sign-service', () => {
     expect(typeof prepared.event.created_at).toBe('number');
   });
 
-  it('lists quick sign accounts and online relay urls', async () => {
+  it('lists quick sign accounts', async () => {
     await expect(listQuickSignAccounts()).resolves.toEqual([
       {
         label: 'alpha (npub1alpha)',
@@ -139,7 +120,21 @@ describe('quick-sign-service', () => {
         npub: 'npub1alpha',
       },
     ]);
+  });
 
-    await expect(listQuickSignOnlineRelayUrls()).resolves.toEqual(['wss://relay.example']);
+  it('flags publish mode as invalid when relay selection is empty', () => {
+    const result = validateQuickSignInput({
+      accountAlias: 'alpha',
+      eventJson: JSON.stringify({
+        kind: 1,
+        content: 'hello nostr',
+        tags: [],
+      }),
+      publish: true,
+      selectedRelayUrls: [],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Select at least one relay to publish.');
   });
 });

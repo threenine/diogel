@@ -5,8 +5,8 @@ import { get, getActive } from 'src/services/dexie-storage';
 import {
   buildQuickSignPreviewEvent,
   getQuickSignAvailability,
+  listQuickSignAccountRelayUrls,
   listQuickSignAccounts,
-  listQuickSignOnlineRelayUrls,
   quickSignEvent,
   type QuickSignAccountOption,
   type QuickSignFormInput,
@@ -59,23 +59,27 @@ function buildInput(): QuickSignFormInput {
 }
 
 async function loadOptions(): Promise<void> {
-  const [loadedAccounts, loadedRelayUrls, activeAlias] = await Promise.all([
+  const [loadedAccounts, activeAlias] = await Promise.all([
     listQuickSignAccounts(),
-    listQuickSignOnlineRelayUrls(),
     getActive(),
   ]);
 
   accounts.value = loadedAccounts;
-  relayOptions.value = loadedRelayUrls;
-  selectedRelayUrls.value = loadedRelayUrls;
 
   if (activeAlias && loadedAccounts.some((account) => account.value === activeAlias)) {
     accountAlias.value = activeAlias;
-    return;
+  } else {
+    accountAlias.value = loadedAccounts[0]?.value ?? '';
   }
 
-  accountAlias.value = loadedAccounts[0]?.value ?? '';
+  relayOptions.value = await listQuickSignAccountRelayUrls(accountAlias.value);
+  selectedRelayUrls.value = relayOptions.value;
 }
+
+watch(accountAlias, async (alias) => {
+  relayOptions.value = await listQuickSignAccountRelayUrls(alias);
+  selectedRelayUrls.value = publish.value ? relayOptions.value : [];
+});
 
 watch(publish, (enabled) => {
   if (!enabled) {
@@ -90,7 +94,7 @@ async function openPreview(): Promise<void> {
   successMessage.value = null;
   errorMessage.value = null;
 
-  const availability = await getQuickSignAvailability(publish.value);
+  const availability = await getQuickSignAvailability(publish.value, selectedRelayUrls.value);
   if (availability.state !== 'ready') {
     if (availability.state === 'locked') {
       errorMessage.value = t('dashboard.widgets.quickSign.states.locked');
@@ -211,6 +215,10 @@ onMounted(async () => {
 
       <q-toggle v-model="publish" :label="t('dashboard.widgets.quickSign.publish')" />
 
+      <p v-if="publish" class="quick-sign-card__hint">
+        {{ t('dashboard.widgets.quickSign.publishDestinationSummary', { count: selectedRelayUrls.length }) }}
+      </p>
+
       <q-select
         v-if="publish"
         v-model="selectedRelayUrls"
@@ -241,7 +249,14 @@ onMounted(async () => {
         </p>
         <p class="quick-sign-preview__meta" v-if="publish">
           {{ t('dashboard.widgets.quickSign.previewRelays') }}
-          <strong>{{ selectedRelayUrls.length ? selectedRelayUrls.join(', ') : '-' }}</strong>
+          <strong>
+            {{
+              selectedRelayUrls.length
+                ? t('dashboard.widgets.quickSign.publishDestinationSummary', { count: selectedRelayUrls.length })
+                : '-'
+            }}
+            {{ selectedRelayUrls.length ? `(${selectedRelayUrls.join(', ')})` : '' }}
+          </strong>
         </p>
         <pre class="quick-sign-preview__json">{{ JSON.stringify(previewEvent?.event, null, 2) }}</pre>
       </q-card-section>

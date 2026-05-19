@@ -130,10 +130,11 @@ For `sign only`:
 
 For `sign + publish`:
 
-- Default to account’s existing preferred relays if configured.
-- If no preferences exist, use project default relay set.
+- Relay candidates come from selected account kind `10002` relay-list metadata.
+- UI preselects those account relays and must show a publish destination summary before approval.
 - User can deselect/select relays before final approve.
 - At least one relay must be selected to publish.
+- No silent fallback to global online relay catalog for publish in MVP.
 
 ## Permission / Approval Model
 
@@ -214,7 +215,6 @@ Minimum manual scenarios for acceptance:
 
 - Confirm exact payload size limit for MVP (proposed implementation-time constant).
 - Confirm whether full content logging should be fully disabled or redacted-by-policy for all kinds.
-- Confirm default relay set source of truth when account preferences are absent.
 
 ## Acceptance Mapping
 
