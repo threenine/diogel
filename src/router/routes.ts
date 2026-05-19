@@ -25,7 +25,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/settings',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('layouts/DashboardLayout.vue'),
     children: [
       {
         path: '',
@@ -36,7 +36,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/profile',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('layouts/DashboardLayout.vue'),
     children: [
       {
         path: '',
@@ -47,7 +47,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/logs',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('layouts/DashboardLayout.vue'),
     children: [
       {
         path: '',
@@ -58,7 +58,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/edit-account/:alias?',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('layouts/DashboardLayout.vue'),
     children: [
       {
         path: '',
