@@ -27,98 +27,109 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="q-pt-lg">
-    <q-page>
-      <div class="q-pa-md full-width">
-        <q-card>
-          <div v-if="activeStoredKey">
-            <q-tabs
-              v-model="tab"
-              active-color="primary"
-              align="justify"
-              class="text-primary text-caption"
-              dense
-              indicator-color="primary"
-              inline-label
-              narrow-indicator
-            >
-              <q-tab
-                :label="t('profile.title')"
-                class="text-caption"
-                icon="person"
-                name="profile"
-              />
-              <q-tab
-                :label="t('profile.imagesTitle')"
-                class="text-caption"
-                icon="image"
-                name="images"
-              />
-              <q-tab
-                :label="t('profile.relaysTitle')"
-                class="text-caption"
-                icon="hub"
-                name="relays"
-              />
-              <q-tab :label="t('profile.keysTitle')" class="text-caption" icon="key" name="keys" />
-            </q-tabs>
+  <q-page class="dashboard-page profile-page">
+    <section class="dashboard-hero">
+      <h1 class="dashboard-hero-title">{{ t('profile.title') }}</h1>
+      <p class="dashboard-hero-caption">{{ t('account.editAccount') }}</p>
+    </section>
 
-            <q-separator />
+    <q-card class="dashboard-card profile-page__card">
+      <div v-if="activeStoredKey">
+        <q-tabs
+          v-model="tab"
+          active-color="primary"
+          align="justify"
+          class="dashboard-tabs text-primary text-caption"
+          dense
+          indicator-color="primary"
+          inline-label
+          narrow-indicator
+        >
+          <q-tab
+            :label="t('profile.title')"
+            class="text-caption"
+            icon="person"
+            name="profile"
+          />
+          <q-tab
+            :label="t('profile.imagesTitle')"
+            class="text-caption"
+            icon="image"
+            name="images"
+          />
+          <q-tab
+            :label="t('profile.relaysTitle')"
+            class="text-caption"
+            icon="hub"
+            name="relays"
+          />
+          <q-tab :label="t('profile.keysTitle')" class="text-caption" icon="key" name="keys" />
+        </q-tabs>
 
-            <q-tab-panels v-model="tab" animated>
-              <q-tab-panel class="q-pa-none" name="profile">
-                <ProfileEditor :stored-key="activeStoredKey" />
-              </q-tab-panel>
+        <q-tab-panels v-model="tab" animated class="profile-page__tab-panels">
+          <q-tab-panel class="q-pa-none" name="profile">
+            <ProfileEditor :stored-key="activeStoredKey" />
+          </q-tab-panel>
 
-              <q-tab-panel class="q-pa-none" name="images">
-                <ProfileImage :stored-key="activeStoredKey" />
-              </q-tab-panel>
+          <q-tab-panel class="q-pa-none" name="images">
+            <ProfileImage :stored-key="activeStoredKey" />
+          </q-tab-panel>
 
-              <q-tab-panel class="q-pa-none" name="relays">
-                <RelayEditor :stored-key="activeStoredKey" />
-              </q-tab-panel>
+          <q-tab-panel class="q-pa-none" name="relays">
+            <RelayEditor :stored-key="activeStoredKey" />
+          </q-tab-panel>
 
-              <q-tab-panel class="q-pa-none" name="keys">
-                <q-card>
-                  <q-card-section>
-                    <ViewStoredKey :stored-key="activeStoredKey" />
-                  </q-card-section>
-                  <q-card-section class="q-pt-none row justify-end paddings-sm">
-                    <q-separator horizontal inset />
-                  </q-card-section>
+          <q-tab-panel class="q-pa-none" name="keys">
+            <q-card>
+              <q-card-section>
+                <ViewStoredKey :stored-key="activeStoredKey" />
+              </q-card-section>
+              <q-card-section class="q-pt-none row justify-end paddings-sm">
+                <q-separator horizontal inset />
+              </q-card-section>
 
-                  <q-card-section class="q-pt-none row justify-end paddings-sm">
-                    <ExportButton :stored-key="activeStoredKey" />
-                  </q-card-section>
-                </q-card>
-                <q-separator horizontal class="q-mt-xl q-mb-md" inset />
-                <q-card>
-                  <q-card>
-                    <q-card-section class="text-center">
-                      <warning-card
-                        :headline="t('warning.exportKeys')"
-                        :message="t('warning.backupNotice')"
-                      />
-                    </q-card-section>
-                  </q-card>
-                </q-card>
-              </q-tab-panel>
-            </q-tab-panels>
-          </div>
-          <div v-else class="text-center q-pa-xl">
-            <q-icon color="grey-5" name="account_circle" size="4em" />
-            <div class="text-h6 text-grey-7 q-mt-md">{{ t('account.noAccounts') }}</div>
-            <p class="text-grey-6">{{ t('account.noAccountDesc') }}</p>
-            <q-btn
-              class="q-mt-md diogel-btn-primary"
-              :label="t('account.create')"
-              to="/create-account"
-            />
-          </div>
-        </q-card>
+              <q-card-section class="q-pt-none row justify-end paddings-sm">
+                <ExportButton :stored-key="activeStoredKey" />
+              </q-card-section>
+            </q-card>
+            <q-separator horizontal class="q-mt-xl q-mb-md" inset />
+            <q-card>
+              <q-card>
+                <q-card-section class="text-center">
+                  <warning-card
+                    :headline="t('warning.exportKeys')"
+                    :message="t('warning.backupNotice')"
+                  />
+                </q-card-section>
+              </q-card>
+            </q-card>
+          </q-tab-panel>
+        </q-tab-panels>
       </div>
-    </q-page>
-  </div>
+      <div v-else class="text-center q-pa-xl">
+        <q-icon color="grey-5" name="account_circle" size="4em" />
+        <div class="text-h6 text-grey-7 q-mt-md">{{ t('account.noAccounts') }}</div>
+        <p class="text-grey-6">{{ t('account.noAccountDesc') }}</p>
+        <q-btn
+          class="q-mt-md diogel-btn-primary"
+          :label="t('account.create')"
+          to="/create-account"
+        />
+      </div>
+    </q-card>
+  </q-page>
 </template>
 
-<style scoped></style>
+<style scoped>
+.profile-page {
+  width: 100%;
+}
+
+.profile-page__card {
+  overflow: hidden;
+}
+
+.profile-page__tab-panels {
+  background: transparent;
+}
+</style>
