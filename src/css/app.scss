@@ -439,7 +439,7 @@ html.extension-popup body {
 }
 
 .q-drawer {
-  background-color: var(--surface);
+  background-color: var(--dashboard-sidebar-bg);
   color: var(--text-color);
   border-right: 1px solid var(--border-color);
 }
@@ -488,7 +488,7 @@ html.extension-popup body {
 }
 
 .main-navigation__item--active {
-  background-color: color-mix(in oklab, var(--primary-color) 18%, transparent);
+  background-color: var(--dashboard-accent-bg);
   color: var(--text-color);
 }
 
@@ -582,10 +582,10 @@ html.extension-popup body {
 }
 
 .dashboard-card {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
+  background: var(--card-elevated-bg);
+  border: 1px solid var(--dashboard-border);
   border-radius: 12px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+  box-shadow: var(--dashboard-shadow);
 }
 
 .dashboard-card-section {
