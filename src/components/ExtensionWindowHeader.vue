@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
-import MainNavigation from 'components/MainNavigation.vue';
+import DashboardNavigation from 'components/DashboardNavigation.vue';
 import useVaultStore from 'src/stores/vault-store';
 
 const vaultStore = useVaultStore();
@@ -11,7 +11,7 @@ const vaultStore = useVaultStore();
   <q-header>
     <q-toolbar>
       <div class="q-pa-lg-lg">
-        <main-navigation />
+        <dashboard-navigation />
         <q-img src="/images/diogel.svg" style="width: 35px; height: 35px" />
       </div>
       <q-space />

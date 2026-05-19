@@ -473,7 +473,27 @@ html.extension-popup body {
 .dashboard-layout__drawer {
   .dashboard-layout__drawer-content {
     min-height: 100%;
+    padding: 12px 8px;
   }
+}
+
+.main-navigation--vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.main-navigation__item {
+  border-radius: 10px;
+}
+
+.main-navigation__item--active {
+  background-color: color-mix(in oklab, var(--primary-color) 18%, transparent);
+  color: var(--text-color);
+}
+
+.main-navigation__separator {
+  margin: 8px 0;
 }
 
 .dashboard-page-shell {

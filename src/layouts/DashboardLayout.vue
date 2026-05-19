@@ -11,7 +11,9 @@
       :breakpoint="1024"
       class="dashboard-layout__drawer"
     >
-      <div class="dashboard-layout__drawer-content" />
+      <div class="dashboard-layout__drawer-content">
+        <dashboard-navigation vertical />
+      </div>
     </q-drawer>
 
     <q-page-container>
@@ -28,6 +30,7 @@
 import { ref } from 'vue';
 import { useQuasar } from 'quasar';
 import DashboardHeader from 'components/DashboardHeader.vue';
+import DashboardNavigation from 'components/DashboardNavigation.vue';
 import MainLayoutFooter from 'components/MainLayoutFooter.vue';
 
 const $q = useQuasar();
