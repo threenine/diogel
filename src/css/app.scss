@@ -550,6 +550,68 @@ html.extension-popup body {
   margin-bottom: 12px;
 }
 
+// Shared dashboard page primitives
+.dashboard-page {
+  display: grid;
+  gap: 16px;
+}
+
+.dashboard-hero {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 20px;
+  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+}
+
+.dashboard-hero-title {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.dashboard-hero-caption {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.dashboard-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+}
+
+.dashboard-card-section {
+  padding: 16px 20px;
+
+  & + & {
+    border-top: 1px solid var(--border-color);
+  }
+}
+
+.dashboard-tabs {
+  border-bottom: 1px solid var(--border-color);
+
+  .q-tabs__content {
+    padding: 0 12px;
+  }
+}
+
+.dashboard-table-card {
+  overflow: hidden;
+
+  .q-table__container {
+    background: transparent;
+  }
+}
+
 @media (max-width: 1023px) {
   .dashboard-layout {
     --header-height: 64px;
@@ -579,6 +641,24 @@ html.extension-popup body {
 
   .dashboard-page-shell {
     padding: 16px;
+  }
+
+  .dashboard-hero {
+    padding: 16px;
+  }
+
+  .dashboard-card-section {
+    padding: 14px 16px;
+  }
+}
+
+@media (max-width: 599px) {
+  .dashboard-page {
+    gap: 12px;
+  }
+
+  .dashboard-hero-title {
+    font-size: 1.25rem;
   }
 }
 
