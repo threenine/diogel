@@ -485,11 +485,21 @@ html.extension-popup body {
 
 .main-navigation__item {
   border-radius: 10px;
+
+  &:hover {
+    background-color: color-mix(in oklab, var(--dashboard-accent-bg) 58%, transparent);
+  }
 }
 
 .main-navigation__item--active {
-  background-color: var(--dashboard-accent-bg);
-  color: var(--text-color);
+  background-color: color-mix(in oklab, var(--dashboard-accent-bg) 82%, transparent);
+  color: var(--on-header);
+
+  .q-icon,
+  .q-item__label,
+  .q-item__label--caption {
+    color: inherit;
+  }
 }
 
 .main-navigation__separator {
@@ -521,10 +531,12 @@ html.extension-popup body {
   align-items: center;
   gap: 8px;
   min-width: 220px;
+  flex: 0 0 auto;
 }
 
 .dashboard-topbar__menu-button {
   display: none;
+  flex: 0 0 auto;
 }
 
 .dashboard-topbar__logo {
@@ -536,12 +548,22 @@ html.extension-popup body {
   font-size: 1rem;
   font-weight: 600;
   color: var(--on-header);
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .dashboard-topbar__account {
   margin-left: auto;
   display: flex;
   align-items: center;
+  min-width: 0;
+  flex: 0 1 340px;
+
+  .diogel-select {
+    width: min(340px, 100%);
+  }
 }
 
 .dashboard-page-shell__toolbar {
@@ -637,6 +659,11 @@ html.extension-popup body {
 
   .dashboard-topbar__title {
     font-size: 0.95rem;
+    flex: 1 1 auto;
+  }
+
+  .dashboard-topbar__account {
+    flex-basis: min(50vw, 320px);
   }
 
   .dashboard-page-shell {
@@ -653,6 +680,18 @@ html.extension-popup body {
 }
 
 @media (max-width: 599px) {
+  .dashboard-topbar__toolbar {
+    gap: 8px;
+  }
+
+  .dashboard-topbar__logo {
+    width: 128px;
+  }
+
+  .dashboard-topbar__account {
+    flex-basis: min(56vw, 240px);
+  }
+
   .dashboard-page {
     gap: 12px;
   }

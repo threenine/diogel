@@ -117,6 +117,8 @@ function navigateTo(name: NavigationRouteName) {
           :key="item.name"
           v-ripple
           clickable
+          :active="activeRouteName === item.name"
+          active-class="main-navigation__item--active"
           class="main-navigation__item"
           @click="navigateTo(item.name)"
         >
