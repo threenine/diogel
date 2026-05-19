@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import type { StoredKey } from 'src/types';
@@ -9,18 +9,41 @@ import useAccountStore from 'stores/account-store';
 
 const { t } = useI18n();
 const accountStore = useAccountStore();
-const storedKey = ref<StoredKey>({
+const EMPTY_STORED_KEY: StoredKey = {
   id: '',
   alias: '',
   createdAt: '',
   account: {
     privkey: '',
   },
-});
+};
+const storedKey = ref<StoredKey>({ ...EMPTY_STORED_KEY });
 const route = useRoute();
+
+let isHydratingKeys = false;
+
+const storedKeyAliasesSignature = computed(() =>
+  Array.from(accountStore.storedKeys)
+    .map((item) => item.alias)
+    .sort()
+    .join('|'),
+);
+
 watch(
-  () => route.params.alias,
-  () => {
+  [
+    () => route.params.alias,
+    () => storedKeyAliasesSignature.value,
+  ],
+  async () => {
+    if (!isHydratingKeys) {
+      isHydratingKeys = true;
+      try {
+        await accountStore.getKeys();
+      } finally {
+        isHydratingKeys = false;
+      }
+    }
+
     loadStoredKeys();
   },
   { immediate: true },
@@ -30,8 +53,16 @@ function loadStoredKeys() {
   const storedKeys = accountStore.storedKeys;
   const requestedAlias = String(route.params.alias ?? '');
 
+  if (!requestedAlias) {
+    storedKey.value = { ...EMPTY_STORED_KEY };
+    return;
+  }
+
   const account = Array.from(storedKeys).find((item) => item.alias === requestedAlias);
-  if (!account) return;
+  if (!account) {
+    storedKey.value = { ...EMPTY_STORED_KEY };
+    return;
+  }
 
   storedKey.value = { ...account };
 }

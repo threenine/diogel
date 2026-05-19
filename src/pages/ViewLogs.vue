@@ -11,15 +11,68 @@ const accountStore = useAccountStore();
 const tab = ref('approvals');
 const approvals = ref<ApprovalLog[]>([]);
 const exceptions = ref<ExceptionLog[]>([]);
+const lastFetchedAlias = ref<string | undefined>(undefined);
 
-const fetchLogs = async () => {
-  approvals.value = await logService.getApprovals(accountStore.activeKey);
-  exceptions.value = await logService.getExceptions(accountStore.activeKey);
+let accountHydrationPromise: Promise<void> | null = null;
+let inFlightFetchPromise: Promise<void> | null = null;
+let inFlightFetchAlias: string | undefined;
+
+const ensureAccountStateLoaded = async () => {
+  if (!accountHydrationPromise) {
+    accountHydrationPromise = accountStore.getKeys().finally(() => {
+      accountHydrationPromise = null;
+    });
+  }
+
+  await accountHydrationPromise;
 };
 
-onMounted(fetchLogs);
+const fetchLogs = async (force = false) => {
+  await ensureAccountStateLoaded();
 
-watch(() => accountStore.activeKey, fetchLogs);
+  const activeKey = accountStore.activeKey;
+  if (!activeKey) {
+    approvals.value = [];
+    exceptions.value = [];
+    lastFetchedAlias.value = undefined;
+    return;
+  }
+
+  if (!force && lastFetchedAlias.value === activeKey) {
+    return;
+  }
+
+  if (!force && inFlightFetchPromise && inFlightFetchAlias === activeKey) {
+    await inFlightFetchPromise;
+    return;
+  }
+
+  const fetchPromise = (async () => {
+    approvals.value = await logService.getApprovals(activeKey);
+    exceptions.value = await logService.getExceptions(activeKey);
+    lastFetchedAlias.value = activeKey;
+  })();
+
+  inFlightFetchAlias = activeKey;
+  inFlightFetchPromise = fetchPromise;
+
+  try {
+    await fetchPromise;
+  } finally {
+    if (inFlightFetchPromise === fetchPromise) {
+      inFlightFetchPromise = null;
+      inFlightFetchAlias = undefined;
+    }
+  }
+};
+
+onMounted(() => {
+  void fetchLogs();
+});
+
+watch(() => accountStore.activeKey, () => {
+  void fetchLogs();
+});
 
 const approvalColumns = computed<QTableColumn[]>(() => [
   {
@@ -89,7 +142,7 @@ const formatDateTime = (val: string) => {
         class="dashboard-hero-action diogel-btn-ghost"
         round
         icon="refresh"
-        @click="fetchLogs"
+        @click="fetchLogs(true)"
       />
     </section>
 
