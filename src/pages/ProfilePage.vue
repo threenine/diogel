@@ -80,29 +80,25 @@ onMounted(async () => {
           </q-tab-panel>
 
           <q-tab-panel class="q-pa-none" name="keys">
-            <q-card>
-              <q-card-section>
-                <ViewStoredKey :stored-key="activeStoredKey" />
-              </q-card-section>
-              <q-card-section class="q-pt-none row justify-end paddings-sm">
-                <q-separator horizontal inset />
-              </q-card-section>
+            <q-card-section>
+              <ViewStoredKey :stored-key="activeStoredKey" />
+            </q-card-section>
+            <q-card-section class="q-pt-none row justify-end paddings-sm">
+              <q-separator horizontal inset />
+            </q-card-section>
 
-              <q-card-section class="q-pt-none row justify-end paddings-sm">
-                <ExportButton :stored-key="activeStoredKey" />
-              </q-card-section>
-            </q-card>
+            <q-card-section class="q-pt-none row justify-end paddings-sm">
+              <ExportButton :stored-key="activeStoredKey" />
+            </q-card-section>
+
             <q-separator horizontal class="q-mt-xl q-mb-md" inset />
-            <q-card>
-              <q-card>
-                <q-card-section class="text-center">
-                  <warning-card
-                    :headline="t('warning.exportKeys')"
-                    :message="t('warning.backupNotice')"
-                  />
-                </q-card-section>
-              </q-card>
-            </q-card>
+
+            <q-card-section class="text-center">
+              <warning-card
+                :headline="t('warning.exportKeys')"
+                :message="t('warning.backupNotice')"
+              />
+            </q-card-section>
           </q-tab-panel>
         </q-tab-panels>
       </div>
