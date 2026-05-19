@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ActiveKeysCard from 'src/components/dashboard/ActiveKeysCard.vue';
 import ConnectedRelaysCard from 'src/components/dashboard/ConnectedRelaysCard.vue';
+import QuickSignCard from 'src/components/dashboard/QuickSignCard.vue';
 import RecentActivityCard from 'src/components/dashboard/RecentActivityCard.vue';
 import TotalSignedEventsCard from 'src/components/dashboard/TotalSignedEventsCard.vue';
 import { useI18n } from 'vue-i18n';
@@ -30,6 +31,7 @@ function openEventHistory() {
     </section>
 
     <section class="dashboard-widget-grid">
+      <QuickSignCard />
       <TotalSignedEventsCard />
       <ActiveKeysCard clickable @open="openKeyManagement" />
       <ConnectedRelaysCard clickable @open="openRelayManagement" />
