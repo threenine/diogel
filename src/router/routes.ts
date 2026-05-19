@@ -79,15 +79,19 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/logs',
+    path: '/event-history',
     component: () => import('layouts/DashboardLayout.vue'),
     children: [
       {
         path: '',
-        name: 'logs',
+        name: 'event-history',
         component: () => import('pages/ViewLogs.vue'),
       },
     ],
+  },
+  {
+    path: '/logs',
+    redirect: { name: 'event-history' },
   },
   {
     path: '/edit-account/:alias?',

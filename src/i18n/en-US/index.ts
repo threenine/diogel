@@ -120,7 +120,7 @@ export default {
     },
     logs: {
       label: 'Event History',
-      caption: 'Review extension activity and approvals',
+      caption: 'Review approvals, signed activity, and exceptions',
     },
     settings: {
       label: 'Settings',
@@ -198,11 +198,11 @@ export default {
     backupNotice: 'If you lose them, you will lose access to your account and there is no way to recover them.',
   },
   logs: {
-    title: 'Event Logs',
+    title: 'Event History',
     dashboardCaption:
-      'Review approval history and extension exceptions for the active account.',
+      'Review approval and signed-event history, alongside extension exceptions, for the active account.',
     tabs: {
-      approvals: 'Approvals',
+      approvals: 'Approvals & Signed Events',
       exceptions: 'Exceptions',
     },
     columns: {
@@ -212,7 +212,7 @@ export default {
       message: 'Message',
     },
     refresh: 'Refresh',
-    noData: 'No logs found',
+    noData: 'No activity found',
   },
   footer: {
     version: 'Version',

@@ -10,7 +10,7 @@ type NavigationRouteName =
   | 'profile'
   | 'relays'
   | 'settings'
-  | 'logs'
+  | 'event-history'
   | 'edit-account';
 type ProfileTab = 'profile' | 'images';
 
@@ -22,7 +22,7 @@ interface NavigationTarget {
 }
 
 interface NavigationItem {
-  id: 'dashboard' | 'keys' | 'profile' | 'relays' | 'logs' | 'settings';
+  id: 'dashboard' | 'keys' | 'profile' | 'relays' | 'event-history' | 'settings';
   icon: string;
   label: string;
   caption: string;
@@ -80,12 +80,12 @@ const navigationItems = computed<NavigationItem[]>(() => [
     isActive: () => routeName.value === 'relays',
   },
   {
-    id: 'logs',
+    id: 'event-history',
     icon: 'flaky',
     label: t('navigation.logs.label'),
     caption: t('navigation.logs.caption'),
-    target: { name: 'logs' },
-    isActive: () => routeName.value === 'logs',
+    target: { name: 'event-history' },
+    isActive: () => routeName.value === 'event-history' || routeName.value === 'logs',
   },
   {
     id: 'settings',
