@@ -1,11 +1,10 @@
-import { verifyEvent, type UnsignedEvent } from 'nostr-tools';
+import { verifyEvent, type Event as NostrEvent, type UnsignedEvent } from 'nostr-tools';
 import { db } from './database';
 import { get, getActive } from './dexie-storage';
 import { LogLevel, logService } from './log-service';
 import { sendBexMessage } from './vault-service';
 import { isVaultUnlocked } from './vault-service';
 import { ErrorCode } from 'src/types/error-codes';
-import type { Event as NostrEvent } from 'src/types/nostr';
 
 export type QuickSignSupportedKind = 1;
 
@@ -133,7 +132,6 @@ export async function quickSignEvent(event: UnsignedEvent, publish: boolean): Pr
   const response = await sendBexMessage('nostr.signEvent', {
     event,
     origin: 'diogel-dashboard-quick-sign',
-    tabId: 0,
   });
 
   if (!hasBexSuccess(response)) {

@@ -38,7 +38,6 @@ describe('quick-sign-service', () => {
     vi.mocked(get).mockResolvedValue({
       alpha: {
         id: 'npub1alpha',
-        npub: '9f86d081884c7d659a2feaa0c55ad015',
         alias: 'alpha',
         account: { privkey: 'redacted' },
         createdAt: '2026-01-01',

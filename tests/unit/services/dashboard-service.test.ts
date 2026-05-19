@@ -7,10 +7,15 @@ import {
 } from 'src/services/dashboard-service';
 import { get, getActive } from 'src/services/dexie-storage';
 import { db } from 'src/services/database';
+import { isVaultUnlocked } from 'src/services/vault-service';
 
 vi.mock('src/services/dexie-storage', () => ({
   get: vi.fn(),
   getActive: vi.fn(),
+}));
+
+vi.mock('src/services/vault-service', () => ({
+  isVaultUnlocked: vi.fn(),
 }));
 
 const { approvalsToArrayMock, exceptionsToArrayMock } = vi.hoisted(() => ({
@@ -45,6 +50,7 @@ describe('dashboard-service', () => {
     vi.clearAllMocks();
     approvalsToArrayMock.mockResolvedValue([]);
     exceptionsToArrayMock.mockResolvedValue([]);
+    vi.mocked(isVaultUnlocked).mockResolvedValue(true);
     vi.mocked(get).mockResolvedValue({});
     vi.mocked(getActive).mockResolvedValue(undefined);
   });
@@ -66,6 +72,9 @@ describe('dashboard-service', () => {
 
   it('counts signed events from approval logs for active account', async () => {
     vi.mocked(getActive).mockResolvedValue('alpha');
+    vi.mocked(get).mockResolvedValue({
+      alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
+    });
     approvalsToArrayMock.mockResolvedValue([
       { id: 1, dateTime: '2026-01-01T00:00:00.000Z', eventKind: 1, hostname: 'a.com', account: 'alpha' },
       { id: 2, dateTime: '2026-01-01T00:01:00.000Z', eventKind: 4, hostname: 'b.com', account: 'alpha' },
@@ -83,6 +92,9 @@ describe('dashboard-service', () => {
 
   it('counts online relays for connected relay metric', async () => {
     vi.mocked(getActive).mockResolvedValue('alpha');
+    vi.mocked(get).mockResolvedValue({
+      alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
+    });
     vi.mocked(db.relayCatalog.toArray).mockResolvedValue([
       {
         url: 'wss://relay.one',
@@ -115,6 +127,9 @@ describe('dashboard-service', () => {
 
   it('returns merged and sorted recent activity for active account with limit', async () => {
     vi.mocked(getActive).mockResolvedValue('alpha');
+    vi.mocked(get).mockResolvedValue({
+      alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
+    });
     approvalsToArrayMock.mockResolvedValue([
       { id: 1, dateTime: '2026-01-01T10:00:00.000Z', eventKind: 1, hostname: 'a.com', account: 'alpha' },
       { id: 2, dateTime: '2026-01-01T09:00:00.000Z', eventKind: 4, hostname: 'b.com', account: 'alpha' },
@@ -132,7 +147,7 @@ describe('dashboard-service', () => {
     const result = await getRecentActivityForActiveKey(2);
 
     expect(result).toHaveLength(2);
-    expect(result[0]).toMatchObject({ type: 'exception', message: 'approval timeout' });
+    expect(result[0]).toMatchObject({ type: 'exception', detail: 'approval timeout' });
     expect(result[1]).toMatchObject({ type: 'approval', eventKind: 1 });
   });
 });

@@ -74,7 +74,7 @@ async function openPreview(): Promise<void> {
     return;
   }
 
-  const prepared = buildQuickSignPreviewEvent(activeAccount.npub, buildInput());
+  const prepared = buildQuickSignPreviewEvent(activeAccount.id, buildInput());
   if (!prepared.validation.valid) {
     errorMessage.value = prepared.validation.errors.join(' ');
     return;
