@@ -1,6 +1,7 @@
 import type { ApprovalLog, ExceptionLog } from './database';
 import { db } from './database';
 import { get, getActive } from './dexie-storage';
+import { isVaultUnlocked } from './vault-service';
 
 export type DashboardActivityType = 'approval' | 'exception';
 
@@ -10,6 +11,35 @@ export interface DashboardActivityItem {
   message: string;
   eventKind?: number | string;
   hostname?: string | null;
+}
+
+export type DashboardDataState = 'ready' | 'locked' | 'no-account';
+
+export interface DashboardSummary {
+  state: DashboardDataState;
+  signedEvents: number;
+  activeKeys: number;
+  connectedRelays: number;
+  recentActivity: DashboardActivityItem[];
+}
+
+async function getDashboardDataState(): Promise<DashboardDataState> {
+  const unlocked = await isVaultUnlocked();
+  if (!unlocked) {
+    return 'locked';
+  }
+
+  const activeAccount = await getActiveAccountAlias();
+  if (!activeAccount) {
+    return 'no-account';
+  }
+
+  const keys = await get();
+  if (!keys[activeAccount]) {
+    return 'no-account';
+  }
+
+  return 'ready';
 }
 
 async function resolveActiveKeyAlias(): Promise<string | undefined> {
@@ -34,6 +64,11 @@ export async function getActiveKeyCount(): Promise<number> {
  * logging was enabled.
  */
 export async function getSignedEventCountForActiveKey(): Promise<number> {
+  const state = await getDashboardDataState();
+  if (state !== 'ready') {
+    return 0;
+  }
+
   const activeAccount = await getActiveAccountAlias();
   if (!activeAccount) {
     return 0;
@@ -44,6 +79,11 @@ export async function getSignedEventCountForActiveKey(): Promise<number> {
 }
 
 export async function getConnectedRelayCountForActiveKey(): Promise<number> {
+  const state = await getDashboardDataState();
+  if (state !== 'ready') {
+    return 0;
+  }
+
   const activeAccount = await getActiveAccountAlias();
   if (!activeAccount) {
     return 0;
@@ -64,16 +104,23 @@ function toRecentApprovalActivity(log: ApprovalLog): DashboardActivityItem {
 }
 
 function toRecentExceptionActivity(log: ExceptionLog): DashboardActivityItem {
+  const hostname = typeof log.hostname === 'undefined' ? null : log.hostname;
+
   return {
     type: 'exception',
     dateTime: log.dateTime,
     message: log.message,
-    hostname: log.hostname,
+    hostname,
   };
 }
 
 export async function getRecentActivityForActiveKey(limit = 10): Promise<DashboardActivityItem[]> {
   if (limit <= 0) {
+    return [];
+  }
+
+  const state = await getDashboardDataState();
+  if (state !== 'ready') {
     return [];
   }
 
@@ -90,4 +137,33 @@ export async function getRecentActivityForActiveKey(limit = 10): Promise<Dashboa
   return [...approvals.map(toRecentApprovalActivity), ...exceptions.map(toRecentExceptionActivity)]
     .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime())
     .slice(0, limit);
+}
+
+export async function getDashboardSummary(activityLimit = 5): Promise<DashboardSummary> {
+  const state = await getDashboardDataState();
+  const activeKeys = await getActiveKeyCount();
+
+  if (state !== 'ready') {
+    return {
+      state,
+      signedEvents: 0,
+      activeKeys,
+      connectedRelays: 0,
+      recentActivity: [],
+    };
+  }
+
+  const [signedEvents, connectedRelays, recentActivity] = await Promise.all([
+    getSignedEventCountForActiveKey(),
+    getConnectedRelayCountForActiveKey(),
+    getRecentActivityForActiveKey(activityLimit),
+  ]);
+
+  return {
+    state,
+    signedEvents,
+    activeKeys,
+    connectedRelays,
+    recentActivity,
+  };
 }

@@ -1,44 +1,24 @@
 <script setup lang="ts">
+import ActiveKeysCard from 'src/components/dashboard/ActiveKeysCard.vue';
+import ConnectedRelaysCard from 'src/components/dashboard/ConnectedRelaysCard.vue';
+import RecentActivityCard from 'src/components/dashboard/RecentActivityCard.vue';
+import TotalSignedEventsCard from 'src/components/dashboard/TotalSignedEventsCard.vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-
-type WidgetId = 'activity' | 'insights' | 'status' | 'quickActions';
-
-interface WidgetPlaceholder {
-  id: WidgetId;
-  icon: string;
-  routeName?: 'relays';
-}
 
 const { t } = useI18n();
 const router = useRouter();
 
-const widgetPlaceholders: WidgetPlaceholder[] = [
-  {
-    id: 'activity',
-    icon: 'dashboard_customize',
-  },
-  {
-    id: 'insights',
-    icon: 'insights',
-  },
-  {
-    id: 'status',
-    icon: 'monitor_heart',
-    routeName: 'relays',
-  },
-  {
-    id: 'quickActions',
-    icon: 'bolt',
-  },
-];
+function openKeyManagement() {
+  void router.push({ name: 'keys' });
+}
 
-function openWidgetDestination(widget: WidgetPlaceholder) {
-  if (!widget.routeName) {
-    return;
-  }
+function openRelayManagement() {
+  void router.push({ name: 'relays' });
+}
 
-  void router.push({ name: widget.routeName });
+function openEventHistory() {
+  void router.push({ name: 'event-history' });
 }
 </script>
 
@@ -50,25 +30,10 @@ function openWidgetDestination(widget: WidgetPlaceholder) {
     </section>
 
     <section class="dashboard-widget-grid">
-      <q-card
-        v-for="widget in widgetPlaceholders"
-        :key="widget.id"
-        class="dashboard-card dashboard-widget-placeholder"
-        flat
-        :clickable="Boolean(widget.routeName)"
-        @click="openWidgetDestination(widget)"
-      >
-        <q-card-section class="dashboard-widget-placeholder__content">
-          <q-icon :name="widget.icon" color="grey-6" size="md" />
-          <h2 class="dashboard-widget-placeholder__title">
-            {{ t(`dashboard.widgets.${widget.id}.title`) }}
-          </h2>
-          <p class="dashboard-widget-placeholder__caption">
-            {{ t(`dashboard.widgets.${widget.id}.caption`) }}
-          </p>
-          <q-badge color="grey-3" text-color="grey-8" :label="t('dashboard.placeholderBadge')" />
-        </q-card-section>
-      </q-card>
+      <TotalSignedEventsCard />
+      <ActiveKeysCard clickable @open="openKeyManagement" />
+      <ConnectedRelaysCard clickable @open="openRelayManagement" />
+      <RecentActivityCard clickable @open="openEventHistory" />
     </section>
   </q-page>
 </template>
@@ -77,28 +42,6 @@ function openWidgetDestination(widget: WidgetPlaceholder) {
 .dashboard-widget-grid {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.dashboard-widget-placeholder__content {
-  min-height: 180px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: flex-start;
-}
-
-.dashboard-widget-placeholder__title {
-  margin: 0;
-  color: var(--text-color);
-  font-size: 1.05rem;
-  font-weight: 600;
-}
-
-.dashboard-widget-placeholder__caption {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  line-height: 1.5;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
 }
 </style>

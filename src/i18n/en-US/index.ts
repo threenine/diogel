@@ -80,24 +80,32 @@ export default {
   },
   dashboard: {
     title: 'Dashboard',
-    caption: 'Welcome to your workspace. Widget areas below are placeholders for upcoming features.',
-    placeholderBadge: 'Placeholder only',
+    caption: 'Welcome to your workspace. Monitor signing activity, keys, and relay status at a glance.',
     widgets: {
-      activity: {
+      common: {
+        locked: 'Vault is locked. Unlock to load dashboard data.',
+        noAccount: 'No active account selected yet.',
+        error: 'Unable to load widget data right now.',
+      },
+      totalSignedEvents: {
+        title: 'Total Signed Events',
+        ready: 'Total approvals recorded for your active account.',
+      },
+      activeKeys: {
+        title: 'Active Keys',
+        ready: 'Number of keys currently available in your vault.',
+        action: 'Open Key Management',
+      },
+      connectedRelays: {
+        title: 'Connected Relays',
+        ready: 'Relays currently online from your relay catalog.',
+        action: 'Open Relay Management',
+      },
+      recentActivity: {
         title: 'Recent Activity',
-        caption: 'Future widget area for account and extension activity summaries.',
-      },
-      insights: {
-        title: 'Insights',
-        caption: 'Future widget area for relay, profile, and usage insights.',
-      },
-      status: {
-        title: 'System Status',
-        caption: 'Future widget area for vault and connectivity status signals.',
-      },
-      quickActions: {
-        title: 'Quick Actions',
-        caption: 'Future widget area for shortcuts to common dashboard workflows.',
+        ready: 'Most recent approvals and exceptions for your active account.',
+        empty: 'No recent activity available for this account yet.',
+        action: 'Open Event History',
       },
     },
   },
