@@ -79,7 +79,7 @@ import { onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useVault } from 'src/composables/useVault';
 
-    const {
+const {
   vaultStore,
   password,
   confirmPassword,
@@ -93,44 +93,24 @@ const router = useRouter();
 const route = useRoute();
 
 onMounted(async () => {
-  console.log('[VaultLogin] Mounted');
   if (vaultStore.isLoading) {
-    console.log('[VaultLogin] App is still loading, waiting...');
     return; // App.vue will handle initial check and redirection
   }
   await vaultStore.checkVaultStatus();
-  console.log(
-    '[VaultLogin] vaultExists:',
-    vaultStore.vaultExists,
-    'isUnlocked:',
-    vaultStore.isUnlocked,
-  );
 
-  // Redirection is now primarily handled by App.vue's watchers to prevent loops
   if (vaultStore.isUnlocked && (route.path === '/login' || route.name === 'login')) {
-    console.log('[VaultLogin] Already unlocked, redirecting to home');
     await router.push({ name: 'home' });
   }
 });
 
 watch(
-  () => route.path,
-  (newPath) => {
-    console.log(`[VaultLogin] Path changed to: ${newPath}`);
-  },
-);
-
-watch(
   () => vaultStore.isUnlocked,
   (unlocked) => {
-    console.log(`[VaultLogin] isUnlocked changed to: ${unlocked}`);
     if (unlocked && (route.path === '/login' || route.name === 'login')) {
       const redirect = route.query.redirect as string;
       if (redirect) {
-        console.log(`[VaultLogin] Vault unlocked, redirecting to: ${redirect}`);
         void router.push({ path: redirect, query: route.query });
       } else {
-        console.log('[VaultLogin] Vault unlocked while on login page, redirecting to home');
         void router.push({ name: 'home' });
       }
     }

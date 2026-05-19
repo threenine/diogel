@@ -32,11 +32,17 @@ vi.mock('@noble/hashes/sha2.js', () => ({
   sha256: vi.fn(() => new Uint8Array(32)),
 }));
 
-vi.mock('src/services/log-service', () => ({
-  logService: {
-    logException: vi.fn(),
-  },
-}));
+vi.mock('src/services/log-service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('src/services/log-service')>();
+  return {
+    ...actual,
+    logService: {
+      ...actual.logService,
+      log: vi.fn(),
+      logException: vi.fn(),
+    },
+  };
+});
 
 // Mock global fetch
 const mockFetch = vi.fn();
@@ -49,7 +55,9 @@ global.btoa = vi.fn((str) => Buffer.from(str, 'binary').toString('base64'));
 
 describe('BlossomHandler', () => {
   const mockAccount = {
+    id: 'test-pubkey',
     alias: 'test-alias',
+    createdAt: String(Date.now()),
     account: {
       privkey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
     },

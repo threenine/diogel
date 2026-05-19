@@ -2,7 +2,7 @@ import { finalizeEvent, getPublicKey } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
 import { sha256 } from '@noble/hashes/sha2.js';
 import { storageService, NOSTR_ACTIVE, BLOSSOM_UPLOAD_STATUS } from 'src/services/storage-service';
-import { logService } from 'src/services/log-service';
+import { LogLevel, logService } from 'src/services/log-service';
 import type { VaultData, StoredKey } from 'src/types/bridge';
 import type { HandlerResult } from '../types/background';
 import { handleVaultGetData, handleVaultIsUnlocked } from './vault-handler';
@@ -16,9 +16,10 @@ export async function handleBlossomUpload(
   },
   _origin: string = '',
 ): Promise<HandlerResult<string>> {
+  void _origin;
   const { base64Data, fileType, blossomServer, uploadId } = payload;
 
-  const UPLOAD_STATUS_KEY = uploadId
+  const uploadStatusKey = uploadId
     ? `blossom:upload_status:${uploadId}`
     : BLOSSOM_UPLOAD_STATUS;
 
@@ -29,8 +30,7 @@ export async function handleBlossomUpload(
     };
   }
 
-  // Persist status as uploading
-  await storageService.set(UPLOAD_STATUS_KEY, {
+  await storageService.set(uploadStatusKey, {
     uploading: true,
     error: null,
     url: null,
@@ -45,7 +45,6 @@ export async function handleBlossomUpload(
     const sk = hexToBytes(storedKey.account.privkey);
     const pk = getPublicKey(sk);
 
-    // Convert base64 to Uint8Array
     const binaryString = atob(base64Data);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
@@ -54,11 +53,10 @@ export async function handleBlossomUpload(
 
     const hash = sha256(bytes);
     const hashHex = Array.from(hash)
-      .map((b) => b.toString(16).padStart(2, '0'))
+      .map((byte) => byte.toString(16).padStart(2, '0'))
       .join('');
 
     const normalizedServer = blossomServer.replace(/\/$/, '');
-
     const uploadOptions = [
       { url: `${normalizedServer}/upload`, method: 'PUT' },
       { url: `${normalizedServer}/upload`, method: 'POST' },
@@ -69,7 +67,7 @@ export async function handleBlossomUpload(
     ];
 
     let uploadResultUrl = '';
-    let lastError: any = null;
+    let lastError: Error | null = null;
 
     for (const option of uploadOptions) {
       try {
@@ -77,7 +75,9 @@ export async function handleBlossomUpload(
           await new Promise((resolve) => setTimeout(resolve, 500));
         }
 
-        console.log(`[BEX] Attempting ${option.method} upload to: ${option.url}`);
+        logService.log(LogLevel.DEBUG, `[BEX] Attempting ${option.method} upload`, {
+          url: option.url,
+        });
 
         const eventTemplate = {
           kind: 24242,
@@ -107,20 +107,22 @@ export async function handleBlossomUpload(
         });
 
         if (response.ok) {
-          console.log(`[BEX] Upload successful to ${option.url}`);
+          logService.log(LogLevel.DEBUG, '[BEX] Upload successful', { url: option.url });
 
           if (response.status !== 204) {
             try {
               const responseText = await response.text();
               try {
-                const json = JSON.parse(responseText);
-                if (json.url) uploadResultUrl = String(json.url);
-              } catch (e) {
+                const json = JSON.parse(responseText) as { url?: string };
+                if (json.url) {
+                  uploadResultUrl = String(json.url);
+                }
+              } catch {
                 if (responseText.startsWith('http')) {
                   uploadResultUrl = responseText.trim();
                 }
               }
-            } catch (e) {
+            } catch {
               // Ignore body read errors
             }
           }
@@ -129,34 +131,40 @@ export async function handleBlossomUpload(
             uploadResultUrl = option.url;
           }
 
-          if (uploadResultUrl) break;
+          if (uploadResultUrl) {
+            break;
+          }
         } else {
           const errorText = await response.text().catch(() => '');
-          lastError = new Error(`HTTP Error ${response.status}: ${response.statusText}. ${errorText.substring(0, 100)}`);
-          
+          lastError = new Error(
+            `HTTP Error ${response.status}: ${response.statusText}. ${errorText.substring(0, 100)}`,
+          );
+
           if ([413, 401, 403].includes(response.status)) {
             break;
           }
         }
-      } catch (err) {
-        lastError = err;
+      } catch (error: unknown) {
+        lastError = error instanceof Error ? error : new Error(String(error));
       }
     }
 
-    if (uploadResultUrl) {
-      await storageService.set(UPLOAD_STATUS_KEY, {
-        uploading: false,
-        error: null,
-        url: uploadResultUrl,
-      });
-      return { success: true, data: uploadResultUrl };
-    } else {
+    if (!uploadResultUrl) {
       throw lastError || new Error('Upload failed after multiple attempts');
     }
-  } catch (error: any) {
+
+    await storageService.set(uploadStatusKey, {
+      uploading: false,
+      error: null,
+      url: uploadResultUrl,
+    });
+    return { success: true, data: uploadResultUrl };
+  } catch (error: unknown) {
     const finalError = error instanceof Error ? error : new Error(String(error));
-    console.error('[BEX] Error in blossom.upload:', finalError);
-    
+    logService.log(LogLevel.ERROR, '[BEX] Error in blossom.upload', {
+      error: finalError.message,
+    });
+
     const activeAlias = await storageService.get<string>(NOSTR_ACTIVE);
     void logService.logException(
       `Error in blossom.upload: ${finalError.message}`,
@@ -164,7 +172,7 @@ export async function handleBlossomUpload(
       'background',
     );
 
-    await storageService.set(UPLOAD_STATUS_KEY, {
+    await storageService.set(uploadStatusKey, {
       uploading: false,
       error: finalError.message,
       url: null,
@@ -175,17 +183,17 @@ export async function handleBlossomUpload(
 }
 
 async function getActiveStoredKey(): Promise<StoredKey | null> {
-  const isUnlockedResult = (await handleVaultIsUnlocked({}, '')) as HandlerResult<boolean>;
+  const isUnlockedResult = await handleVaultIsUnlocked({}, '');
   if (!isUnlockedResult.success || !isUnlockedResult.data) {
     return null;
   }
-  
+
   const activeAlias = await storageService.get<string>(NOSTR_ACTIVE);
 
   if (!activeAlias) {
-    const vaultDataRes = (await handleVaultGetData({}, '')) as HandlerResult<{ vaultData?: unknown }>;
+    const vaultDataRes = (await handleVaultGetData({}, '')) as HandlerResult<{ vaultData?: VaultData }>;
     if (vaultDataRes.success && vaultDataRes.data.vaultData) {
-      const vaultData = vaultDataRes.data.vaultData as VaultData;
+      const vaultData = vaultDataRes.data.vaultData;
       const accounts = vaultData.accounts || [];
       if (accounts.length > 0) {
         const fallbackAccount = accounts[0];
@@ -198,10 +206,9 @@ async function getActiveStoredKey(): Promise<StoredKey | null> {
     return null;
   }
 
-  const vaultRes = (await handleVaultGetData({}, '')) as HandlerResult<{ vaultData?: unknown }>;
+  const vaultRes = (await handleVaultGetData({}, '')) as HandlerResult<{ vaultData?: VaultData }>;
   if (vaultRes.success && vaultRes.data.vaultData) {
-    const vaultData = vaultRes.data.vaultData as VaultData;
-    return vaultData.accounts?.find((a) => a.alias === activeAlias) || null;
+    return vaultRes.data.vaultData.accounts?.find((account) => account.alias === activeAlias) || null;
   }
 
   return null;

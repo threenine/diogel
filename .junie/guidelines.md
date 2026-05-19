@@ -99,8 +99,10 @@ Guidelines for adding tests (irrespective of runner):
     stylistic ESLint rules conflicting with Prettier).
 
 - TypeScript
-  - Strict mode is enabled; prefer precise types over `any`. For Vue SFCs use `<script setup lang="ts">`
-    consistently (already adopted in this repo).
+  - Strict mode is enabled.
+  - Do not use `any` in project code. Always prefer explicit types, generics, discriminated unions, type guards, or `unknown` plus narrowing.
+  - If a third-party surface is awkward or weakly typed, add local types, adapters, or ambient declarations under `src/types/` instead of falling back to `any`.
+  - For Vue SFCs use `<script setup lang="ts">` consistently (already adopted in this repo).
   - For third-party libs lacking types, create local ambient declarations under `src/types/` and include them via
     `tsconfig.json` if needed.
 

@@ -58,6 +58,7 @@ export default defineConfig((ctx) => {
       // analyze: true,
       env: {
         APP_VERSION: pkg.version,
+        DEBUG: ctx.dev,
       },
       // rawDefine: {}
       // ignorePublicFolder: true,

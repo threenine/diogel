@@ -4,6 +4,8 @@ import { useRoute } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 
+import { LogLevel, logService } from 'src/services/log-service';
+
 const $q = useQuasar();
 const { t } = useI18n();
 const route = useRoute();
@@ -20,21 +22,19 @@ const rememberOptions = [
 
 onMounted(() => {
   origin.value = (route.query.origin as string) || 'Unknown';
-  console.log('SignerApproval mounted, origin:', origin.value);
+  logService.log(LogLevel.DEBUG, 'SignerApproval mounted, origin:', { origin: origin.value });
 
   if (origin.value !== 'Unknown') {
     try {
       const url = new URL(origin.value);
       faviconUrl.value = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`;
     } catch (e) {
-      console.error('Failed to parse origin for favicon:', e);
+      logService.log(LogLevel.ERROR, 'Failed to parse origin for favicon:', { error: e });
     }
   }
 
-  if ($q.bex) {
-    console.log('BEX bridge available');
-  } else {
-    console.error('BEX bridge NOT available');
+  if (!$q.bex) {
+    logService.log(LogLevel.ERROR, 'BEX bridge NOT available');
   }
 });
 
@@ -42,7 +42,7 @@ async function approve() {
   await new Promise((resolve) => setTimeout(resolve, 100));
 
   if (!$q.bex) {
-    console.error('BEX bridge not available in approve()');
+    logService.log(LogLevel.ERROR, 'BEX bridge not available in approve()');
     return;
   }
 
@@ -52,20 +52,18 @@ async function approve() {
       to: 'background',
       payload: { approved: true, duration: rememberChoice.value },
     });
-    console.log('Approval response sent successfully');
     // Another small delay before closing to ensure message is sent
     setTimeout(() => window.close(), 100);
   } catch (err) {
-    console.error('Failed to send approval response:', err);
+    logService.log(LogLevel.ERROR, 'Failed to send approval response:', { error: err });
   }
 }
 
 async function reject() {
-  console.log('Rejecting request...');
   await new Promise((resolve) => setTimeout(resolve, 100));
 
   if (!$q.bex) {
-    console.error('BEX bridge not available in reject()');
+    logService.log(LogLevel.ERROR, 'BEX bridge not available in reject()');
     return;
   }
 
@@ -75,10 +73,9 @@ async function reject() {
       to: 'background',
       payload: { approved: false },
     });
-    console.log('Reject response sent successfully');
     setTimeout(() => window.close(), 100);
   } catch (err) {
-    console.error('Failed to send reject response:', err);
+    logService.log(LogLevel.ERROR, 'Failed to send reject response:', { error: err });
   }
 }
 </script>
@@ -140,15 +137,6 @@ async function reject() {
   display: flex;
   flex-direction: column;
   flex: 1;
-}
-
-.approval-card :deep(.q-card__section) {
-  flex: 1;
-}
-
-.approval-card :deep(.q-card__actions) {
-  flex-shrink: 0;
-  padding: 16px;
 }
 
 .break-word {

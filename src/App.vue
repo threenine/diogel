@@ -38,7 +38,7 @@ import useAccountStore from './stores/account-store';
 import useSettingsStore from './stores/settings-store';
 import useVaultStore from './stores/vault-store';
 import { useRoute, useRouter } from 'vue-router';
-import { logService } from './services/log-service';
+import { LogLevel, logService } from './services/log-service';
 import { useVaultAutoLock } from './composables/useVaultAutoLock';
 
 const accountStore = useAccountStore();
@@ -54,7 +54,7 @@ const logs = ref<string[]>([]);
 const addLog = (msg: string) => {
   const timestamp = new Date().toLocaleTimeString();
   logs.value.push(`[${timestamp}] ${msg}`);
-  console.log(`[App] ${msg}`);
+  logService.log(LogLevel.DEBUG, `[App] ${msg}`);
 };
 
 vaultStore.isLoading = true;

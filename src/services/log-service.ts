@@ -7,42 +7,36 @@ export enum LogLevel {
   DEBUG = 'DEBUG',
 }
 
+type LogContext = Record<string, unknown>;
+
+type PersistedLogAccount = string | null;
+
+type PersistedLogHostname = string | null;
+
 export class LogService {
-  async logException(message: string, account?: string | null, hostname?: string | null) {
-    try {
-      await db.exceptions.add({
-        dateTime: new Date().toISOString(),
-        message,
-        account: account || null,
-        hostname: hostname || null,
-      });
-      console.error(`[${LogLevel.ERROR}] ${message}`, { account, hostname });
-    } catch (e) {
-      console.error('[LogService] Failed to log exception:', e);
-    }
+  private readonly debugMode: boolean;
+
+  constructor() {
+    this.debugMode = process.env.DEBUG === 'true' || process.env.NODE_ENV === 'test';
   }
 
-  async logApproval(eventKind: number | string, hostname: string, account?: string | null) {
-    try {
-      await db.approvals.add({
-        dateTime: new Date().toISOString(),
-        eventKind,
-        hostname,
-        account: account || null,
-      });
-      console.log(`[${LogLevel.INFO}] Approval granted for kind ${eventKind} on ${hostname}`, { account });
-    } catch (e) {
-      console.error('[LogService] Failed to log approval:', e);
-    }
+  private normalizeNullableString(value?: string | null): string | null {
+    return value ?? null;
   }
 
-  /**
-   * General purpose logging (currently to console, could be extended to DB)
-   */
-  log(level: LogLevel, message: string, context?: Record<string, unknown>) {
-    const timestamp = new Date().toISOString();
-    const formattedMessage = `[${timestamp}] [${level}] ${message}`;
+  private shouldEmit(level: LogLevel): boolean {
+    if (level === LogLevel.DEBUG) {
+      return this.debugMode;
+    }
 
+    if (level === LogLevel.INFO) {
+      return this.debugMode;
+    }
+
+    return true;
+  }
+
+  private write(level: LogLevel, formattedMessage: string, context?: LogContext): void {
     switch (level) {
       case LogLevel.ERROR:
         console.error(formattedMessage, context);
@@ -50,12 +44,65 @@ export class LogService {
       case LogLevel.WARN:
         console.warn(formattedMessage, context);
         break;
+      case LogLevel.INFO:
+        console.info(formattedMessage, context);
+        break;
       case LogLevel.DEBUG:
         console.debug(formattedMessage, context);
         break;
-      default:
-        console.log(formattedMessage, context);
     }
+  }
+
+  async logException(message: string, account?: string | null, hostname?: string | null): Promise<void> {
+    const persistedAccount: PersistedLogAccount = this.normalizeNullableString(account);
+    const persistedHostname: PersistedLogHostname = this.normalizeNullableString(hostname);
+
+    try {
+      await db.exceptions.add({
+        dateTime: new Date().toISOString(),
+        message,
+        account: persistedAccount,
+        hostname: persistedHostname,
+      });
+      this.log(LogLevel.ERROR, message, {
+        account: persistedAccount,
+        hostname: persistedHostname,
+      });
+    } catch (error: unknown) {
+      this.log(LogLevel.ERROR, '[LogService] Failed to log exception', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  async logApproval(eventKind: number | string, hostname: string, account?: string | null): Promise<void> {
+    const persistedAccount: PersistedLogAccount = this.normalizeNullableString(account);
+
+    try {
+      await db.approvals.add({
+        dateTime: new Date().toISOString(),
+        eventKind,
+        hostname,
+        account: persistedAccount,
+      });
+      this.log(LogLevel.DEBUG, `Approval granted for kind ${eventKind} on ${hostname}`, {
+        account: persistedAccount,
+      });
+    } catch (error: unknown) {
+      this.log(LogLevel.ERROR, '[LogService] Failed to log approval', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  log(level: LogLevel, message: string, context?: LogContext): void {
+    if (!this.shouldEmit(level)) {
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const formattedMessage = `[${timestamp}] [${level}] ${message}`;
+    this.write(level, formattedMessage, context);
   }
 
   async getExceptions(account?: string | null) {
@@ -72,32 +119,28 @@ export class LogService {
     return await db.approvals.orderBy('dateTime').reverse().toArray();
   }
 
-  /**
-   * Higher-order function to wrap an async call with logging
-   */
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  wrapWithLogging<T extends (...args: any[]) => Promise<any>>(
-    fn: T,
+  wrapWithLogging<TArgs extends unknown[], TResult>(
+    fn: (...args: TArgs) => Promise<TResult>,
     serviceName: string,
-    methodName: string
-  ): T {
-    return (async (...args: any[]) => {
-      /* eslint-enable @typescript-eslint/no-explicit-any */
-      this.log(LogLevel.DEBUG, `Calling ${serviceName}.${methodName}`, { args });
+    methodName: string,
+  ): (...args: TArgs) => Promise<TResult> {
+    return async (...args: TArgs): Promise<TResult> => {
+      this.log(LogLevel.DEBUG, `Calling ${serviceName}.${methodName}`, {
+        argCount: args.length,
+      });
       try {
         const result = await fn(...args);
         this.log(LogLevel.DEBUG, `${serviceName}.${methodName} completed successfully`, {
-          result: typeof result === 'object' ? '{...}' : result,
+          resultType: typeof result,
         });
         return result;
-      } catch (error) {
+      } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error);
-        this.log(LogLevel.ERROR, `${serviceName}.${methodName} failed: ${message}`, { error });
-        // We also log it as an exception in the DB if it's an error
+        this.log(LogLevel.ERROR, `${serviceName}.${methodName} failed: ${message}`);
         void this.logException(`${serviceName}.${methodName} error: ${message}`);
         throw error;
       }
-    }) as T;
+    };
   }
 }
 

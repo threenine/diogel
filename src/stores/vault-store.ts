@@ -1,5 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import type { StoredKey, VaultData } from 'src/types/bridge';
+import { logService, LogLevel } from 'src/services/log-service';
 import { storageService, VAULT_UNLOCKED } from 'src/services/storage-service';
 import {
   createVault as createVaultBex,
@@ -21,7 +22,6 @@ const useVaultStore = defineStore('vault', {
       storageService.onChanged((changes, areaName) => {
         if (areaName === 'session' && VAULT_UNLOCKED in changes) {
           const unlocked = !!changes[VAULT_UNLOCKED]?.newValue;
-          console.log('[VaultStore] Lock status changed from storage:', unlocked);
           this.isUnlocked = unlocked;
           if (!unlocked) {
             this.lastLockReason = 'background';
@@ -31,7 +31,6 @@ const useVaultStore = defineStore('vault', {
     },
 
     async checkVaultStatus() {
-      console.log('[VaultStore] checkVaultStatus starting...');
       try {
         const [exists, unlocked] = await Promise.all([
           hasVaultBex(),
@@ -41,11 +40,10 @@ const useVaultStore = defineStore('vault', {
         this.vaultExists = !!exists;
         this.isUnlocked = !!unlocked;
 
-        console.log('[VaultStore] status:', { exists: this.vaultExists, unlocked: this.isUnlocked });
-      } catch (e) {
-        console.error('[VaultStore] Failed to check vault status', e);
-      } finally {
-        console.log('[VaultStore] checkVaultStatus finished');
+      } catch (error: unknown) {
+        logService.log(LogLevel.ERROR, '[VaultStore] Failed to refresh vault status', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     },
 

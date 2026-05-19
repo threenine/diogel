@@ -1,4 +1,9 @@
-import type { BridgeAction, BridgeRequestMap, BridgeResponsePayload, VaultData } from 'src/types/bridge';
+import type {
+  BridgeAction,
+  BridgeRequestMap,
+  BridgeResponsePayload,
+  VaultData,
+} from 'src/types/bridge';
 import {
   handleVaultUnlock,
   handleVaultLock,
@@ -14,8 +19,6 @@ import {
   startAutoLockTimer,
   stopAutoLockTimer,
 } from './services/auto-lock';
-import type { HandlerResult } from './types/background';
-
 import { handleGetPublicKey, handleSignEvent } from './handlers/nip07';
 import { handleBlossomUpload } from './handlers/blossom-handler';
 import { handleNip04Encrypt, handleNip04Decrypt } from './handlers/nip04';
@@ -32,17 +35,15 @@ import { handleRelayBrowserList, handleRelayBrowserGetStatus, handleRelayBrowser
  */
 export async function dispatchMessage<K extends BridgeAction>(
   type: K,
-  payload: any,
+  payload: BridgeRequestMap[K],
   origin: string = '',
 ): Promise<BridgeResponsePayload<K> | null> {
-  console.log(`[BEX] Dispatching message: ${String(type)}`, payload);
-
   switch (type) {
     case 'ping':
       return 'pong' as BridgeResponsePayload<K>;
 
     case 'nostr.getPublicKey': {
-      const result = (await handleGetPublicKey(payload as any, origin)) as HandlerResult<string>;
+      const result = await handleGetPublicKey(payload, origin);
       if (result.success) {
         return result.data as BridgeResponsePayload<K>;
       }
@@ -50,7 +51,8 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'nostr.signEvent': {
-      const result = (await handleSignEvent({ event: (payload as any).event }, origin)) as HandlerResult<any>;
+      const signPayload = payload as BridgeRequestMap['nostr.signEvent'];
+      const result = await handleSignEvent({ event: signPayload.event }, origin);
       if (result.success) {
         return result.data as BridgeResponsePayload<K>;
       }
@@ -62,7 +64,7 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'nostr.nip04.encrypt': {
-      const result = await handleNip04Encrypt(payload as any, origin);
+      const result = await handleNip04Encrypt(payload as BridgeRequestMap['nostr.nip04.encrypt'], origin);
       if (result.success) {
         return result.data as BridgeResponsePayload<K>;
       }
@@ -70,7 +72,7 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'nostr.nip04.decrypt': {
-      const result = await handleNip04Decrypt(payload as any, origin);
+      const result = await handleNip04Decrypt(payload as BridgeRequestMap['nostr.nip04.decrypt'], origin);
       if (result.success) {
         return result.data as BridgeResponsePayload<K>;
       }
@@ -78,14 +80,15 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'vault.isUnlocked': {
-      const result = (await handleVaultIsUnlocked({}, origin)) as HandlerResult<boolean>;
+      const result = await handleVaultIsUnlocked({}, origin);
       return (result.success ? result.data : false) as BridgeResponsePayload<K>;
     }
 
     case 'vault.unlock': {
-      const result = (await handleVaultUnlock({ password: (payload as any).password }, origin)) as HandlerResult<{ vaultData?: unknown }>;
+      const unlockPayload = payload as BridgeRequestMap['vault.unlock'];
+      const result = await handleVaultUnlock({ password: unlockPayload.password }, origin);
       if (result.success) {
-        resetAutoLockTimer();
+        await resetAutoLockTimer();
         startAutoLockTimer();
         return { success: true, vaultData: result.data.vaultData as VaultData } as BridgeResponsePayload<K>;
       }
@@ -99,8 +102,11 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'vault.create': {
-      const p = payload as any;
-      const result = (await handleVaultCreate({ password: p.password, vaultData: p.vaultData }, origin)) as HandlerResult<{ encryptedVault?: string }>;
+      const createPayload = payload as BridgeRequestMap['vault.create'];
+      const result = await handleVaultCreate({
+        password: createPayload.password,
+        vaultData: createPayload.vaultData,
+      }, origin);
       if (result.success) {
         return {
           success: true,
@@ -111,7 +117,7 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'vault.getData': {
-      const result = (await handleVaultGetData({}, origin)) as HandlerResult<{ vaultData?: unknown }>;
+      const result = await handleVaultGetData({}, origin);
       if (result.success) {
         return { success: true, vaultData: result.data.vaultData as VaultData } as BridgeResponsePayload<K>;
       }
@@ -119,7 +125,8 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'vault.updateData': {
-      const result = (await handleVaultUpdateData({ vaultData: (payload as any).vaultData }, origin)) as HandlerResult<void>;
+      const updatePayload = payload as BridgeRequestMap['vault.updateData'];
+      const result = await handleVaultUpdateData({ vaultData: updatePayload.vaultData }, origin);
       if (result.success) {
         return { success: true } as BridgeResponsePayload<K>;
       }
@@ -127,7 +134,7 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'vault.export': {
-      const result = (await handleVaultExport({}, origin)) as HandlerResult<{ encryptedData: string }>;
+      const result = await handleVaultExport({}, origin);
       if (result.success) {
         return { success: true, encryptedData: result.data.encryptedData } as BridgeResponsePayload<K>;
       }
@@ -135,9 +142,12 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'vault.import': {
-      const p = payload as any;
-      const encryptedData = p.encryptedData || (p.payload && (p.payload as any).encryptedData);
-      const result = (await handleVaultImport({ encryptedData }, origin)) as HandlerResult<void>;
+      const importPayload = payload as BridgeRequestMap['vault.import'];
+      const encryptedData = importPayload.encryptedData || importPayload.payload?.encryptedData;
+      if (!encryptedData) {
+        return { success: false, error: 'Missing encrypted data', code: 'NOT_FOUND' } as unknown as BridgeResponsePayload<K>;
+      }
+      const result = await handleVaultImport({ encryptedData }, origin);
       if (result.success) {
         return { success: true } as BridgeResponsePayload<K>;
       }
@@ -145,7 +155,13 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'blossom.upload': {
-      const result = await handleBlossomUpload(payload as any, origin);
+      const blossomPayload = payload as BridgeRequestMap['blossom.upload'];
+      const result = await handleBlossomUpload({
+        base64Data: blossomPayload.base64Data || '',
+        fileType: blossomPayload.fileType || '',
+        blossomServer: blossomPayload.blossomServer || '',
+        ...(blossomPayload.uploadId ? { uploadId: blossomPayload.uploadId } : {}),
+      }, origin);
       if (result.success) {
         return { success: true, url: result.data } as unknown as BridgeResponsePayload<K>;
       }
@@ -153,7 +169,7 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'activity.mark': {
-      resetAutoLockTimer();
+      await resetAutoLockTimer();
       return true as BridgeResponsePayload<K>;
     }
 
@@ -174,7 +190,7 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     case 'relay.browser.refresh': {
-      const result = await handleRelayBrowserRefresh(payload as any);
+      const result = await handleRelayBrowserRefresh(payload as BridgeRequestMap['relay.browser.refresh']);
       if (result.success) {
         return true as BridgeResponsePayload<K>;
       }
@@ -182,7 +198,6 @@ export async function dispatchMessage<K extends BridgeAction>(
     }
 
     default:
-      console.warn(`[BEX] No dispatcher handled for message type: ${String(type)}`);
       return null;
   }
 }

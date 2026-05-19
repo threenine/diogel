@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n';
 import { exportVault, importVault } from 'src/services/vault-service';
 import { useQuasar, exportFile } from 'quasar';
 import { useRouter } from 'vue-router';
+import type { ErrorCode } from 'src/types/error-codes';
 import { formatErrorForUser } from 'src/types/error-codes';
 
 export function useVaultManagement() {
@@ -34,8 +35,7 @@ export function useVaultManagement() {
     } else {
       $q.notify({
         type: 'negative',
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        message: formatErrorForUser(result.error, result.code as any),
+        message: formatErrorForUser(result.error, result.code as ErrorCode),
       });
     }
   }
@@ -80,8 +80,7 @@ export function useVaultManagement() {
               } else {
                 $q.notify({
                   type: 'negative',
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  message: formatErrorForUser(result.error, result.code as any),
+                  message: formatErrorForUser(result.error, result.code as ErrorCode),
                 });
               }
             })

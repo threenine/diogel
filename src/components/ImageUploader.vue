@@ -87,10 +87,17 @@ async function uploadImage(file: File) {
     reader.readAsDataURL(file);
     const base64Data = await base64Promise;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bex = ($q as any).bex;
+    const bex = $q.bex;
     if (!bex) {
-      throw new Error('BEX bridge not available');
+      const errorMessage = 'BEX bridge not available';
+      console.error('Error uploading image:', errorMessage);
+      $q.notify({
+        type: 'negative',
+        message: errorMessage,
+      });
+      uploading.value = false;
+      emitStatus('uploading', false);
+      return;
     }
 
     // We use the settings store to get the blossom server

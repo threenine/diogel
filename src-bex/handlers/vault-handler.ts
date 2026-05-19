@@ -4,6 +4,7 @@
  */
 
 import type { HandlerResult } from '../types/background';
+import type { VaultData } from 'src/types/bridge';
 import {
   unlockVault as unlock,
   lockVault as lock,
@@ -20,17 +21,23 @@ import { logService } from 'src/services/log-service';
 // Re-export restoreVaultState for use by background.ts
 export { restoreVaultState };
 
-const logWrapper = <T extends (...args: any[]) => Promise<any>>(fn: T, name: string) =>
-  logService.wrapWithLogging(fn, 'VaultHandler', name) as T;
+const logWrapper = <TArgs extends unknown[], TResult>(
+  fn: (...args: TArgs) => Promise<TResult>,
+  name: string,
+): ((...args: TArgs) => Promise<TResult>) => logService.wrapWithLogging(fn, 'VaultHandler', name);
 
 export const handleVaultUnlock = logWrapper(async (
   payload: { password: string },
   _origin: string
-): Promise<HandlerResult<{ vaultData?: unknown }>> => {
+): Promise<HandlerResult<{ vaultData?: VaultData }>> => {
+  void _origin;
   const result = await unlock(payload.password);
 
   if (result.success) {
-    return { success: true, data: { vaultData: result.vaultData } };
+    return {
+      success: true,
+      data: result.vaultData ? { vaultData: result.vaultData as VaultData } : {},
+    };
   }
 
   return { success: false, error: result.error || 'Unlock failed', code: result.errorCode as string };
@@ -40,6 +47,8 @@ export const handleVaultLock = logWrapper(async (
   _payload: unknown,
   _origin: string
 ): Promise<HandlerResult<void>> => {
+  void _payload;
+  void _origin;
   await lock();
   return { success: true, data: undefined };
 }, 'lock');
@@ -48,13 +57,16 @@ export const handleVaultIsUnlocked = logWrapper(async (
   _payload: unknown,
   _origin: string
 ): Promise<HandlerResult<boolean>> => {
-  return { success: true, data: isVaultUnlocked() };
+  void _payload;
+  void _origin;
+  return Promise.resolve({ success: true, data: isVaultUnlocked() });
 }, 'isUnlocked');
 
 export const handleVaultCreate = logWrapper(async (
-  payload: { password: string; vaultData: unknown },
+  payload: { password: string; vaultData: VaultData },
   _origin: string
 ): Promise<HandlerResult<{ encryptedVault?: string }>> => {
+  void _origin;
   const result = await createNewVault(payload.password, payload.vaultData);
 
   if (result.success) {
@@ -72,20 +84,26 @@ export const handleVaultCreate = logWrapper(async (
 export const handleVaultGetData = logWrapper(async (
   _payload: unknown,
   _origin: string
-): Promise<HandlerResult<{ vaultData?: unknown }>> => {
+): Promise<HandlerResult<{ vaultData?: VaultData }>> => {
+  void _payload;
+  void _origin;
   const result = await getVaultData();
 
   if (result.success) {
-    return { success: true, data: { vaultData: result.vaultData } };
+    return {
+      success: true,
+      data: result.vaultData ? { vaultData: result.vaultData as VaultData } : {},
+    };
   }
 
   return { success: false, error: result.error || 'Get data failed', code: result.errorCode as string };
 }, 'getData');
 
 export const handleVaultUpdateData = logWrapper(async (
-  payload: { vaultData: unknown },
+  payload: { vaultData: VaultData },
   _origin: string
 ): Promise<HandlerResult<void>> => {
+  void _origin;
   const result = await updateVaultData(payload.vaultData);
 
   if (result.success) {
@@ -99,6 +117,8 @@ export const handleVaultExport = logWrapper(async (
   _payload: unknown,
   _origin: string
 ): Promise<HandlerResult<{ encryptedData?: string }>> => {
+  void _payload;
+  void _origin;
   const result = await exportV();
 
   if (result.success) {
@@ -117,6 +137,7 @@ export const handleVaultImport = logWrapper(async (
   payload: { encryptedData: string },
   _origin: string
 ): Promise<HandlerResult<void>> => {
+  void _origin;
   const result = await importV(payload.encryptedData);
 
   if (result.success) {

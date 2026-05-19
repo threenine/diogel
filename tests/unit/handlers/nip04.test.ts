@@ -30,7 +30,9 @@ vi.mock('@noble/hashes/utils', () => ({
 
 describe('Nip04Handler', () => {
   const mockAccount = {
+    id: 'test-pubkey',
     alias: 'test-alias',
+    createdAt: String(Date.now()),
     account: {
       privkey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
     },

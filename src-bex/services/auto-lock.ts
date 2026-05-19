@@ -8,6 +8,7 @@ import {
   VAULT_AUTO_LOCK_MINUTES,
   VAULT_LAST_ACTIVITY,
 } from 'src/services/storage-service';
+import { LogLevel, logService } from 'src/services/log-service';
 import { lockVault } from '../vault';
 
 let autoLockTimer: ReturnType<typeof setInterval> | null = null;
@@ -16,8 +17,13 @@ let lastActivityAt = Date.now();
 const AUTO_LOCK_DEFAULT_MINUTES = 15;
 const AUTO_LOCK_CHECK_INTERVAL_MS = 15000;
 
-export function updateLastActivity(): void {
-  lastActivityAt = Date.now();
+async function persistLastActivity(timestamp: number): Promise<void> {
+  lastActivityAt = timestamp;
+  await storageService.set(VAULT_LAST_ACTIVITY, timestamp);
+}
+
+export async function updateLastActivity(): Promise<void> {
+  await persistLastActivity(Date.now());
 }
 
 export async function checkAutoLock(): Promise<void> {
@@ -40,7 +46,7 @@ export async function checkAutoLock(): Promise<void> {
   const maxIdleMs = minutes * 60 * 1000;
 
   if (idleMs >= maxIdleMs) {
-    console.log(`[AutoLock] Auto-locking vault after ${minutes} minutes`);
+    logService.log(LogLevel.WARN, `[AutoLock] Auto-locking vault after ${minutes} minutes`);
     await lockVault();
     stopAutoLockTimer();
   }
@@ -48,7 +54,7 @@ export async function checkAutoLock(): Promise<void> {
 
 export function startAutoLockTimer(): void {
   if (autoLockTimer) return;
-  console.log('[AutoLock] Starting timer');
+  logService.log(LogLevel.DEBUG, '[AutoLock] Starting timer');
   autoLockTimer = setInterval(() => {
     void checkAutoLock();
   }, AUTO_LOCK_CHECK_INTERVAL_MS);
@@ -61,8 +67,8 @@ export function stopAutoLockTimer(): void {
   }
 }
 
-export function resetAutoLockTimer(): void {
-  lastActivityAt = Date.now();
+export async function resetAutoLockTimer(): Promise<void> {
+  await persistLastActivity(Date.now());
   if (autoLockTimer) {
     stopAutoLockTimer();
     startAutoLockTimer();
