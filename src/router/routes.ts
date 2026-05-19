@@ -47,13 +47,23 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/profile',
-    alias: ['/relays'],
     component: () => import('layouts/DashboardLayout.vue'),
     children: [
       {
         path: '',
         name: 'profile',
         component: () => import('pages/ProfilePage.vue'),
+      },
+    ],
+  },
+  {
+    path: '/relays',
+    component: () => import('layouts/DashboardLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'relays',
+        component: () => import('pages/RelayManagementPage.vue'),
       },
     ],
   },

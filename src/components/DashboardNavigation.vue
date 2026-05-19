@@ -4,8 +4,15 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useVault } from 'src/composables/useVault';
 
-type NavigationRouteName = 'dashboard' | 'keys' | 'profile' | 'settings' | 'logs' | 'edit-account';
-type ProfileTab = 'profile' | 'images' | 'relays';
+type NavigationRouteName =
+  | 'dashboard'
+  | 'keys'
+  | 'profile'
+  | 'relays'
+  | 'settings'
+  | 'logs'
+  | 'edit-account';
+type ProfileTab = 'profile' | 'images';
 
 interface NavigationTarget {
   name: NavigationRouteName;
@@ -38,19 +45,6 @@ const props = withDefaults(
 );
 
 const routeName = computed(() => (typeof route.name === 'string' ? route.name : ''));
-const activeProfileTab = computed(() => {
-  const routeTab = route.query.tab;
-
-  if (routeTab === 'profile' || routeTab === 'images' || routeTab === 'relays') {
-    return routeTab;
-  }
-
-  if (route.path.startsWith('/relays')) {
-    return 'relays';
-  }
-
-  return 'profile';
-});
 
 const navigationItems = computed<NavigationItem[]>(() => [
   {
@@ -75,17 +69,15 @@ const navigationItems = computed<NavigationItem[]>(() => [
     label: t('navigation.profile.label'),
     caption: t('navigation.profile.caption'),
     target: { name: 'profile', query: { tab: 'profile' } },
-    isActive: () =>
-      routeName.value === 'profile' &&
-      activeProfileTab.value !== 'relays',
+    isActive: () => routeName.value === 'profile',
   },
   {
     id: 'relays',
     icon: 'hub',
     label: t('navigation.relays.label'),
     caption: t('navigation.relays.caption'),
-    target: { name: 'profile', query: { tab: 'relays' } },
-    isActive: () => routeName.value === 'profile' && activeProfileTab.value === 'relays',
+    target: { name: 'relays' },
+    isActive: () => routeName.value === 'relays',
   },
   {
     id: 'logs',

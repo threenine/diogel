@@ -5,7 +5,6 @@ import { useRoute, useRouter } from 'vue-router';
 import useAccountStore from '../stores/account-store';
 import ProfileImage from '../components/ProfileImage.vue';
 import ProfileEditor from '../components/ProfileEditor.vue';
-import RelayEditor from '../components/RelayEditor.vue';
 
 
 const { t } = useI18n();
@@ -13,17 +12,13 @@ const accountStore = useAccountStore();
 const route = useRoute();
 const router = useRouter();
 
-type ProfileTab = 'profile' | 'images' | 'relays';
+type ProfileTab = 'profile' | 'images';
 
 function resolveTabFromRoute(): ProfileTab {
   const routeTab = route.query.tab;
 
-  if (routeTab === 'profile' || routeTab === 'images' || routeTab === 'relays') {
+  if (routeTab === 'profile' || routeTab === 'images') {
     return routeTab;
-  }
-
-  if (route.path.startsWith('/relays')) {
-    return 'relays';
   }
 
   return 'profile';
@@ -100,12 +95,6 @@ watch(tab, (newTab) => {
             icon="image"
             name="images"
           />
-          <q-tab
-            :label="t('profile.relaysTitle')"
-            class="text-caption"
-            icon="hub"
-            name="relays"
-          />
         </q-tabs>
 
         <q-tab-panels v-model="tab" animated class="profile-page__tab-panels">
@@ -116,11 +105,6 @@ watch(tab, (newTab) => {
           <q-tab-panel class="q-pa-none" name="images">
             <ProfileImage :stored-key="activeStoredKey" />
           </q-tab-panel>
-
-          <q-tab-panel class="q-pa-none" name="relays">
-            <RelayEditor :stored-key="activeStoredKey" />
-          </q-tab-panel>
-
         </q-tab-panels>
       </div>
       <div v-else class="text-center q-pa-xl">
