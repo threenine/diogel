@@ -30,7 +30,7 @@ onMounted(async () => {
   <q-page class="dashboard-page profile-page">
     <section class="dashboard-hero">
       <h1 class="dashboard-hero-title">{{ t('profile.title') }}</h1>
-      <p class="dashboard-hero-caption">{{ t('account.editAccount') }}</p>
+      <p class="dashboard-hero-caption">{{ t('profile.dashboardCaption') }}</p>
     </section>
 
     <q-card class="dashboard-card profile-page__card">

@@ -27,6 +27,7 @@ export default {
     noActiveAccountDesc: 'Please select or create an account in the Accounts tab.',
     profileName: 'Profile Name',
     editAccount: 'Edit Account',
+    editDashboardCaption: 'Review account details and export a secure backup when needed.',
     exportAccount: 'Export Account',
     exportChoosePassword: 'Choose a password and file name',
     exportStarted: 'Export started. You will be prompted to save the file.',
@@ -47,6 +48,8 @@ export default {
   },
   profile: {
     title: 'Profile',
+    dashboardCaption:
+      'Manage your active Nostr identity, profile metadata, relays, and key backups.',
     imagesTitle: 'Images',
     avatarTitle: 'Avatar',
     bannerTitle: 'Banner',
@@ -91,6 +94,8 @@ export default {
     importParseError: 'Failed to parse backup file: ',
     exportDeny: 'Browser denied file download',
     title: 'Extension Settings',
+    dashboardCaption:
+      'Configure extension preferences, vault locking, Blossom uploads, and vault import/export.',
     export: 'Export',
     import: 'Import',
     autoLockOptions: {
@@ -145,6 +150,8 @@ export default {
   },
   logs: {
     title: 'Event Logs',
+    dashboardCaption:
+      'Review approval history and extension exceptions for the active account.',
     tabs: {
       approvals: 'Approvals',
       exceptions: 'Exceptions',

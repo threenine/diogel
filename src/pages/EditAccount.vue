@@ -41,7 +41,7 @@ function loadStoredKeys() {
   <q-page class="dashboard-page edit-account-page">
     <section class="dashboard-hero">
       <h1 class="dashboard-hero-title">{{ t('account.editAccount') }}</h1>
-      <p class="dashboard-hero-caption">{{ t('account.profileName') }}</p>
+      <p class="dashboard-hero-caption">{{ t('account.editDashboardCaption') }}</p>
     </section>
 
     <q-card class="dashboard-card edit-account-page__card">

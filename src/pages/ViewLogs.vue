@@ -83,6 +83,7 @@ const formatDateTime = (val: string) => {
     <section class="dashboard-hero">
       <div>
         <h1 class="dashboard-hero-title">{{ t('logs.title') }}</h1>
+        <p class="dashboard-hero-caption">{{ t('logs.dashboardCaption') }}</p>
       </div>
       <q-btn
         class="dashboard-hero-action diogel-btn-ghost"
