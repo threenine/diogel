@@ -7,26 +7,19 @@ import ProfileImage from '../components/ProfileImage.vue';
 import ProfileEditor from '../components/ProfileEditor.vue';
 import RelayEditor from '../components/RelayEditor.vue';
 
-import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
-import ExportButton from 'components/ExportButton.vue';
-import WarningCard from 'components/WarningCard.vue';
 
 const { t } = useI18n();
 const accountStore = useAccountStore();
 const route = useRoute();
 const router = useRouter();
 
-type ProfileTab = 'profile' | 'images' | 'relays' | 'keys';
+type ProfileTab = 'profile' | 'images' | 'relays';
 
 function resolveTabFromRoute(): ProfileTab {
   const routeTab = route.query.tab;
 
-  if (routeTab === 'profile' || routeTab === 'images' || routeTab === 'relays' || routeTab === 'keys') {
+  if (routeTab === 'profile' || routeTab === 'images' || routeTab === 'relays') {
     return routeTab;
-  }
-
-  if (route.path.startsWith('/keys')) {
-    return 'keys';
   }
 
   if (route.path.startsWith('/relays')) {
@@ -113,7 +106,6 @@ watch(tab, (newTab) => {
             icon="hub"
             name="relays"
           />
-          <q-tab :label="t('profile.keysTitle')" class="text-caption" icon="key" name="keys" />
         </q-tabs>
 
         <q-tab-panels v-model="tab" animated class="profile-page__tab-panels">
@@ -129,27 +121,6 @@ watch(tab, (newTab) => {
             <RelayEditor :stored-key="activeStoredKey" />
           </q-tab-panel>
 
-          <q-tab-panel class="q-pa-none" name="keys">
-            <q-card-section>
-              <ViewStoredKey :stored-key="activeStoredKey" />
-            </q-card-section>
-            <q-card-section class="q-pt-none row justify-end paddings-sm">
-              <q-separator horizontal inset />
-            </q-card-section>
-
-            <q-card-section class="q-pt-none row justify-end paddings-sm">
-              <ExportButton :stored-key="activeStoredKey" />
-            </q-card-section>
-
-            <q-separator horizontal class="q-mt-xl q-mb-md" inset />
-
-            <q-card-section class="text-center">
-              <warning-card
-                :headline="t('warning.exportKeys')"
-                :message="t('warning.backupNotice')"
-              />
-            </q-card-section>
-          </q-tab-panel>
         </q-tab-panels>
       </div>
       <div v-else class="text-center q-pa-xl">

@@ -4,8 +4,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useVault } from 'src/composables/useVault';
 
-type NavigationRouteName = 'dashboard' | 'profile' | 'settings' | 'logs' | 'edit-account';
-type ProfileTab = 'profile' | 'images' | 'relays' | 'keys';
+type NavigationRouteName = 'dashboard' | 'keys' | 'profile' | 'settings' | 'logs' | 'edit-account';
+type ProfileTab = 'profile' | 'images' | 'relays';
 
 interface NavigationTarget {
   name: NavigationRouteName;
@@ -41,17 +41,8 @@ const routeName = computed(() => (typeof route.name === 'string' ? route.name : 
 const activeProfileTab = computed(() => {
   const routeTab = route.query.tab;
 
-  if (
-    routeTab === 'profile' ||
-    routeTab === 'images' ||
-    routeTab === 'relays' ||
-    routeTab === 'keys'
-  ) {
+  if (routeTab === 'profile' || routeTab === 'images' || routeTab === 'relays') {
     return routeTab;
-  }
-
-  if (route.path.startsWith('/keys')) {
-    return 'keys';
   }
 
   if (route.path.startsWith('/relays')) {
@@ -75,10 +66,8 @@ const navigationItems = computed<NavigationItem[]>(() => [
     icon: 'key',
     label: t('navigation.keys.label'),
     caption: t('navigation.keys.caption'),
-    target: { name: 'profile', query: { tab: 'keys' } },
-    isActive: () =>
-      routeName.value === 'edit-account' ||
-      (routeName.value === 'profile' && activeProfileTab.value === 'keys'),
+    target: { name: 'keys' },
+    isActive: () => routeName.value === 'edit-account' || routeName.value === 'keys',
   },
   {
     id: 'profile',
@@ -88,7 +77,6 @@ const navigationItems = computed<NavigationItem[]>(() => [
     target: { name: 'profile', query: { tab: 'profile' } },
     isActive: () =>
       routeName.value === 'profile' &&
-      activeProfileTab.value !== 'keys' &&
       activeProfileTab.value !== 'relays',
   },
   {
