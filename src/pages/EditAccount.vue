@@ -38,40 +38,48 @@ function loadStoredKeys() {
 </script>
 
 <template>
-  <q-page>
-    <div class="shadow-0">
-      <q-toolbar>
-        <q-toolbar-title>{{ t('account.editAccount') }}</q-toolbar-title>
-      </q-toolbar>
-      <div class="q-pa-lg-lg full-width settings-form rounded-borders">
-        <q-list>
-          <q-item v-ripple tag="label">
-            <q-item-section>
-              <div class="q-gutter-lg">
-                <q-input
-                  v-model="storedKey.alias"
-                  class="text-input"
-                  :label="t('account.profileName')"
-                  readonly
-                >
-                  <template v-slot:prepend>
-                    <q-icon name="person" />
-                  </template>
-                </q-input>
-                <view-stored-key :stored-key="storedKey" />
-              </div>
-              <div class="row justify-end q-gutter-sm q-mt-lg">
-                <ExportButton :stored-key="storedKey" />
-              </div>
-            </q-item-section>
-          </q-item>
-        </q-list>
-      </div>
-    </div>
+  <q-page class="dashboard-page edit-account-page">
+    <section class="dashboard-hero">
+      <h1 class="dashboard-hero-title">{{ t('account.editAccount') }}</h1>
+      <p class="dashboard-hero-caption">{{ t('account.profileName') }}</p>
+    </section>
+
+    <q-card class="dashboard-card edit-account-page__card">
+      <q-card-section class="q-pa-lg">
+        <q-input
+          v-model="storedKey.alias"
+          class="text-input"
+          :label="t('account.profileName')"
+          readonly
+        >
+          <template v-slot:prepend>
+            <q-icon name="person" />
+          </template>
+        </q-input>
+      </q-card-section>
+
+      <q-separator inset />
+
+      <q-card-section class="q-pa-lg">
+        <view-stored-key :stored-key="storedKey" />
+      </q-card-section>
+
+      <q-card-section class="row justify-end q-pa-lg q-pt-none">
+        <ExportButton :stored-key="storedKey" />
+      </q-card-section>
+    </q-card>
   </q-page>
 </template>
 
 <style scoped>
+.edit-account-page {
+  width: 100%;
+}
+
+.edit-account-page__card {
+  overflow: hidden;
+}
+
 .text-input {
   font-size: 12px;
 }
