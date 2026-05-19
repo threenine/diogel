@@ -17,12 +17,15 @@ onMounted(async () => {
 </script>
 
 <template>
-  <q-page padding>
-    <q-card class="shadow-0">
-      <q-toolbar>
-        <q-toolbar-title>{{ t('settings.title') }}</q-toolbar-title>
-      </q-toolbar>
+  <q-page class="dashboard-page extension-settings-page">
+    <section class="dashboard-hero">
+      <h1 class="dashboard-hero-title">{{ t('settings.title') }}</h1>
+      <p class="dashboard-hero-caption">{{ t('profile.themeCaption') }}</p>
+    </section>
+
+    <q-card class="dashboard-card extension-settings-page__card">
       <q-card-section>
+        <h2 class="text-subtitle1 q-mb-md">{{ t('settings.title') }}</h2>
         <q-list dividers>
           <q-item v-ripple tag="label">
             <q-item-section>
@@ -63,6 +66,7 @@ onMounted(async () => {
         </q-list>
       </q-card-section>
       <q-card-section>
+        <h2 class="text-subtitle1 q-mb-md">{{ t('profile.blossomServer') }}</h2>
         <q-list>
           <q-item>
             <q-item-section>
@@ -83,7 +87,7 @@ onMounted(async () => {
       <q-separator />
 
       <q-card-section>
-        <div class="text-subtitle1 q-mb-md">{{ t('settings.vaultManagement') }}</div>
+        <h2 class="text-subtitle1 q-mb-md">{{ t('settings.vaultManagement') }}</h2>
         <q-list>
           <q-item>
             <q-item-section>
@@ -126,3 +130,13 @@ onMounted(async () => {
     </q-card>
   </q-page>
 </template>
+
+<style scoped>
+.extension-settings-page {
+  width: 100%;
+}
+
+.extension-settings-page__card {
+  overflow: hidden;
+}
+</style>
