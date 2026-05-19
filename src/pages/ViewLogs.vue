@@ -54,7 +54,7 @@ const exceptionColumns = computed<QTableColumn[]>(() => [
     sortable: true,
   },
   {
-    name: 'message',
+    name: 'hostname',
     label: t('logs.columns.hostname'),
     field: 'hostname',
     align: 'left',
