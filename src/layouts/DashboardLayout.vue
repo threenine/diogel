@@ -1,6 +1,6 @@
 <template>
   <q-layout view="lHh Lpr lFf" class="dashboard-layout">
-    <main-layout-header />
+    <dashboard-header @toggle-menu="toggleDrawer" />
 
     <q-drawer
       v-model="leftDrawerOpen"
@@ -16,16 +16,6 @@
 
     <q-page-container>
       <div class="dashboard-page-shell">
-        <div class="dashboard-page-shell__toolbar" v-if="$q.screen.lt.lg">
-          <q-btn
-            flat
-            round
-            dense
-            icon="menu"
-            aria-label="Toggle dashboard navigation"
-            @click="leftDrawerOpen = !leftDrawerOpen"
-          />
-        </div>
         <router-view />
       </div>
     </q-page-container>
@@ -37,9 +27,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useQuasar } from 'quasar';
-import MainLayoutHeader from 'components/MainLayoutHeader.vue';
+import DashboardHeader from 'components/DashboardHeader.vue';
 import MainLayoutFooter from 'components/MainLayoutFooter.vue';
 
 const $q = useQuasar();
 const leftDrawerOpen = ref($q.screen.gt.md);
+
+const toggleDrawer = () => {
+  leftDrawerOpen.value = !leftDrawerOpen.value;
+};
 </script>
