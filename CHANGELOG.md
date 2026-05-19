@@ -1,5 +1,30 @@
 # Changelog
 
+## v0.0.19
+
+[compare changes](https://github.com/threenine/diogel/compare/0.0.18-3690444...v0.0.19)
+
+### 🚀 Enhancements
+
+- Update permission duration to support '8h' option ([2b3ea1a](https://github.com/threenine/diogel/commit/2b3ea1a))
+- Enforce validation for unsupported permission durations ([f730cb0](https://github.com/threenine/diogel/commit/f730cb0))
+
+### 🏡 Chore
+
+- Replace `console` statements with `logService` for unified logging, add debug mode checks, and enhance error verbosity across services and components ([c88eef8](https://github.com/threenine/diogel/commit/c88eef8))
+- Refactor type usage in bridge messaging, simplify and enforce type safety across handlers, tests, and services ([5e510d9](https://github.com/threenine/diogel/commit/5e510d9))
+- Update memory version to 3.0, remove feedback file, and adjust release script ([3586ddf](https://github.com/threenine/diogel/commit/3586ddf))
+
+### ✅ Tests
+
+- Add unit tests for `PermissionHandler` ([99687e9](https://github.com/threenine/diogel/commit/99687e9))
+- Add unit tests for invalid and edge cases in `PermissionHandler` ([32de819](https://github.com/threenine/diogel/commit/32de819))
+- Add non-null assertions to autoLockTimer invocation order checks in `dispatcher` unit tests ([cc2102c](https://github.com/threenine/diogel/commit/cc2102c))
+
+### ❤️ Contributors
+
+- Gary Woodfine <gary.woodfine@threenine.co.uk>
+
 ## v0.0.18
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.17...v0.0.18)
