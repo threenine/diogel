@@ -1,6 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia';
 import type { StoredKey } from '../types';
-import { get, getActive, save, setActive } from '../services/dexie-storage';
+import { get, getActive, renameAlias, save, setActive } from '../services/dexie-storage';
 import { NOSTR_ACTIVE, storageService } from '../services/storage-service';
 
 const useAccountStore = defineStore('account', {
@@ -31,6 +31,13 @@ const useAccountStore = defineStore('account', {
     async setActiveKey(alias: string) {
       this.activeKey = alias;
       await setActive(alias);
+    },
+    async renameKeyAlias(currentAlias: string, newAlias: string) {
+      await renameAlias(currentAlias, newAlias);
+      await this.getKeys();
+      if (this.activeKey === currentAlias) {
+        this.activeKey = newAlias;
+      }
     },
     listenToStorageChanges() {
       if (this.isListening) return;

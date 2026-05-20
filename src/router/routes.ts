@@ -72,6 +72,22 @@ const routes: RouteRecordRaw[] = [
     component: () => import('layouts/DashboardLayout.vue'),
     children: [
       {
+        path: 'import',
+        name: 'import-key',
+        component: () => import('pages/ImportKeyPage.vue'),
+      },
+      {
+        path: 'new',
+        name: 'add-new-key',
+        component: () => import('pages/AddNewKeyPage.vue'),
+      },
+      {
+        path: ':alias',
+        name: 'view-key',
+        component: () => import('pages/ViewKeyPage.vue'),
+        props: true,
+      },
+      {
         path: '',
         name: 'keys',
         component: () => import('pages/KeyManagementPage.vue'),
@@ -95,15 +111,14 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/edit-account/:alias?',
-    component: () => import('layouts/DashboardLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'edit-account',
-        component: () => import('pages/EditAccount.vue'),
-        props: true,
-      },
-    ],
+    redirect: (to) => {
+      const alias = typeof to.params.alias === 'string' ? to.params.alias : undefined;
+      if (alias) {
+        return { name: 'view-key', params: { alias } };
+      }
+
+      return { name: 'keys' };
+    },
   },
   {
     path: '/create-account',

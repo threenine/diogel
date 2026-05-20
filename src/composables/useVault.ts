@@ -12,7 +12,17 @@ import { LogLevel, logService } from 'src/services/log-service';
 type LoginContext = 'dashboard' | 'extension';
 type PostLoginRouteName = 'dashboard' | 'home';
 
-const dashboardRouteNames = new Set(['dashboard', 'settings', 'profile', 'logs', 'edit-account']);
+const dashboardRouteNames = new Set([
+  'dashboard',
+  'settings',
+  'profile',
+  'logs',
+  'keys',
+  'view-key',
+  'import-key',
+  'add-new-key',
+  'edit-account',
+]);
 
 function getLoginContextFromQuery(value: unknown): LoginContext | undefined {
   if (value === 'dashboard' || value === 'extension') {

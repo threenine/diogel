@@ -66,6 +66,10 @@ function resolveLoginContextFromRoute(): LoginContext {
     routeName === 'settings' ||
     routeName === 'profile' ||
     routeName === 'logs' ||
+    routeName === 'keys' ||
+    routeName === 'view-key' ||
+    routeName === 'import-key' ||
+    routeName === 'add-new-key' ||
     routeName === 'edit-account'
   ) {
     return 'dashboard';

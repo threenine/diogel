@@ -8,6 +8,9 @@ const route = useRoute();
 
 const routeTitleOverrides: Record<string, string> = {
   'edit-account': 'Edit Account',
+  'view-key': 'View Key',
+  'import-key': 'Import Key',
+  'add-new-key': 'Add New Key',
 };
 
 const pageTitle = computed(() => {

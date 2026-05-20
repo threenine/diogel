@@ -60,6 +60,38 @@ export async function save(storedKey: StoredKey): Promise<void> {
   await setActive(storedKey.alias);
 }
 
+export async function renameAlias(currentAlias: string, newAlias: string): Promise<void> {
+  if (!(await isVaultUnlocked())) {
+    throw new Error('Vault is locked. Cannot rename key.');
+  }
+
+  const res = await getVaultData();
+  if (!res.success || !res.vaultData) {
+    throw new Error('Failed to retrieve vault data');
+  }
+
+  const vaultData = res.vaultData;
+  vaultData.accounts = vaultData.accounts || [];
+
+  const existingAlias = vaultData.accounts.find((acc: StoredKey) => acc.alias === newAlias);
+  if (existingAlias && existingAlias.alias !== currentAlias) {
+    throw new Error('Key with the same alias already exists.');
+  }
+
+  const targetAccount = vaultData.accounts.find((acc: StoredKey) => acc.alias === currentAlias);
+  if (!targetAccount) {
+    throw new Error('Key not found.');
+  }
+
+  targetAccount.alias = newAlias;
+  await updateVaultData(vaultData);
+
+  const activeAlias = await getActive();
+  if (activeAlias === currentAlias) {
+    await setActive(newAlias);
+  }
+}
+
 export async function remove(id: string): Promise<void> {
   if (!(await isVaultUnlocked())) {
     throw new Error('Vault is locked. Cannot remove key.');

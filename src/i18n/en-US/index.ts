@@ -46,6 +46,26 @@ export default {
     mainAccountReservedError: 'Alias "{name}" is reserved.',
     anonymous: 'Anonymous',
   },
+  keyManagement: {
+    importKey: 'Import Key',
+    addNewKey: 'Add New Key',
+    aliasSaved: 'Alias updated successfully.',
+    viewAction: 'View',
+    viewTitle: 'View Key',
+    viewCaption: 'Review and export this key. Only alias naming can be edited.',
+    importTitle: 'Import Key',
+    importCaption: 'Import an existing key from an nsec private key.',
+    addNewTitle: 'Add New Key',
+    addNewCaption: 'Generate and register a new key in your vault.',
+    keyNotFound: 'The selected key could not be found.',
+    table: {
+      name: 'Name',
+      publicKey: 'Public Key',
+      createdDate: 'Created Date',
+      action: 'Action',
+      noKeys: 'No keys are registered yet.',
+    },
+  },
   profile: {
     title: 'Profile',
     dashboardCaption:

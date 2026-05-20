@@ -7,6 +7,9 @@ import { useVault } from 'src/composables/useVault';
 type NavigationRouteName =
   | 'dashboard'
   | 'keys'
+  | 'view-key'
+  | 'import-key'
+  | 'add-new-key'
   | 'profile'
   | 'relays'
   | 'settings'
@@ -87,7 +90,12 @@ const navigationItems = computed<NavigationItem[]>(() => [
     label: t('navigation.keys.label'),
     caption: t('navigation.keys.caption'),
     target: { name: 'keys' },
-    isActive: () => routeName.value === 'edit-account' || routeName.value === 'keys',
+    isActive: () =>
+      routeName.value === 'keys' ||
+      routeName.value === 'view-key' ||
+      routeName.value === 'import-key' ||
+      routeName.value === 'add-new-key' ||
+      routeName.value === 'edit-account',
   },
   {
     id: 'profile',

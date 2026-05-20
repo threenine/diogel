@@ -62,7 +62,9 @@ export function useAccounts() {
         '/approve',
       ];
       const isManagementPath =
-        managementPaths.includes(currentPath) || currentPath.startsWith('/edit-account');
+        managementPaths.includes(currentPath) ||
+        currentPath.startsWith('/edit-account') ||
+        currentPath.startsWith('/keys');
 
       if (!isManagementPath) {
         router.push({ path: '/' }).catch(() => {});
