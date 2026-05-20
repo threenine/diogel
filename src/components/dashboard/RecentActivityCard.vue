@@ -116,11 +116,29 @@ function formatActivityKeyChip(activity: DashboardActivityItem): string {
 }
 
 function resolveActivityIcon(activity: DashboardActivityItem): { name: string; color: string } {
-  if (activity.type === 'approval') {
-    return { name: 'check_circle', color: 'positive' };
+  if (activity.status !== 'approved') {
+    return { name: 'error_outline', color: 'negative' };
   }
 
-  return { name: 'error_outline', color: 'negative' };
+  const kind = typeof activity.eventKind === 'undefined' ? undefined : String(activity.eventKind);
+
+  if (kind === '0') {
+    return { name: 'person_outline', color: 'primary' };
+  }
+
+  if (kind === '1') {
+    return { name: 'chat_bubble_outline', color: 'primary' };
+  }
+
+  if (kind === '4') {
+    return { name: 'lock_outline', color: 'primary' };
+  }
+
+  if (kind === '30023') {
+    return { name: 'notes', color: 'primary' };
+  }
+
+  return { name: 'check_circle_outline', color: 'positive' };
 }
 
 function formatActivityStatus(activity: DashboardActivityItem): string {
@@ -296,13 +314,13 @@ onMounted(() => {
 }
 
 .dashboard-widget-card__status--success {
-  background: rgba(33, 186, 69, 0.16);
-  color: #1a9f38;
+  background: color-mix(in srgb, var(--q-positive) 18%, transparent);
+  color: var(--q-positive);
 }
 
 .dashboard-widget-card__status--exception {
-  background: rgba(193, 0, 21, 0.14);
-  color: #b20016;
+  background: color-mix(in srgb, var(--q-negative) 16%, transparent);
+  color: var(--q-negative);
 }
 
 .dashboard-widget-card__state {
