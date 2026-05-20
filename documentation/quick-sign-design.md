@@ -1,190 +1,311 @@
 # Package 10 — Quick Sign Design Specification
 
-Date: 2026-05-19
-Status: Draft for review (implementation blocked until accepted)
+Date: 2026-05-20
+Status: Draft for review
 
 ## Goal
 
-Define secure, reviewable MVP behavior for quick-sign before any implementation work starts.
+Define the revised Quick Sign MVP for the dashboard.
 
-Quick-sign crosses security boundaries (event construction, account/key choice, signing approval, optional publish). This document defines the minimum safe scope and explicit guardrails.
+Quick Sign is no longer a broad JSON-first event signer. The revised direction is a focused, structured authoring flow that lets a user quickly create, sign, preview, and publish either a short text note or long-form content without leaving Diogel.
+
+The feature still crosses security boundaries: account/key choice, event construction, signing approval, and network publishing. This document defines the safe MVP scope and guardrails.
+
+## Source Of Intent
+
+This specification supersedes the earlier JSON-first Quick Sign design.
+
+Current intent comes from:
+
+- `projects/diogel/ideation/dashboard/quick-sign.md`
 
 ## Non-Goals (MVP)
 
-- No broad event composer replacement.
+- No generic JSON event editor.
+- No arbitrary/custom Nostr event kinds.
 - No batch signing.
 - No background/autonomous signing.
-- No implicit key switching.
-- No advanced relay policy management.
+- No implicit account/key switching.
+- No broad relay policy manager.
+- No encrypted DM support.
+- No deletion/repost/auth/wallet event support.
+- No HTML authoring support.
 
 ## Implementation Gate
 
-- No quick-sign code implementation starts before this spec is reviewed and accepted.
-- Any implementation PR must reference this document and explicitly list deviations.
+- Quick Sign implementation must match this document or explicitly document deviations in the implementation PR.
+- If this document and the ideation file diverge, update this implementation spec before coding.
 
 ## MVP Scope
 
 ### Supported Event Kinds
 
-Allow only these kinds in MVP:
+Allow only these event kinds in MVP:
 
-- `0` (`set_metadata`)
-- `1` (`text_note`)
-- `3` (`contacts`)
-- `7` (`reaction`)
-- `30023` (`long-form`)
+- `1` — Text Note
+- `30023` — Long Form Content
 
 Rationale:
 
-- Common, manually understandable event types.
-- Low protocol complexity compared to payment/encryption/auth flows.
-- Supports meaningful manual testing without broad surface area.
+- Matches the revised dashboard ideation direction.
+- Keeps the feature focused on authoring and publishing user-visible content.
+- Avoids pretending Quick Sign is a general-purpose Nostr event signer.
+- Keeps manual testing small enough to be meaningful.
 
 Explicitly out of scope for MVP:
 
+- `0` metadata events
+- `3` contacts events
 - `4` encrypted DM events
 - `5` deletion events
-- `6` reposts
-- `22242`/`27235` auth or wallet-related flows
+- `6` repost events
+- `7` reaction events
+- `22242` / `27235` auth or wallet-related events
 - Any unknown/custom kind not explicitly allowed above
 
-### Authoring Model: JSON Editor vs Structured Form
+## Authoring Model
 
-MVP uses a **JSON-first editor** with a minimal helper mode:
+MVP uses a **structured form**, not a JSON editor.
 
-- Primary input is canonical event JSON fields (`kind`, `content`, `tags`, optional `created_at`).
-- Optional helper controls may prefill templates for supported kinds, but final source of truth remains JSON.
+The form contains:
 
-Rationale:
+1. Account selector
+2. Kind selector
+3. Content editor
+4. Tags editor
+5. Preview / approval step
+6. Publish result state
 
-- Reduces hidden field transformations.
-- Keeps signer behavior transparent and auditable.
-- Avoids a large structured-form implementation before security review maturity.
+The implementation may internally construct canonical Nostr event JSON, but raw JSON editing is not exposed in MVP.
 
-## Account and Key Selection Behavior
+## Account Selection
 
-- User must explicitly choose the signing account for each quick-sign action.
-- Default selection may prefill current active account, but explicit confirmation is still required in the review step.
-- No silent fallback to another account if selected account is unavailable.
-- If selected account is missing, locked, or invalid, signing is blocked with a clear error.
+The user must explicitly choose the signing account before signing.
+
+Account selector requirements:
+
+- Display available accounts as `Alias Name (npub1...)`.
+- Use a dropdown/listbox control.
+- Default selection may prefill the current active account if one exists.
+- The selected account must be shown again on the preview screen.
+- No silent fallback to another account if the selected account is unavailable.
+
+If the selected account is missing, locked, or invalid:
+
+- signing is blocked
+- the user sees a clear error
+- no event is published
 
 Key material behavior:
 
-- Private key never leaves extension trust boundary.
-- UI and logs must use only safe identity handles (`npub`, alias, fingerprint), never secret material.
+- Private key never leaves the extension/vault trust boundary.
+- UI and logs must use safe identity handles only: alias, `npub`, or short fingerprint.
+- Never log secret key material.
 
-## Validation Rules
+## Kind Selection
 
-Validation must pass before preview/sign actions are enabled.
+The kind selector contains exactly two default options:
 
-Required checks:
+- `Text Note (Kind 1)`
+- `Long Form (Kind 30023)`
 
-- Event must be valid JSON object.
-- `kind` is present, integer, and in MVP allowlist.
-- `content` is a string.
-- `tags` is an array of arrays of strings.
-- If `created_at` provided, it must be integer UNIX seconds.
-- `id`, `sig`, and `pubkey` from user input are ignored/recomputed at signing (not trusted from input).
+The selected kind controls content validation and event construction.
 
-Additional checks:
+## Content Rules
 
-- Enforce reasonable payload limits (size cap configured by implementation, documented in release notes).
-- Reject malformed UTF-8 or non-serializable structures.
+### Kind `1` — Text Note
+
+Content input:
+
+- multi-line text box
+- plain text only
+
+Validation:
+
+- Markdown is not allowed.
+- HTML is not allowed.
+- Content must not be empty after trimming whitespace.
+
+Implementation note:
+
+- The MVP should use conservative validation. If Markdown detection is uncertain, prefer warning/blocking obvious Markdown syntax rather than trying to perfectly parse every edge case.
+
+### Kind `30023` — Long Form Content
+
+Content input:
+
+- multi-line editor
+- Markdown allowed
+
+Validation:
+
+- Markdown is allowed.
+- HTML is not allowed.
+- Content must not be empty after trimming whitespace.
+
+Implementation note:
+
+- HTML rejection should block raw HTML tags in submitted content.
+- Sanitisation may still be used for preview rendering, but sanitisation is not a substitute for enforcing the MVP no-HTML rule.
+
+## Tags Editor
+
+MVP includes a dynamically expanding tags form.
+
+Requirements:
+
+- User can add one or more tags.
+- Each tag row contains:
+  - tag type dropdown
+  - tag value text box
+  - remove control
+- Supported tag types in MVP:
+  - `p`
+  - `a`
+  - `t`
+  - `e`
+
+Validation:
+
+- tag type must be one of the supported MVP types
+- tag value must not be empty
+- generated Nostr tags must be arrays of strings
+- malformed tag rows block preview/sign/publish
+
+Future extensions may add additional tag types, but they are out of scope for MVP.
 
 ## Preview Before Signing
 
-A mandatory preview screen is required before final approval.
+A mandatory preview is required before signing and publishing.
 
 Preview must show:
 
-- selected account identity (`npub` + alias if available)
-- final computed event payload to be signed (normalized JSON)
-- event summary (kind, content excerpt, tag count, timestamp)
-- destination mode (`sign only` or `sign + publish`)
+- selected account identity: alias and `npub`
+- selected event kind
+- content preview
+- tag summary / tag list
+- publish destination summary
+- warning that approval will sign and publish the event
 
 User controls:
 
 - `Back to edit`
 - `Cancel`
-- `Approve sign`
+- `Sign and publish`
 
-No one-click sign from raw editor in MVP.
+There is no one-click signing from the edit form in MVP.
 
-## Signing vs Publishing
+## Publish Behaviour
 
-MVP includes **both** modes, defaulting to **sign only**:
+MVP behaviour is **sign and publish**.
 
-- `Sign only` (default): return signed event to caller/UI without relay broadcast.
-- `Sign + publish` (explicit opt-in): publish signed event to selected relays after approval.
+Publishing rules:
 
-Security rationale:
+- The event is signed only after the user approves the preview.
+- The signed event is published to relays from the selected account's Relay Meta List.
+- Do not publish to all online relay catalog entries.
+- Do not silently fall back to a global relay list.
+- If the selected account has no usable Relay Meta List relays, publishing is blocked with a clear error.
 
-- Separates cryptographic approval from network side effects.
-- Keeps accidental broadcast risk lower by default.
+Relay source:
 
-## Relay Selection Defaults
+- Use the selected account's kind `10002` relay-list metadata where available.
+- MVP may use relay entries appropriate for write/publish behavior.
+- The preview must show the relays that will be used before approval.
 
-For `sign only`:
+Publish result handling:
 
-- No relay selection required.
-
-For `sign + publish`:
-
-- Relay candidates come from selected account kind `10002` relay-list metadata.
-- UI preselects those account relays and must show a publish destination summary before approval.
-- User can deselect/select relays before final approve.
-- At least one relay must be selected to publish.
-- No silent fallback to global online relay catalog for publish in MVP.
+- Show success when publishing succeeds.
+- Show partial failure if some relays fail and some succeed.
+- Show failure if no relay accepts the event.
+- Preserve a safe retry path.
 
 ## Permission / Approval Model
 
-Quick-sign always requires explicit user approval in MVP.
+Quick Sign always requires explicit user approval in MVP.
 
-- No persistent “always allow quick-sign” grant in MVP.
-- Origin context (if request is website-initiated) must be displayed in approval UI.
-- Approval is per operation (single event).
-- Auto-reject on approval timeout.
+- Approval is per operation.
+- No persistent “always allow Quick Sign” grant.
+- No background signing.
+- No background publishing.
+- Auto-reject or expire stale approval prompts.
 
-If wallet/extension is locked:
+If the vault/extension is locked:
 
-- Require unlock before preview approval can complete.
-- After unlock, user returns to preview state (not direct sign completion).
+- require unlock before final signing
+- after unlock, return the user to preview state
+- do not complete signing automatically immediately after unlock
 
-## Logging and Audit Behavior
+## Validation Summary
 
-Log security-relevant outcomes without sensitive payload leakage.
+Validation must pass before preview/sign/publish actions are enabled.
 
-Log fields (minimum):
+Required checks:
+
+- account selected
+- selected account is available and usable
+- kind is either `1` or `30023`
+- content is non-empty
+- content satisfies kind-specific Markdown/HTML rules
+- tag rows are valid
+- relay metadata is available for publish
+- payload size is within implementation-defined limits
+
+Generated event fields:
+
+- `pubkey` is derived from the selected account
+- `created_at` is generated by the implementation unless explicitly supported later
+- `id` is computed by the implementation
+- `sig` is computed by the signer
+
+User input must not be trusted for `id`, `sig`, or `pubkey`.
+
+## Logging and Audit Behaviour
+
+Log security-relevant outcomes without leaking sensitive data.
+
+Minimum log fields:
 
 - timestamp
-- operation type (`quick-sign`)
-- account handle (`npub` short/fingerprint)
+- operation type: `quick-sign`
+- account handle: alias, short `npub`, or fingerprint
 - event kind
-- origin (if applicable)
-- mode (`sign only` / `sign + publish`)
-- result (`approved`, `rejected`, `validation_failed`, `publish_failed`, `internal_error`)
+- relay count
+- result:
+  - `approved`
+  - `rejected`
+  - `validation_failed`
+  - `publish_partial_failure`
+  - `publish_failed`
+  - `internal_error`
 
 Do not log:
 
 - private key or derived secret material
-- full sensitive event content where policy marks it private
+- full event content by default
+- sensitive tag values if later policy marks them private
 
-Retention and display follow existing log subsystem policy.
+Retention and display follow the existing log subsystem policy.
 
 ## Error States
 
 At minimum, define and surface these states:
 
-- invalid JSON
-- unsupported kind
-- schema/type validation failure
+- no account selected
 - account unavailable
 - vault locked / unlock required
+- unsupported kind
+- empty content
+- Markdown not allowed for kind `1`
+- HTML not allowed
+- invalid tag row
+- missing Relay Meta List
+- no writable publish relays
 - approval rejected by user
 - approval timed out
-- signing failure (crypto/runtime)
-- relay selection invalid (publish mode)
-- partial/total publish failure
+- signing failure
+- partial publish failure
+- total publish failure
 - internal unexpected error
 
 Error UX requirements:
@@ -197,27 +318,41 @@ Error UX requirements:
 
 MVP is intentionally constrained for manual verification:
 
-- 4 allowlisted kinds only
-- mandatory preview for every sign
-- per-operation approval only
-- sign-only default with explicit publish opt-in
+- two allowed event kinds only: `1` and `30023`
+- structured form only
+- explicit account selection
+- mandatory preview
+- per-operation approval
+- publish only to selected account Relay Meta List relays
 
 Minimum manual scenarios for acceptance:
 
-- valid sign-only flow for each supported kind
-- invalid JSON rejection
-- unsupported kind rejection
-- locked-vault interruption and recovery
-- user rejection path
-- publish with relay selection and publish-failure handling
+- valid kind `1` sign-and-publish flow
+- valid kind `30023` sign-and-publish flow
+- kind `1` blocks obvious Markdown
+- kind `1` blocks HTML
+- kind `30023` allows Markdown
+- kind `30023` blocks HTML
+- invalid/empty content rejection
+- invalid tag row rejection
+- selected account unavailable
+- locked-vault interruption and recovery to preview
+- user cancellation from preview
+- missing Relay Meta List blocks publish
+- relay partial-failure handling
+- relay total-failure handling
 
-## Open Questions for Review
+## Open Questions For Review
 
-- Confirm exact payload size limit for MVP (proposed implementation-time constant).
-- Confirm whether full content logging should be fully disabled or redacted-by-policy for all kinds.
+- Confirm exact payload size limit for MVP.
+- Confirm whether tag value validation should remain generic or become kind-aware.
+- Confirm whether kind `30023` requires additional metadata fields, such as title/summary/image, in this MVP or whether content-only long form is acceptable for the first pass.
+- Confirm whether users should be able to manually deselect Relay Meta List relays before publishing, or whether MVP publishes to the full writable set.
 
 ## Acceptance Mapping
 
-- No implementation before spec acceptance: enforced by `Implementation Gate`.
-- Security-sensitive behavior documented: covered in account/key handling, validation, preview, approval, logging, and error sections.
-- MVP small enough for manual testing: constrained kinds, explicit non-goals, and defined manual scenarios.
+- Revised Quick Sign intent captured: structured form, account selector, kind selector, content editor, tags editor, preview, sign-and-publish.
+- Supported kinds match ideation: `1` and `30023` only.
+- Publishing behavior is explicit: selected account Relay Meta List only, no global relay fallback.
+- Security-sensitive behavior documented: account/key handling, preview approval, validation, logging, and errors.
+- MVP is small enough for manual testing.
