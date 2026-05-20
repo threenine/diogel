@@ -7,7 +7,7 @@ import * as nip19 from 'nostr-tools/nip19';
 import { getPublicKey } from 'nostr-tools';
 import { bytesToHex } from '@noble/hashes/utils';
 
-import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
+import ViewStoredKey from 'src/components/ViewStoredKey/Index.vue';
 import useAccountStore from 'src/stores/account-store';
 import type { Account, StoredKey } from 'src/types';
 
@@ -70,7 +70,7 @@ function notifyMissingAlias() {
 function validate() {
   if (!trimmedAlias.value) {
     notifyMissingAlias();
-    aliasInputRef.value?.focus();
+    aliasInputRef.value?.focus?.();
     return false;
   }
   if (trimmedAlias.value === t('account.mainAccountReserved')) {
@@ -78,7 +78,7 @@ function validate() {
       type: 'negative',
       message: t('account.mainAccountReservedError', { name: t('account.mainAccountReserved') }),
     });
-    aliasInputRef.value?.focus();
+    aliasInputRef.value?.focus?.();
     return false;
   }
   return true;
@@ -88,6 +88,7 @@ async function saveKey() {
   if (!validate()) return;
 
   try {
+    storedKey.value.alias = trimmedAlias.value;
     await accountStore.saveKey(storedKey.value);
     await router.push({ name: 'view-key', params: { alias: storedKey.value.alias } });
   } catch (error: unknown) {
@@ -108,7 +109,7 @@ async function saveKey() {
       <q-input
         v-model="importNsec"
         :label="t('createAccount.importNsecLabel')"
-        :rules="[(v) => (v && isValidNsec) || String(t('validation.invalidNsec'))]"
+        :rules="[(v) => (!!String(v ?? '').trim() && isValidNsec) || String(t('validation.invalidNsec'))]"
         clearable
         lazy-rules
       />
