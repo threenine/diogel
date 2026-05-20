@@ -229,6 +229,12 @@ describe('dashboard-service', () => {
     await expect(dashboardService.getRecentActivityForActiveKey(5)).resolves.toEqual([]);
   });
 
+  it('returns empty recent activity when vault is locked', async () => {
+    vi.mocked(vaultService.isVaultUnlocked).mockResolvedValue(false);
+
+    await expect(dashboardService.getRecentActivityForActiveKey(5)).resolves.toEqual([]);
+  });
+
   it('returns merged and sorted recent activity for active account with limit', async () => {
     vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
     vi.mocked(dexieStorage.get).mockResolvedValue({
@@ -253,15 +259,25 @@ describe('dashboard-service', () => {
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({
       type: 'exception',
+      status: 'exception',
+      title: 'Extension exception',
       detail: 'approval timeout',
       accountAlias: 'alpha',
       accountNpub: 'pubkey-alpha',
     });
+    expect(result[0]).not.toHaveProperty('eventKind');
     expect(result[1]).toMatchObject({
       type: 'approval',
+      status: 'approved',
+      title: 'Approval request accepted',
       eventKind: 1,
       accountAlias: 'alpha',
       accountNpub: 'pubkey-alpha',
     });
+
+    expect(result.map((item) => item.dateTime)).toEqual([
+      '2026-01-01T11:00:00.000Z',
+      '2026-01-01T10:00:00.000Z',
+    ]);
   });
 });
