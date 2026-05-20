@@ -4,6 +4,7 @@ import { isVaultUnlocked } from 'src/services/vault-service';
 import {
   buildQuickSignPreviewEvent,
   getQuickSignAvailability,
+  listQuickSignAccountRelayUrls,
   listQuickSignAccounts,
   QUICK_SIGN_SUPPORTED_KINDS,
   validateQuickSignContent,
@@ -20,6 +21,35 @@ vi.mock('src/services/vault-service', () => ({
   sendBexMessage: vi.fn(),
 }));
 
+const { poolGetMock, poolCloseMock } = vi.hoisted(() => ({
+  poolGetMock: vi.fn(),
+  poolCloseMock: vi.fn(),
+}));
+
+const { settingsStoreMock } = vi.hoisted(() => ({
+  settingsStoreMock: {
+    fallbackRelays: ['wss://seed-relay.example'],
+    getSettings: vi.fn(async () => undefined),
+  },
+}));
+
+vi.mock('src/stores/settings-store', () => ({
+  default: () => settingsStoreMock,
+}));
+
+vi.mock('nostr-tools', async () => {
+  const actual = await vi.importActual<typeof import('nostr-tools')>('nostr-tools');
+  return {
+    ...actual,
+    SimplePool: vi.fn().mockImplementation(function MockSimplePool(this: unknown) {
+      return {
+        get: poolGetMock,
+        close: poolCloseMock,
+      };
+    }),
+  };
+});
+
 describe('quick-sign-service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -33,6 +63,7 @@ describe('quick-sign-service', () => {
         createdAt: '2026-01-01',
       },
     });
+    settingsStoreMock.fallbackRelays = ['wss://seed-relay.example'];
   });
 
   it('returns locked state when vault is locked', async () => {
@@ -247,5 +278,59 @@ describe('quick-sign-service', () => {
 
     expect(result.valid).toBe(false);
     expect(result.errors).toContain('Relay URLs must be valid ws:// or wss:// URLs.');
+  });
+
+  it('lists selected account relay meta list relays and prefers write-capable markers', async () => {
+    poolGetMock.mockResolvedValueOnce({
+      kind: 10002,
+      tags: [
+        ['r', 'wss://write.example', 'write'],
+        ['r', 'wss://read.example', 'read'],
+      ],
+    });
+
+    await expect(listQuickSignAccountRelayUrls('alpha')).resolves.toEqual(['wss://write.example']);
+  });
+
+  it('deduplicates selected account relay meta list relays', async () => {
+    poolGetMock.mockResolvedValueOnce({
+      kind: 10002,
+      tags: [
+        ['r', 'wss://relay.example/'],
+        ['r', 'wss://relay.example'],
+      ],
+    });
+
+    await expect(listQuickSignAccountRelayUrls('alpha')).resolves.toEqual(['wss://relay.example']);
+  });
+
+  it('filters malformed relay urls from selected account relay meta list', async () => {
+    poolGetMock.mockResolvedValueOnce({
+      kind: 10002,
+      tags: [
+        ['r', 'bad-url'],
+        ['r', 'wss://valid.example'],
+      ],
+    });
+
+    await expect(listQuickSignAccountRelayUrls('alpha')).resolves.toEqual(['wss://valid.example']);
+  });
+
+  it('returns empty relay list when selected account has no relay meta list event', async () => {
+    poolGetMock.mockResolvedValueOnce(null);
+
+    await expect(listQuickSignAccountRelayUrls('alpha')).resolves.toEqual([]);
+  });
+
+  it('returns empty relay list for unknown account alias', async () => {
+    await expect(listQuickSignAccountRelayUrls('unknown')).resolves.toEqual([]);
+    expect(poolGetMock).not.toHaveBeenCalled();
+  });
+
+  it('returns empty relay list when no fallback relays are available for metadata lookup', async () => {
+    settingsStoreMock.fallbackRelays = [];
+
+    await expect(listQuickSignAccountRelayUrls('alpha')).resolves.toEqual([]);
+    expect(poolGetMock).not.toHaveBeenCalled();
   });
 });

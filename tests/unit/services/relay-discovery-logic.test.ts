@@ -1,5 +1,11 @@
 import { describe, it, expect, vi } from 'vitest';
-import { parseRelayListEvent, normalizeAndDeduplicateRelays, relayDiscoveryService } from 'src/services/relay-discovery';
+import {
+  extractWritePreferredRelayUrls,
+  parseRelayListEntries,
+  parseRelayListEvent,
+  normalizeAndDeduplicateRelays,
+  relayDiscoveryService,
+} from 'src/services/relay-discovery';
 import type { Event } from 'nostr-tools';
 
 // Mock nostr-tools
@@ -89,6 +95,51 @@ describe('RelayDiscoveryService Parsing and Extraction Logic', () => {
       expect(parseRelayListEvent(null as any)).toEqual([]);
       expect(parseRelayListEvent({} as any)).toEqual([]);
       expect(parseRelayListEvent({ kind: 10002 } as any)).toEqual([]); // missing tags
+    });
+  });
+
+  describe('parseRelayListEntries', () => {
+    it('maps read/write marker semantics from kind 10002 r-tags', () => {
+      const mockEvent = {
+        kind: 10002,
+        tags: [
+          ['r', 'wss://read.example', 'read'],
+          ['r', 'wss://write.example', 'write'],
+          ['r', 'wss://both.example'],
+        ],
+      } as Event;
+
+      expect(parseRelayListEntries(mockEvent)).toEqual([
+        { url: 'wss://read.example', read: true, write: false },
+        { url: 'wss://write.example', read: false, write: true },
+        { url: 'wss://both.example', read: true, write: true },
+      ]);
+    });
+  });
+
+  describe('extractWritePreferredRelayUrls', () => {
+    it('returns only write-capable relays when at least one write marker exists', () => {
+      const mockEvent = {
+        kind: 10002,
+        tags: [
+          ['r', 'wss://read.example', 'read'],
+          ['r', 'wss://write.example', 'write'],
+        ],
+      } as Event;
+
+      expect(extractWritePreferredRelayUrls(mockEvent)).toEqual(['wss://write.example']);
+    });
+
+    it('falls back to all valid relays when no write-capable markers exist', () => {
+      const mockEvent = {
+        kind: 10002,
+        tags: [
+          ['r', 'wss://read.example', 'read'],
+          ['r', 'bad-url', 'read'],
+        ],
+      } as Event;
+
+      expect(extractWritePreferredRelayUrls(mockEvent)).toEqual(['wss://read.example']);
     });
   });
 

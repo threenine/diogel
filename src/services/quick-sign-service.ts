@@ -1,10 +1,9 @@
 import { verifyEvent, type Event as NostrEvent, type UnsignedEvent } from 'nostr-tools';
-import { db } from './database';
 import { get, getActive } from './dexie-storage';
 import { LogLevel, logService } from './log-service';
 import { sendBexMessage } from './vault-service';
 import { isVaultUnlocked } from './vault-service';
-import { parseRelayListEvent, normalizeAndDeduplicateRelays } from './relay-discovery';
+import { extractWritePreferredRelayUrls } from './relay-discovery';
 import useSettingsStore from 'src/stores/settings-store';
 import { ErrorCode } from 'src/types/error-codes';
 import type { StoredKey } from 'src/types/bridge';
@@ -172,15 +171,6 @@ export async function listQuickSignAccounts(): Promise<QuickSignAccountOption[]>
   }));
 }
 
-export async function listQuickSignOnlineRelayUrls(): Promise<string[]> {
-  const onlineRelays = await db.relayCatalog
-    .where('status')
-    .equals('online')
-    .toArray();
-
-  return onlineRelays.map((entry) => entry.url);
-}
-
 export async function listQuickSignAccountRelayUrls(accountAlias: string): Promise<string[]> {
   const alias = accountAlias.trim();
   if (!alias) {
@@ -216,8 +206,7 @@ export async function listQuickSignAccountRelayUrls(accountAlias: string): Promi
       return [];
     }
 
-    const relayUrls = parseRelayListEvent(event);
-    return normalizeAndDeduplicateRelays(relayUrls);
+    return extractWritePreferredRelayUrls(event);
   } catch {
     return [];
   } finally {
