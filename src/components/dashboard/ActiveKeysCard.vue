@@ -70,6 +70,7 @@ onMounted(() => {
 <template>
   <q-card class="dashboard-card" :clickable="clickable" @click="onClick">
     <q-card-section class="dashboard-card-section dashboard-widget-card__section">
+
       <div class="dashboard-widget-card__header">
         <q-icon name="key" size="sm" color="primary" />
         <h2 class="dashboard-widget-card__title">{{ t('dashboard.widgets.activeKeys.title') }}</h2>

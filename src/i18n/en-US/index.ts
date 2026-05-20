@@ -98,7 +98,7 @@ export default {
       },
       connectedRelays: {
         title: 'Connected Relays',
-        ready: 'Relays listed in your active account kind 10002 relay metadata.',
+        ready: 'Relays listed in your active account.',
         unavailable:
           'Relay list metadata (kind 10002) is unavailable for the active account. Open Relay Management to fetch or publish it.',
         action: 'Open Relay Management',
