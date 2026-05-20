@@ -12,7 +12,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "typecheck": "vue-tsc --noEmit",
-    "dev": "quasar dev",
+    "dev": "quasar dev -m bex -T chrome",
     "build": "quasar build",
     "postinstall": "quasar prepare",
     "build:chrome": "quasar build -m bex -T chrome",

@@ -1,7 +1,8 @@
-import { type Event as NostrEvent, SimplePool, type UnsignedEvent, verifyEvent } from 'nostr-tools';
+import { type Event as NostrEvent, SimplePool, type UnsignedEvent, verifyEvent, finalizeEvent } from 'nostr-tools';
+import { hexToBytes } from '@noble/hashes/utils';
 import { get, getActive } from './dexie-storage';
 import { LogLevel, logService } from './log-service';
-import { isVaultUnlocked, sendBexMessage } from './vault-service';
+import { isVaultUnlocked } from './vault-service';
 import { extractWritePreferredRelayUrls } from './relay-discovery';
 import useSettingsStore from 'src/stores/settings-store';
 import { ErrorCode } from 'src/types/error-codes';
@@ -29,13 +30,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object';
 }
 
-function hasBexSuccess(value: unknown): value is { success: boolean; event?: NostrEvent; error?: string; code?: string } {
-  if (!isRecord(value) || !('success' in value)) {
-    return false;
-  }
-
-  return typeof value.success === 'boolean';
-}
 
 function extractPublishErrorMessage(error: unknown): string {
   if (error instanceof AggregateError) {
@@ -344,32 +338,53 @@ export async function quickSignEvent(
   relayUrls: string[] = [],
   accountAlias?: string,
 ): Promise<QuickSignResult> {
-  const response = await sendBexMessage('nostr.signEvent', {
-    event,
-    origin: 'diogel-dashboard-quick-sign',
-  });
-
-  if (!hasBexSuccess(response)) {
+  const unlocked = await isVaultUnlocked();
+  if (!unlocked) {
     return {
       success: false,
       publishStatus: 'not-attempted',
       relayResults: [],
-      error: 'Unexpected response from signer.',
-      code: ErrorCode.GEN_UNKNOWN,
+      error: 'Vault is locked.',
+      code: ErrorCode.VLT_LOCKED,
     };
   }
 
-  if (!response.success || !response.event) {
+  const accounts = await get();
+  let selectedAccount: StoredKey | undefined;
+
+  if (accountAlias) {
+    selectedAccount = accounts[accountAlias];
+  } else {
+    const activeAlias = await getActive();
+    if (activeAlias) {
+      selectedAccount = accounts[activeAlias];
+    }
+  }
+
+  if (!selectedAccount) {
     return {
       success: false,
       publishStatus: 'not-attempted',
       relayResults: [],
-      error: response.error || 'Signing failed.',
-      code: (response.code as ErrorCode | undefined) || ErrorCode.SIG_FAILED,
+      error: 'No active account found for signing.',
+      code: ErrorCode.SIG_NO_ACTIVE_KEY,
     };
   }
 
-  const signedEvent = response.event;
+  let signedEvent: NostrEvent;
+  try {
+    const sk = hexToBytes(selectedAccount.account.privkey);
+    signedEvent = finalizeEvent(event, sk);
+  } catch (error: unknown) {
+    return {
+      success: false,
+      publishStatus: 'not-attempted',
+      relayResults: [],
+      error: error instanceof Error ? error.message : 'Signing failed.',
+      code: ErrorCode.SIG_FAILED,
+    };
+  }
+
   if (!verifyEvent(signedEvent)) {
     return {
       success: false,
@@ -385,7 +400,7 @@ export async function quickSignEvent(
 
   logService.log(LogLevel.INFO, '[QuickSign] Event signed successfully', {
     operation,
-    account: accountAlias,
+    account: selectedAccount.alias,
     kind: signedEvent.kind,
     relayCount,
     result: 'signed',
@@ -398,7 +413,7 @@ export async function quickSignEvent(
       '[QuickSign] Event publish completed',
       {
         operation,
-        account: accountAlias,
+        account: selectedAccount.alias,
         kind: signedEvent.kind,
         relayCount,
         result: publishResult.publishStatus,

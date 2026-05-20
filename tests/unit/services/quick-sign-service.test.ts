@@ -76,9 +76,9 @@ describe('quick-sign-service', () => {
     vi.mocked(getActive).mockResolvedValue('alpha');
     vi.mocked(get).mockResolvedValue({
       alpha: {
-        id: 'npub1alpha',
+        id: 'f'.repeat(64),
         alias: 'alpha',
-        account: { privkey: 'redacted' },
+        account: { privkey: 'e'.repeat(64) },
         createdAt: '2026-01-01',
       },
     });
@@ -177,9 +177,7 @@ describe('quick-sign-service', () => {
   });
 
   it('keeps signing failures distinct from publishing failures', async () => {
-    vi.mocked(sendBexMessage).mockResolvedValueOnce(
-      { success: false, error: 'Vault locked by policy' } as unknown as Awaited<ReturnType<typeof sendBexMessage>>,
-    );
+    vi.mocked(get).mockResolvedValueOnce({}); // No accounts found
 
     const result = await quickSignEvent(
       { kind: 1, content: 'hello', tags: [], created_at: 1735689600, pubkey: 'f'.repeat(64) },
@@ -397,9 +395,9 @@ describe('quick-sign-service', () => {
   it('lists quick sign accounts', async () => {
     await expect(listQuickSignAccounts()).resolves.toEqual([
       {
-        label: 'alpha (npub1alpha)',
+        label: `alpha (${'f'.repeat(64)})`,
         value: 'alpha',
-        npub: 'npub1alpha',
+        npub: 'f'.repeat(64),
       },
     ]);
   });

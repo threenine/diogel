@@ -126,7 +126,7 @@ export default {
         longFormKind: 'Long Form (Kind 30023)',
         content: 'Content',
         contentHelpTextNote: 'Kind 1 accepts plain text only. Obvious Markdown and raw HTML are rejected.',
-        contentHelpLongForm: 'Kind 30023 accepts Markdown content. Raw HTML is rejected.',
+        contentHelpLongForm: 'Markdown content is allowed. Raw HTML is not acceptable .',
         tags: 'Tags',
         addTag: 'Add tag',
         tagType: 'Tag type',
