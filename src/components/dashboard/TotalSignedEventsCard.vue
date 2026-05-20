@@ -50,8 +50,8 @@ onMounted(() => {
   <q-card class="dashboard-card">
     <q-card-section class="dashboard-card-section dashboard-widget-card__section">
       <div class="dashboard-widget-card__header">
-        <q-icon name="approval" size="sm" color="primary" />
-        <h2 class="dashboard-widget-card__title">{{ t('dashboard.widgets.totalSignedEvents.title') }}</h2>
+        <q-icon name="approval" size="lg" color="primary" />
+        <span class="dashboard-widget-card__title">{{ t('dashboard.widgets.totalSignedEvents.title') }}</span>
       </div>
 
       <div class="dashboard-widget-card__metric">
@@ -59,7 +59,6 @@ onMounted(() => {
         <span v-else>{{ total }}</span>
       </div>
 
-      <p class="dashboard-widget-card__caption">{{ statusText }}</p>
     </q-card-section>
   </q-card>
 </template>

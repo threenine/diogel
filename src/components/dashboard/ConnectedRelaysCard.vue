@@ -89,8 +89,8 @@ onMounted(() => {
   <q-card class="dashboard-card" :clickable="clickable" @click="onClick">
     <q-card-section class="dashboard-card-section dashboard-widget-card__section">
       <div class="dashboard-widget-card__header">
-        <q-icon name="hub" size="sm" color="primary" />
-        <h2 class="dashboard-widget-card__title">{{ t('dashboard.widgets.connectedRelays.title') }}</h2>
+        <q-icon name="hub" size="lg" color="primary" />
+        <span class="dashboard-widget-card__title">{{ t('dashboard.widgets.connectedRelays.title') }}</span>
       </div>
 
       <div class="dashboard-widget-card__metric">
@@ -98,15 +98,6 @@ onMounted(() => {
         <span v-else>{{ metricText }}</span>
       </div>
 
-      <p class="dashboard-widget-card__caption">{{ statusText }}</p>
-
-      <q-badge
-        v-if="clickable"
-        class="dashboard-widget-card__action"
-        color="secondary"
-        text-color="white"
-        :label="t('dashboard.widgets.connectedRelays.action')"
-      />
     </q-card-section>
   </q-card>
 </template>

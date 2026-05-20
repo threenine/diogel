@@ -144,14 +144,6 @@ onMounted(() => {
         <q-spinner v-if="loading" color="primary" size="24px" />
         <p class="dashboard-widget-card__caption">{{ statusText }}</p>
       </div>
-
-      <q-badge
-        v-if="clickable"
-        class="dashboard-widget-card__action"
-        color="secondary"
-        text-color="white"
-        :label="t('dashboard.widgets.recentActivity.action')"
-      />
     </q-card-section>
   </q-card>
 </template>
