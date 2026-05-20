@@ -7,7 +7,7 @@ import { useRouter } from 'vue-router';
 import type { StoredKey } from 'src/types';
 import useAccountStore from 'src/stores/account-store';
 import { generateKey } from 'src/services/generate-key';
-import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
+import ViewStoredKey from 'src/components/ViewStoredKey/Index.vue';
 
 const { t } = useI18n();
 const $q = useQuasar();
@@ -39,7 +39,7 @@ function notifyMissingAlias() {
 function validate() {
   if (!trimmedAlias.value) {
     notifyMissingAlias();
-    aliasInputRef.value?.focus();
+    aliasInputRef.value?.focus?.();
     return false;
   }
   if (trimmedAlias.value === t('account.mainAccountReserved')) {
@@ -47,7 +47,7 @@ function validate() {
       type: 'negative',
       message: t('account.mainAccountReservedError', { name: t('account.mainAccountReserved') }),
     });
-    aliasInputRef.value?.focus();
+    aliasInputRef.value?.focus?.();
     return false;
   }
   return true;
@@ -56,9 +56,12 @@ function validate() {
 async function saveKey() {
   if (!validate()) return;
 
+  const alias = trimmedAlias.value;
+  storedKey.value.alias = alias;
+
   try {
     await store.saveKey(storedKey.value);
-    await router.push({ name: 'view-key', params: { alias: storedKey.value.alias } });
+    await router.push({ name: 'view-key', params: { alias } });
   } catch (error: unknown) {
     const errorMessage =
       error instanceof Error ? error.message : String(t('validation.keyPairExists'));
