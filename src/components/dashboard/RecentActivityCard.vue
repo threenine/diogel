@@ -175,7 +175,7 @@ async function loadSummary() {
   error.value = null;
 
   try {
-    const summary = await getDashboardSummary(4);
+    const summary = await getDashboardSummary(9);
     state.value = summary.state;
     items.value = summary.recentActivity;
   } catch {
@@ -313,15 +313,6 @@ onMounted(() => {
   justify-self: start;
 }
 
-.dashboard-widget-card__status--success {
-  background: color-mix(in srgb, var(--q-positive) 18%, transparent);
-  color: var(--q-positive);
-}
-
-.dashboard-widget-card__status--exception {
-  background: color-mix(in srgb, var(--q-negative) 16%, transparent);
-  color: var(--q-negative);
-}
 
 .dashboard-widget-card__state {
   min-height: 78px;
