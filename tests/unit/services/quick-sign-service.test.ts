@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { get, getActive } from 'src/services/dexie-storage';
-import { isVaultUnlocked } from 'src/services/vault-service';
+import { LogLevel, logService } from 'src/services/log-service';
+import { isVaultUnlocked, sendBexMessage } from 'src/services/vault-service';
 import {
   buildQuickSignPreviewEvent,
   getQuickSignAvailability,
   listQuickSignAccountRelayUrls,
   listQuickSignAccounts,
   QUICK_SIGN_SUPPORTED_KINDS,
+  quickSignEvent,
   validateQuickSignContent,
   validateQuickSignInput,
 } from 'src/services/quick-sign-service';
@@ -21,9 +23,11 @@ vi.mock('src/services/vault-service', () => ({
   sendBexMessage: vi.fn(),
 }));
 
-const { poolGetMock, poolCloseMock } = vi.hoisted(() => ({
+const { poolGetMock, poolCloseMock, poolPublishMock, verifyEventMock } = vi.hoisted(() => ({
   poolGetMock: vi.fn(),
   poolCloseMock: vi.fn(),
+  poolPublishMock: vi.fn(),
+  verifyEventMock: vi.fn(),
 }));
 
 const { settingsStoreMock } = vi.hoisted(() => ({
@@ -41,10 +45,12 @@ vi.mock('nostr-tools', async () => {
   const actual = await vi.importActual<typeof import('nostr-tools')>('nostr-tools');
   return {
     ...actual,
+    verifyEvent: verifyEventMock,
     SimplePool: vi.fn().mockImplementation(function MockSimplePool(this: unknown) {
       return {
         get: poolGetMock,
         close: poolCloseMock,
+        publish: poolPublishMock,
       };
     }),
   };
@@ -53,7 +59,20 @@ vi.mock('nostr-tools', async () => {
 describe('quick-sign-service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    verifyEventMock.mockReturnValue(true);
     vi.mocked(isVaultUnlocked).mockResolvedValue(true);
+    vi.mocked(sendBexMessage).mockResolvedValue({
+      success: true,
+      event: {
+        id: 'signed-event-id',
+        pubkey: 'f'.repeat(64),
+        created_at: 1735689600,
+        kind: 1,
+        tags: [],
+        content: 'hello nostr',
+        sig: 'f'.repeat(128),
+      },
+    } as unknown as Awaited<ReturnType<typeof sendBexMessage>>);
     vi.mocked(getActive).mockResolvedValue('alpha');
     vi.mocked(get).mockResolvedValue({
       alpha: {
@@ -64,6 +83,139 @@ describe('quick-sign-service', () => {
       },
     });
     settingsStoreMock.fallbackRelays = ['wss://seed-relay.example'];
+    poolPublishMock.mockImplementation(() => [Promise.resolve('ok')]);
+  });
+
+  it('returns success publish status when all selected relays publish successfully', async () => {
+    const logSpy = vi.spyOn(logService, 'log');
+
+    const result = await quickSignEvent(
+      { kind: 1, content: 'hello', tags: [], created_at: 1735689600, pubkey: 'f'.repeat(64) },
+      true,
+      ['wss://relay-a.example', 'wss://relay-b.example'],
+      'alpha',
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.publishStatus).toBe('success');
+    expect(result.relayResults).toEqual([
+      { relayUrl: 'wss://relay-a.example', success: true },
+      { relayUrl: 'wss://relay-b.example', success: true },
+    ]);
+    expect(logSpy).toHaveBeenCalledWith(
+      LogLevel.INFO,
+      '[QuickSign] Event publish completed',
+      expect.objectContaining({
+        operation: 'quick-sign',
+        account: 'alpha',
+        kind: 1,
+        relayCount: 2,
+        result: 'success',
+      }),
+    );
+  });
+
+  it('returns partial-failure publish status when some relays fail', async () => {
+    poolPublishMock
+      .mockImplementationOnce(() => [Promise.resolve('ok')])
+      .mockImplementationOnce(() => [Promise.reject(new Error('permission denied'))]);
+
+    const result = await quickSignEvent(
+      { kind: 1, content: 'hello', tags: [], created_at: 1735689600, pubkey: 'f'.repeat(64) },
+      true,
+      ['wss://relay-a.example', 'wss://relay-b.example'],
+      'alpha',
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.publishStatus).toBe('partial-failure');
+    expect(result.relayResults).toEqual([
+      { relayUrl: 'wss://relay-a.example', success: true },
+      {
+        relayUrl: 'wss://relay-b.example',
+        success: false,
+        error: 'permission denied',
+      },
+    ]);
+  });
+
+  it('preserves relay permission errors on total publish failure', async () => {
+    poolPublishMock
+      .mockImplementationOnce(() => [Promise.reject(new Error('permission denied'))])
+      .mockImplementationOnce(() => [Promise.reject(new Error('relay unavailable'))]);
+
+    const result = await quickSignEvent(
+      { kind: 1, content: 'hello', tags: [], created_at: 1735689600, pubkey: 'f'.repeat(64) },
+      true,
+      ['wss://relay-a.example', 'wss://relay-b.example'],
+      'alpha',
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.publishStatus).toBe('failed');
+    expect(result.relayResults).toEqual([
+      { relayUrl: 'wss://relay-a.example', success: false, error: 'permission denied' },
+      { relayUrl: 'wss://relay-b.example', success: false, error: 'relay unavailable' },
+    ]);
+  });
+
+  it('returns failed publish status when all relays fail', async () => {
+    poolPublishMock.mockImplementation(() => [Promise.reject(new Error('relay unavailable'))]);
+
+    const result = await quickSignEvent(
+      { kind: 1, content: 'hello', tags: [], created_at: 1735689600, pubkey: 'f'.repeat(64) },
+      true,
+      ['wss://relay-a.example', 'wss://relay-b.example'],
+      'alpha',
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.publishStatus).toBe('failed');
+    expect(result.code).toBeDefined();
+    expect(result.relayResults).toHaveLength(2);
+    expect(result.relayResults.every((relayResult) => relayResult.success === false)).toBe(true);
+  });
+
+  it('keeps signing failures distinct from publishing failures', async () => {
+    vi.mocked(sendBexMessage).mockResolvedValueOnce(
+      { success: false, error: 'Vault locked by policy' } as unknown as Awaited<ReturnType<typeof sendBexMessage>>,
+    );
+
+    const result = await quickSignEvent(
+      { kind: 1, content: 'hello', tags: [], created_at: 1735689600, pubkey: 'f'.repeat(64) },
+      true,
+      ['wss://relay-a.example'],
+      'alpha',
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.publishStatus).toBe('not-attempted');
+    expect(result.relayResults).toEqual([]);
+    expect(poolPublishMock).not.toHaveBeenCalled();
+  });
+
+  it('logs safe quick-sign metadata without event content or secrets', async () => {
+    const logSpy = vi.spyOn(logService, 'log');
+
+    await quickSignEvent(
+      { kind: 1, content: 'sensitive body', tags: [], created_at: 1735689600, pubkey: 'f'.repeat(64) },
+      true,
+      ['wss://relay-a.example'],
+      'alpha',
+    );
+
+    const publishLog = logSpy.mock.calls.find(([, message]) => message === '[QuickSign] Event publish completed');
+    expect(publishLog).toBeTruthy();
+    const context = publishLog?.[2] as Record<string, unknown>;
+    expect(context).toMatchObject({
+      operation: 'quick-sign',
+      account: 'alpha',
+      kind: 1,
+      relayCount: 1,
+    });
+    expect(context).not.toHaveProperty('content');
+    expect(context).not.toHaveProperty('sig');
+    expect(context).not.toHaveProperty('privkey');
   });
 
   it('returns locked state when vault is locked', async () => {

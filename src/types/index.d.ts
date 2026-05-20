@@ -1,3 +1,7 @@
+import type { Event as NostrEvent, UnsignedEvent } from 'nostr-tools';
+import type { ErrorCode } from 'error-codes';
+import type { QuickSignSupportedKind, QuickSignTagType } from 'src/services/quick-sign-service';
+
 export interface DropdownItem<T = string | number> {
   label: string;
   value: T;
@@ -30,3 +34,75 @@ export type StoredKey = {
   account: Account;
   createdAt: string;
 };
+export interface QuickSignTagInput {
+  type: QuickSignTagType;
+  value: string;
+}
+
+export interface QuickSignFormInput {
+  accountAlias: string;
+  kind: QuickSignSupportedKind;
+  content: string;
+  tags: QuickSignTagInput[];
+}
+
+export interface QuickSignPublishInput {
+  relayUrls: string[];
+}
+
+export type QuickSignAvailabilityState =
+  | 'ready'
+  | 'locked'
+  | 'no-account'
+  | 'no-relay'
+  | 'invalid-account';
+
+export interface QuickSignAvailabilityResult {
+  state: QuickSignAvailabilityState;
+  error?: string;
+}
+
+export interface QuickSignValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+export interface QuickSignContentValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
+export interface QuickSignPreparedEvent {
+  event: UnsignedEvent;
+  validation: QuickSignValidationResult;
+  normalizedJson: string;
+}
+
+export type QuickSignPublishStatus = 'not-attempted' | 'success' | 'partial-failure' | 'failed';
+
+export interface QuickSignRelayPublishResult {
+  relayUrl: string;
+  success: boolean;
+  error?: string;
+}
+
+export interface QuickSignResult {
+  success: boolean;
+  signedEvent?: NostrEvent;
+  publishStatus: QuickSignPublishStatus;
+  relayResults: QuickSignRelayPublishResult[];
+  error?: string;
+  code?: ErrorCode;
+}
+
+export interface QuickSignAccountOption {
+  label: string;
+  value: string;
+  npub: string;
+}
+
+export interface QuickSignSanitizedInput {
+  kind: QuickSignSupportedKind;
+  content: string;
+  tags: QuickSignTagInput[];
+}

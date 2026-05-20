@@ -1,76 +1,29 @@
-import { verifyEvent, type Event as NostrEvent, type UnsignedEvent } from 'nostr-tools';
+import { type Event as NostrEvent, SimplePool, type UnsignedEvent, verifyEvent } from 'nostr-tools';
 import { get, getActive } from './dexie-storage';
 import { LogLevel, logService } from './log-service';
-import { sendBexMessage } from './vault-service';
-import { isVaultUnlocked } from './vault-service';
+import { isVaultUnlocked, sendBexMessage } from './vault-service';
 import { extractWritePreferredRelayUrls } from './relay-discovery';
 import useSettingsStore from 'src/stores/settings-store';
 import { ErrorCode } from 'src/types/error-codes';
-import type { StoredKey } from 'src/types/bridge';
+import type {
+  QuickSignAccountOption,
+  QuickSignAvailabilityResult,
+  QuickSignContentValidationResult,
+  QuickSignFormInput,
+  QuickSignPreparedEvent,
+  QuickSignPublishInput,
+  QuickSignPublishStatus,
+  QuickSignRelayPublishResult,
+  QuickSignResult,
+  QuickSignSanitizedInput,
+  QuickSignValidationResult,
+  StoredKey
+} from 'src/types/bridge';
 
 export const QUICK_SIGN_SUPPORTED_KINDS = [1, 30023] as const;
 export type QuickSignSupportedKind = (typeof QUICK_SIGN_SUPPORTED_KINDS)[number];
 
 export type QuickSignTagType = 'p' | 'a' | 't' | 'e';
-
-export interface QuickSignTagInput {
-  type: QuickSignTagType;
-  value: string;
-}
-
-export interface QuickSignFormInput {
-  accountAlias: string;
-  kind: QuickSignSupportedKind;
-  content: string;
-  tags: QuickSignTagInput[];
-}
-
-export interface QuickSignPublishInput {
-  relayUrls: string[];
-}
-
-export type QuickSignAvailabilityState = 'ready' | 'locked' | 'no-account' | 'no-relay' | 'invalid-account';
-
-export interface QuickSignAvailabilityResult {
-  state: QuickSignAvailabilityState;
-  error?: string;
-}
-
-export interface QuickSignValidationResult {
-  valid: boolean;
-  errors: string[];
-}
-
-export interface QuickSignContentValidationResult {
-  valid: boolean;
-  errors: string[];
-}
-
-export interface QuickSignPreparedEvent {
-  event: UnsignedEvent;
-  validation: QuickSignValidationResult;
-  normalizedJson: string;
-}
-
-export interface QuickSignResult {
-  success: boolean;
-  signedEvent?: NostrEvent;
-  published?: boolean;
-  error?: string;
-  code?: ErrorCode;
-}
-
-export interface QuickSignAccountOption {
-  label: string;
-  value: string;
-  npub: string;
-}
-
-interface QuickSignSanitizedInput {
-  kind: QuickSignSupportedKind;
-  content: string;
-  tags: QuickSignTagInput[];
-}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object';
@@ -82,6 +35,21 @@ function hasBexSuccess(value: unknown): value is { success: boolean; event?: Nos
   }
 
   return typeof value.success === 'boolean';
+}
+
+function extractPublishErrorMessage(error: unknown): string {
+  if (error instanceof AggregateError) {
+    const firstError = error.errors.find((nestedError): nestedError is Error => nestedError instanceof Error);
+    if (firstError?.message) {
+      return firstError.message;
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return String(error);
 }
 
 function isQuickSignTagType(value: string): value is QuickSignTagType {
@@ -193,7 +161,7 @@ export async function listQuickSignAccountRelayUrls(accountAlias: string): Promi
     return [];
   }
 
-  const { SimplePool } = await import('nostr-tools');
+
   const pool = new SimplePool();
 
   try {
@@ -328,18 +296,54 @@ export function buildQuickSignPreviewEvent(pubkey: string, input: QuickSignFormI
   };
 }
 
-async function publishSignedEvent(event: NostrEvent, relayUrls: string[]): Promise<void> {
+async function publishSignedEvent(
+  event: NostrEvent,
+  relayUrls: string[],
+): Promise<{ publishStatus: QuickSignPublishStatus; relayResults: QuickSignRelayPublishResult[] }> {
   if (relayUrls.length === 0) {
-    throw new Error('No relays selected for publishing.');
+    return {
+      publishStatus: 'failed',
+      relayResults: [],
+    };
   }
 
-  const { SimplePool } = await import('nostr-tools');
   const pool = new SimplePool();
 
-  await Promise.any(pool.publish(relayUrls, event));
+  const relayResults = await Promise.all(
+    relayUrls.map(async (relayUrl): Promise<QuickSignRelayPublishResult> => {
+      try {
+        const relayPublishResults = pool.publish([relayUrl], event);
+        await Promise.any(relayPublishResults);
+        return {
+          relayUrl,
+          success: true,
+        };
+      } catch (error: unknown) {
+        return {
+          relayUrl,
+          success: false,
+          error: extractPublishErrorMessage(error),
+        };
+      }
+    }),
+  );
+
+  const successCount = relayResults.filter((relayResult) => relayResult.success).length;
+  const publishStatus: QuickSignPublishStatus =
+    successCount === 0 ? 'failed' : successCount === relayResults.length ? 'success' : 'partial-failure';
+
+  return {
+    publishStatus,
+    relayResults,
+  };
 }
 
-export async function quickSignEvent(event: UnsignedEvent, publish: boolean, relayUrls: string[] = []): Promise<QuickSignResult> {
+export async function quickSignEvent(
+  event: UnsignedEvent,
+  publish: boolean,
+  relayUrls: string[] = [],
+  accountAlias?: string,
+): Promise<QuickSignResult> {
   const response = await sendBexMessage('nostr.signEvent', {
     event,
     origin: 'diogel-dashboard-quick-sign',
@@ -348,6 +352,8 @@ export async function quickSignEvent(event: UnsignedEvent, publish: boolean, rel
   if (!hasBexSuccess(response)) {
     return {
       success: false,
+      publishStatus: 'not-attempted',
+      relayResults: [],
       error: 'Unexpected response from signer.',
       code: ErrorCode.GEN_UNKNOWN,
     };
@@ -356,6 +362,8 @@ export async function quickSignEvent(event: UnsignedEvent, publish: boolean, rel
   if (!response.success || !response.event) {
     return {
       success: false,
+      publishStatus: 'not-attempted',
+      relayResults: [],
       error: response.error || 'Signing failed.',
       code: (response.code as ErrorCode | undefined) || ErrorCode.SIG_FAILED,
     };
@@ -365,35 +373,61 @@ export async function quickSignEvent(event: UnsignedEvent, publish: boolean, rel
   if (!verifyEvent(signedEvent)) {
     return {
       success: false,
+      publishStatus: 'not-attempted',
+      relayResults: [],
       error: 'Signed event failed verification.',
       code: ErrorCode.SIG_INVALID_EVENT,
     };
   }
 
+  const operation = 'quick-sign';
+  const relayCount = publish ? relayUrls.length : 0;
+
   logService.log(LogLevel.INFO, '[QuickSign] Event signed successfully', {
+    operation,
+    account: accountAlias,
     kind: signedEvent.kind,
-    id: signedEvent.id,
+    relayCount,
+    result: 'signed',
   });
 
   if (publish) {
-    try {
-      await publishSignedEvent(signedEvent, relayUrls);
-      logService.log(LogLevel.INFO, '[QuickSign] Event published successfully', {
+    const publishResult = await publishSignedEvent(signedEvent, relayUrls);
+    logService.log(
+      publishResult.publishStatus === 'failed' ? LogLevel.WARN : LogLevel.INFO,
+      '[QuickSign] Event publish completed',
+      {
+        operation,
+        account: accountAlias,
         kind: signedEvent.kind,
-        id: signedEvent.id,
-      });
-    } catch (error: unknown) {
+        relayCount,
+        result: publishResult.publishStatus,
+      },
+    );
+
+    if (publishResult.publishStatus === 'failed') {
       return {
         success: false,
-        error: error instanceof Error ? error.message : String(error),
+        signedEvent,
+        publishStatus: publishResult.publishStatus,
+        relayResults: publishResult.relayResults,
+        error: 'Failed to publish event to selected relays.',
         code: ErrorCode.NET_SERVER_ERROR,
       };
     }
+
+    return {
+      success: true,
+      signedEvent,
+      publishStatus: publishResult.publishStatus,
+      relayResults: publishResult.relayResults,
+    };
   }
 
   return {
     success: true,
     signedEvent,
-    published: publish,
+    publishStatus: 'not-attempted',
+    relayResults: [],
   };
 }

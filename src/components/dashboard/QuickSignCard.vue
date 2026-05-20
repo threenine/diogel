@@ -8,13 +8,15 @@ import {
   listQuickSignAccountRelayUrls,
   listQuickSignAccounts,
   quickSignEvent,
-  type QuickSignAccountOption,
-  type QuickSignFormInput,
   type QuickSignSupportedKind,
-  type QuickSignTagInput,
   type QuickSignTagType,
-  type QuickSignPreparedEvent,
 } from 'src/services/quick-sign-service';
+import type {
+  QuickSignAccountOption,
+  QuickSignFormInput,
+  QuickSignPreparedEvent,
+  QuickSignTagInput,
+} from 'src/types';
 
 const { t } = useI18n();
 
@@ -31,22 +33,31 @@ const errorMessage = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
 const previewEvent = ref<QuickSignPreparedEvent | null>(null);
 
-const kindOptions: { label: string; value: QuickSignSupportedKind }[] = [
+const kindOptions = computed<{ label: string; value: QuickSignSupportedKind }[]>(() => [
   {
-    label: 'Text Note (Kind 1)',
+    label: t('dashboard.widgets.quickSign.textNoteKind'),
     value: 1,
   },
   {
-    label: 'Long Form (Kind 30023)',
+    label: t('dashboard.widgets.quickSign.longFormKind'),
     value: 30023,
   },
-];
+]);
 
 const tagTypeOptions: QuickSignTagType[] = ['p', 'a', 't', 'e'];
 
-const selectedAccountLabel = computed(() => {
+const selectedAccount = computed(() => {
   const selected = accounts.value.find((account) => account.value === accountAlias.value);
-  return selected?.label ?? '-';
+  return selected ?? null;
+});
+
+const selectedAccountLabel = computed(() => selectedAccount.value?.value ?? '-');
+
+const selectedAccountNpub = computed(() => selectedAccount.value?.npub ?? '-');
+
+const selectedKindLabel = computed(() => {
+  const selected = kindOptions.value.find((option) => option.value === kind.value);
+  return selected?.label ?? `Kind ${kind.value}`;
 });
 
 const stateMessage = computed(() => {
@@ -80,10 +91,7 @@ function removeTag(index: number): void {
 }
 
 async function loadOptions(): Promise<void> {
-  const [loadedAccounts, activeAlias] = await Promise.all([
-    listQuickSignAccounts(),
-    getActive(),
-  ]);
+  const [loadedAccounts, activeAlias] = await Promise.all([listQuickSignAccounts(), getActive()]);
 
   accounts.value = loadedAccounts;
 
@@ -150,6 +158,11 @@ async function openPreview(): Promise<void> {
 }
 
 function cancelPreview(): void {
+  previewEvent.value = null;
+  showPreviewDialog.value = false;
+}
+
+function backToEdit(): void {
   showPreviewDialog.value = false;
 }
 
@@ -163,13 +176,29 @@ async function confirmSign(): Promise<void> {
   successMessage.value = null;
 
   try {
-    const result = await quickSignEvent(previewEvent.value.event, true, selectedRelayUrls.value);
+    const availability = await getQuickSignAvailability(true, selectedRelayUrls.value);
+    if (availability.state === 'locked') {
+      errorMessage.value = t('dashboard.widgets.quickSign.states.locked');
+      showPreviewDialog.value = true;
+      return;
+    }
+
+    const result = await quickSignEvent(
+      previewEvent.value.event,
+      true,
+      selectedRelayUrls.value,
+      accountAlias.value,
+    );
     if (!result.success || !result.signedEvent) {
       errorMessage.value = result.error || t('dashboard.widgets.quickSign.signFailure');
       return;
     }
 
-    successMessage.value = result.published ? t('dashboard.widgets.quickSign.signPublishSuccess') : t('dashboard.widgets.quickSign.signSuccess');
+    if (result.publishStatus === 'partial-failure') {
+      successMessage.value = t('dashboard.widgets.quickSign.signPublishPartialFailure');
+    } else {
+      successMessage.value = t('dashboard.widgets.quickSign.signPublishSuccess');
+    }
     kind.value = 1;
     content.value = '';
     tags.value = [];
@@ -231,7 +260,13 @@ onMounted(async () => {
 
       <div class="quick-sign-card__tags-header">
         <p class="quick-sign-card__hint">{{ t('dashboard.widgets.quickSign.tags') }}</p>
-        <q-btn flat dense icon="add" :label="t('dashboard.widgets.quickSign.addTag')" @click="addTag" />
+        <q-btn
+          flat
+          dense
+          icon="add"
+          :label="t('dashboard.widgets.quickSign.addTag')"
+          @click="addTag"
+        />
       </div>
 
       <div v-for="(tag, index) in tags" :key="`tag-${index}`" class="quick-sign-card__tag-row">
@@ -242,7 +277,12 @@ onMounted(async () => {
           outlined
           dense
         />
-        <q-input v-model="tag.value" :label="t('dashboard.widgets.quickSign.tagValue')" outlined dense />
+        <q-input
+          v-model="tag.value"
+          :label="t('dashboard.widgets.quickSign.tagValue')"
+          outlined
+          dense
+        />
         <q-btn
           flat
           dense
@@ -254,14 +294,25 @@ onMounted(async () => {
       </div>
 
       <p class="quick-sign-card__hint">
-        {{ t('dashboard.widgets.quickSign.publishDestinationSummary', { count: selectedRelayUrls.length }) }}
+        {{
+          t('dashboard.widgets.quickSign.publishDestinationSummary', {
+            count: selectedRelayUrls.length,
+          })
+        }}
       </p>
 
-      <p v-if="selectedRelayUrls.length === 0" class="quick-sign-card__hint quick-sign-card__hint--warning">
+      <p
+        v-if="selectedRelayUrls.length === 0"
+        class="quick-sign-card__hint quick-sign-card__hint--warning"
+      >
         {{ t('dashboard.widgets.quickSign.noRelayMeta') }}
       </p>
 
-      <q-btn color="primary" :label="t('dashboard.widgets.quickSign.preview')" @click="openPreview" />
+      <q-btn
+        color="primary"
+        :label="t('dashboard.widgets.quickSign.preview')"
+        @click="openPreview"
+      />
 
       <q-banner v-if="successMessage" class="bg-positive text-white">{{ successMessage }}</q-banner>
       <q-banner v-else-if="stateMessage" class="bg-grey-2 text-dark">{{ stateMessage }}</q-banner>
@@ -276,23 +327,63 @@ onMounted(async () => {
 
       <q-card-section>
         <p class="quick-sign-preview__meta">
-          {{ t('dashboard.widgets.quickSign.previewAccount') }} <strong>{{ selectedAccountLabel }}</strong>
+          {{ t('dashboard.widgets.quickSign.previewAccountAlias') }}
+          <strong>{{ selectedAccountLabel }}</strong>
         </p>
         <p class="quick-sign-preview__meta">
-          {{ t('dashboard.widgets.quickSign.previewRelays') }}
-          <strong>
-            {{
-              selectedRelayUrls.length
-                ? t('dashboard.widgets.quickSign.publishDestinationSummary', { count: selectedRelayUrls.length })
-                : '-'
-            }}
-            {{ selectedRelayUrls.length ? `(${selectedRelayUrls.join(', ')})` : '' }}
-          </strong>
+          {{ t('dashboard.widgets.quickSign.previewAccountNpub') }}
+          <strong>{{ selectedAccountNpub }}</strong>
         </p>
-        <pre class="quick-sign-preview__json">{{ JSON.stringify(previewEvent?.event, null, 2) }}</pre>
+        <p class="quick-sign-preview__meta">
+          {{ t('dashboard.widgets.quickSign.previewKind') }}
+          <strong>{{ selectedKindLabel }}</strong>
+        </p>
+        <p class="quick-sign-preview__meta">
+          {{ t('dashboard.widgets.quickSign.previewContent') }}
+        </p>
+        <pre class="quick-sign-preview__content">{{ previewEvent?.event.content || '-' }}</pre>
+        <p class="quick-sign-preview__meta">
+          {{
+            t('dashboard.widgets.quickSign.previewTagCount', {
+              count: previewEvent?.event.tags.length ?? 0,
+            })
+          }}
+        </p>
+        <ul v-if="(previewEvent?.event.tags.length ?? 0) > 0" class="quick-sign-preview__list">
+          <li v-for="(tag, index) in previewEvent?.event.tags ?? []" :key="`preview-tag-${index}`">
+            <code>{{ tag[0] }}</code
+            >: {{ tag[1] }}
+          </li>
+        </ul>
+        <p class="quick-sign-preview__meta">
+          {{ t('dashboard.widgets.quickSign.previewRelays') }}
+        </p>
+        <p class="quick-sign-preview__meta">
+          <strong>{{
+            t('dashboard.widgets.quickSign.previewRelayCount', { count: selectedRelayUrls.length })
+          }}</strong>
+        </p>
+        <ul v-if="selectedRelayUrls.length > 0" class="quick-sign-preview__list">
+          <li v-for="relayUrl in selectedRelayUrls" :key="relayUrl">
+            <code>{{ relayUrl }}</code>
+          </li>
+        </ul>
+        <p class="quick-sign-preview__warning">
+          {{ t('dashboard.widgets.quickSign.previewWarning') }}
+        </p>
+        <q-expansion-item
+          dense
+          :label="t('dashboard.widgets.quickSign.previewTechnicalDetails')"
+          icon="code"
+        >
+          <pre class="quick-sign-preview__json">{{
+            JSON.stringify(previewEvent?.event, null, 2)
+          }}</pre>
+        </q-expansion-item>
       </q-card-section>
 
       <q-card-actions align="right">
+        <q-btn flat :label="t('dashboard.widgets.quickSign.backToEdit')" @click="backToEdit" />
         <q-btn flat :label="t('dashboard.widgets.quickSign.cancel')" @click="cancelPreview" />
         <q-btn
           color="primary"
@@ -373,5 +464,27 @@ onMounted(async () => {
 
 .quick-sign-preview__meta {
   margin: 0 0 8px;
+}
+
+.quick-sign-preview__content {
+  margin: 0 0 12px;
+  max-height: 180px;
+  overflow: auto;
+  background: #f5f5f5;
+  color: #222;
+  padding: 12px;
+  border-radius: 8px;
+  white-space: pre-wrap;
+}
+
+.quick-sign-preview__list {
+  margin: 0 0 12px;
+  padding-left: 20px;
+}
+
+.quick-sign-preview__warning {
+  margin: 0;
+  color: #c62828;
+  font-size: 0.875rem;
 }
 </style>
