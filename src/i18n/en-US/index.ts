@@ -126,8 +126,8 @@ export default {
           },
         },
         status: {
-          approved: 'SUCCESS',
-          exception: 'ERROR',
+          success: 'SUCCESS',
+          error: 'ERROR',
         },
       },
       quickSign: {

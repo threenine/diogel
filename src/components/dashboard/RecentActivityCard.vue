@@ -143,10 +143,10 @@ function resolveActivityIcon(activity: DashboardActivityItem): { name: string; c
 
 function formatActivityStatus(activity: DashboardActivityItem): string {
   if (activity.status === 'approved') {
-    return t('dashboard.widgets.recentActivity.status.approved');
+    return t('dashboard.widgets.recentActivity.status.success');
   }
 
-  return t('dashboard.widgets.recentActivity.status.exception');
+  return t('dashboard.widgets.recentActivity.status.error');
 }
 
 function formatActivityStatusVariant(activity: DashboardActivityItem): ActivityStatusVariant {
@@ -200,10 +200,10 @@ onMounted(() => {
 
       <div v-if="!loading && recentActivityRows.length > 0" class="dashboard-widget-card__table">
         <div class="dashboard-widget-card__table-head">
-          <span>{{ t('dashboard.widgets.recentActivity.columns.eventType') }}</span>
-          <span>{{ t('dashboard.widgets.recentActivity.columns.keyPubkey') }}</span>
-          <span>{{ t('dashboard.widgets.recentActivity.columns.time') }}</span>
-          <span>{{ t('dashboard.widgets.recentActivity.columns.status') }}</span>
+          <span class="dashboard-widget-card__head-event">{{ t('dashboard.widgets.recentActivity.columns.eventType') }}</span>
+          <span class="dashboard-widget-card__head-key">{{ t('dashboard.widgets.recentActivity.columns.keyPubkey') }}</span>
+          <span class="dashboard-widget-card__head-time">{{ t('dashboard.widgets.recentActivity.columns.time') }}</span>
+          <span class="dashboard-widget-card__head-status">{{ t('dashboard.widgets.recentActivity.columns.status') }}</span>
         </div>
 
         <div v-for="row in recentActivityRows" :key="row.key" class="dashboard-widget-card__table-row">
@@ -339,16 +339,35 @@ onMounted(() => {
 }
 
 @media (max-width: 680px) {
-  .dashboard-widget-card__table-head,
   .dashboard-widget-card__table-row {
-    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'event key'
+      'time status';
+    row-gap: 6px;
   }
 
-  .dashboard-widget-card__table-head > span:nth-child(3),
-  .dashboard-widget-card__table-head > span:nth-child(4),
-  .dashboard-widget-card__table-row > :nth-child(3),
-  .dashboard-widget-card__table-row > :nth-child(4) {
+  .dashboard-widget-card__table-head {
     display: none;
+  }
+
+  .dashboard-widget-card__event {
+    grid-area: event;
+  }
+
+  .dashboard-widget-card__chip {
+    grid-area: key;
+    justify-self: end;
+    max-width: min(180px, 100%);
+  }
+
+  .dashboard-widget-card__time {
+    grid-area: time;
+  }
+
+  .dashboard-widget-card__status {
+    grid-area: status;
+    justify-self: end;
   }
 }
 </style>
