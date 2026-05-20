@@ -1,23 +1,26 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
 
 
 const route = useRoute();
+const { t } = useI18n();
 
 const routeTitleOverrides: Record<string, string> = {
-  'edit-account': 'Edit Account',
-  'view-key': 'View Key',
-  'import-key': 'Import Key',
-  'add-new-key': 'Add New Key',
+  keys: 'navigation.keys.label',
+  'edit-account': 'account.editAccount',
+  'view-key': 'keyManagement.viewTitle',
+  'import-key': 'keyManagement.importTitle',
+  'add-new-key': 'keyManagement.addNewTitle',
 };
 
 const pageTitle = computed(() => {
   const routeName = typeof route.name === 'string' ? route.name : '';
 
   if (routeName && routeTitleOverrides[routeName]) {
-    return routeTitleOverrides[routeName];
+    return t(routeTitleOverrides[routeName]);
   }
 
   if (routeName) {
@@ -32,7 +35,7 @@ const pageTitle = computed(() => {
     .filter(Boolean)[0];
 
   if (!pathSegment) {
-    return 'Dashboard';
+    return t('navigation.dashboard.label');
   }
 
   return pathSegment.charAt(0).toUpperCase() + pathSegment.slice(1);

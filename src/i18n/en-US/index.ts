@@ -47,9 +47,12 @@ export default {
     anonymous: 'Anonymous',
   },
   keyManagement: {
+    title: 'Key Management',
     importKey: 'Import Key',
     addNewKey: 'Add New Key',
+    saveAlias: 'Save Alias',
     aliasSaved: 'Alias updated successfully.',
+    aliasSaveFailed: 'Failed to update alias.',
     viewAction: 'View',
     viewTitle: 'View Key',
     viewCaption: 'Review and export this key. Only alias naming can be edited.',

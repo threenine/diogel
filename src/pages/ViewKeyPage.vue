@@ -77,7 +77,7 @@ async function saveAlias() {
   } catch (error: unknown) {
     $q.notify({
       type: 'negative',
-      message: error instanceof Error ? error.message : String(t('failed')),
+      message: error instanceof Error ? error.message : String(t('keyManagement.aliasSaveFailed')),
     });
   } finally {
     isSaving.value = false;
@@ -109,7 +109,7 @@ async function saveAlias() {
 
         <q-btn
           :disable="isSaving"
-          :label="t('common.save')"
+          :label="t('keyManagement.saveAlias')"
           class="q-mt-md diogel-btn-primary"
           no-caps
           @click="saveAlias"
