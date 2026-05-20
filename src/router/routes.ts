@@ -122,14 +122,8 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/create-account',
-    component: () => import('layouts/ExtensionLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'create-account',
-        component: () => import('pages/CreateAccount.vue'),
-      },
-    ],
+    name: 'create-account',
+    redirect: { name: 'add-new-key' },
   },
   {
     path: '/',

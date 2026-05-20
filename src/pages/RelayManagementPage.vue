@@ -44,7 +44,7 @@ onMounted(async () => {
         <q-btn
           class="q-mt-md diogel-btn-primary"
           :label="t('account.create')"
-          to="/create-account"
+          :to="{ name: 'add-new-key' }"
         />
       </div>
     </q-card>

@@ -11,7 +11,7 @@
         <q-btn
           class="q-mt-md diogel-btn-primary"
           label="Create Account"
-          to="/create-account"
+          :to="{ name: 'add-new-key' }"
         />
       </div>
     </div>
