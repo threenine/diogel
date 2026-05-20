@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getDashboardSummary, type DashboardDataState } from 'src/services/dashboard-service';
 
@@ -23,21 +23,6 @@ const error = ref<string | null>(null);
 const state = ref<DashboardDataState>('no-account');
 const total = ref(0);
 
-const statusText = computed(() => {
-  if (error.value) {
-    return t('dashboard.widgets.common.error');
-  }
-
-  if (state.value === 'locked') {
-    return t('dashboard.widgets.common.locked');
-  }
-
-  if (state.value === 'no-account') {
-    return t('dashboard.widgets.common.noAccount');
-  }
-
-  return t('dashboard.widgets.activeKeys.ready');
-});
 
 function onClick() {
   if (!props.clickable) {
@@ -116,14 +101,5 @@ onMounted(() => {
   font-weight: 700;
 }
 
-.dashboard-widget-card__caption {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
 
-.dashboard-widget-card__action {
-  margin-top: auto;
-}
 </style>

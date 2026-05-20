@@ -28,25 +28,6 @@ const state = ref<DashboardDataState>('no-account');
 const connectedRelaysState = ref<ConnectedRelaysDataState>('unavailable');
 const total = ref(0);
 
-const statusText = computed(() => {
-  if (error.value) {
-    return t('dashboard.widgets.common.error');
-  }
-
-  if (state.value === 'locked') {
-    return t('dashboard.widgets.common.locked');
-  }
-
-  if (state.value === 'no-account') {
-    return t('dashboard.widgets.common.noAccount');
-  }
-
-  if (connectedRelaysState.value === 'unavailable') {
-    return t('dashboard.widgets.connectedRelays.unavailable');
-  }
-
-  return t('dashboard.widgets.connectedRelays.ready');
-});
 
 const metricText = computed(() => {
   if (connectedRelaysState.value === 'unavailable') {
@@ -133,14 +114,4 @@ onMounted(() => {
   font-weight: 700;
 }
 
-.dashboard-widget-card__caption {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.dashboard-widget-card__action {
-  margin-top: auto;
-}
 </style>
