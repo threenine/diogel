@@ -42,6 +42,11 @@ export interface QuickSignValidationResult {
   errors: string[];
 }
 
+export interface QuickSignContentValidationResult {
+  valid: boolean;
+  errors: string[];
+}
+
 export interface QuickSignPreparedEvent {
   event: UnsignedEvent;
   validation: QuickSignValidationResult;
@@ -89,7 +94,37 @@ function containsRawHtml(content: string): boolean {
 }
 
 function containsLikelyMarkdown(content: string): boolean {
+  // This is intentionally conservative for MVP. We only block obvious Markdown
+  // markers and do not attempt full Markdown parsing.
+  // - May miss uncommon Markdown constructs.
+  // - May flag plain text that intentionally starts with markdown-like prefixes.
   return /(^|\n)\s{0,3}(#{1,6}\s|[-*+]\s|\d+\.\s|>\s)|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|__[^_]+__|`[^`]+`/.test(content);
+}
+
+export function validateQuickSignContent(
+  kind: QuickSignSupportedKind,
+  content: string,
+): QuickSignContentValidationResult {
+  const errors: string[] = [];
+
+  if (content.trim().length === 0) {
+    errors.push('Event content is required.');
+  }
+
+  // Intentionally blocks obvious raw HTML tags (opening/closing). Comparison
+  // text like `1 < 2` is allowed because it does not match the tag pattern.
+  if (containsRawHtml(content)) {
+    errors.push('Event content cannot contain raw HTML tags.');
+  }
+
+  if (kind === 1 && containsLikelyMarkdown(content)) {
+    errors.push('Kind 1 content cannot contain Markdown formatting.');
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
 }
 
 function isValidRelayUrl(url: string): boolean {
@@ -208,14 +243,11 @@ function parseQuickSignInput(input: QuickSignFormInput): { value?: QuickSignSani
   if (typeof contentRaw !== 'string') {
     errors.push('Event content must be a string.');
   } else {
-    if (contentRaw.trim().length === 0) {
+    if (isQuickSignSupportedKind(kindRaw)) {
+      const contentValidation = validateQuickSignContent(kindRaw, contentRaw);
+      errors.push(...contentValidation.errors);
+    } else if (contentRaw.trim().length === 0) {
       errors.push('Event content is required.');
-    }
-    if (containsRawHtml(contentRaw)) {
-      errors.push('Event content cannot contain raw HTML tags.');
-    }
-    if (kindRaw === 1 && containsLikelyMarkdown(contentRaw)) {
-      errors.push('Kind 1 content cannot contain Markdown formatting.');
     }
   }
 

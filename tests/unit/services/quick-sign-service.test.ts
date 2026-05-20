@@ -6,6 +6,7 @@ import {
   getQuickSignAvailability,
   listQuickSignAccounts,
   QUICK_SIGN_SUPPORTED_KINDS,
+  validateQuickSignContent,
   validateQuickSignInput,
 } from 'src/services/quick-sign-service';
 
@@ -123,6 +124,40 @@ describe('quick-sign-service', () => {
 
     expect(result.valid).toBe(false);
     expect(result.errors).toContain('Kind 1 content cannot contain Markdown formatting.');
+  });
+
+  it('accepts kind 1 normal multiline plain text', () => {
+    const result = validateQuickSignContent(1, 'first line\nsecond line\n1 < 2');
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('rejects kind 1 obvious markdown patterns', () => {
+    const heading = validateQuickSignContent(1, '# Heading');
+    const link = validateQuickSignContent(1, '[text](https://example.com)');
+    const code = validateQuickSignContent(1, '`inline`');
+    const list = validateQuickSignContent(1, '- item');
+
+    expect(heading.valid).toBe(false);
+    expect(link.valid).toBe(false);
+    expect(code.valid).toBe(false);
+    expect(list.valid).toBe(false);
+    expect(heading.errors).toContain('Kind 1 content cannot contain Markdown formatting.');
+  });
+
+  it('accepts markdown for kind 30023', () => {
+    const result = validateQuickSignContent(30023, '# Heading\n- item\n[text](https://example.com)');
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('rejects raw html for kind 30023 content helper', () => {
+    const result = validateQuickSignContent(30023, '<article>Body</article>');
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Event content cannot contain raw HTML tags.');
   });
 
   it('rejects content with raw html', () => {
