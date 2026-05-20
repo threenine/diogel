@@ -107,9 +107,24 @@ export default {
         title: 'Recent Activity',
         ready: 'Latest approval and exception events recorded for your active account.',
         empty: 'No approvals or exceptions yet. Open Event History to review activity as it appears.',
-        action: 'Open Event History',
-        unknownHost: 'Unknown host',
-        kind: 'Kind {kind}',
+        unknownKey: 'Unknown key',
+        columns: {
+          eventType: 'Event Type',
+          keyPubkey: 'Key/Pubkey',
+          time: 'Time',
+          status: 'Status',
+        },
+        eventType: {
+          extensionException: 'Extension exception',
+          kind: 'Kind {kind}',
+          kindWithName: 'Kind {kind}: {name}',
+          named: {
+            profile: 'Profile',
+            note: 'Note',
+            directMessage: 'Direct Msg',
+            longForm: 'Long Form',
+          },
+        },
         status: {
           approved: 'Approved',
           exception: 'Exception',

@@ -23,6 +23,19 @@ const error = ref<string | null>(null);
 const state = ref<DashboardDataState>('no-account');
 const items = ref<DashboardActivityItem[]>([]);
 
+type ActivityStatusVariant = 'success' | 'exception';
+
+interface RecentActivityRow {
+  key: string;
+  icon: string;
+  iconColor: string;
+  eventLabel: string;
+  keyChip: string;
+  time: string;
+  statusLabel: string;
+  statusVariant: ActivityStatusVariant;
+}
+
 const statusText = computed(() => {
   if (error.value) {
     return t('dashboard.widgets.common.error');
@@ -61,6 +74,55 @@ function formatDate(value: string): string {
   return d(date, 'short');
 }
 
+function formatShortNpub(npub: string): string {
+  if (npub.length <= 11) {
+    return npub;
+  }
+
+  return `${npub.slice(0, 5)}...${npub.slice(-4)}`;
+}
+
+function formatActivityEventLabel(activity: DashboardActivityItem): string {
+  if (typeof activity.eventKind === 'undefined') {
+    return t('dashboard.widgets.recentActivity.eventType.extensionException');
+  }
+
+  const kind = String(activity.eventKind);
+  const namedKinds: Record<string, string> = {
+    '0': t('dashboard.widgets.recentActivity.eventType.named.profile'),
+    '1': t('dashboard.widgets.recentActivity.eventType.named.note'),
+    '4': t('dashboard.widgets.recentActivity.eventType.named.directMessage'),
+    '30023': t('dashboard.widgets.recentActivity.eventType.named.longForm'),
+  };
+  const kindName = namedKinds[kind];
+
+  if (kindName) {
+    return t('dashboard.widgets.recentActivity.eventType.kindWithName', { kind, name: kindName });
+  }
+
+  return t('dashboard.widgets.recentActivity.eventType.kind', { kind });
+}
+
+function formatActivityKeyChip(activity: DashboardActivityItem): string {
+  if (activity.accountNpub) {
+    return formatShortNpub(activity.accountNpub);
+  }
+
+  if (activity.accountAlias) {
+    return activity.accountAlias;
+  }
+
+  return t('dashboard.widgets.recentActivity.unknownKey');
+}
+
+function resolveActivityIcon(activity: DashboardActivityItem): { name: string; color: string } {
+  if (activity.type === 'approval') {
+    return { name: 'check_circle', color: 'positive' };
+  }
+
+  return { name: 'error_outline', color: 'negative' };
+}
+
 function formatActivityStatus(activity: DashboardActivityItem): string {
   if (activity.status === 'approved') {
     return t('dashboard.widgets.recentActivity.status.approved');
@@ -69,21 +131,26 @@ function formatActivityStatus(activity: DashboardActivityItem): string {
   return t('dashboard.widgets.recentActivity.status.exception');
 }
 
-function formatActivityKind(activity: DashboardActivityItem): string | null {
-  if (typeof activity.eventKind === 'undefined') {
-    return null;
-  }
-
-  return t('dashboard.widgets.recentActivity.kind', { kind: String(activity.eventKind) });
+function formatActivityStatusVariant(activity: DashboardActivityItem): ActivityStatusVariant {
+  return activity.status === 'approved' ? 'success' : 'exception';
 }
 
-function formatActivityHost(activity: DashboardActivityItem): string {
-  if (!activity.hostname) {
-    return t('dashboard.widgets.recentActivity.unknownHost');
-  }
+const recentActivityRows = computed<RecentActivityRow[]>(() =>
+  items.value.map((activity) => {
+    const icon = resolveActivityIcon(activity);
 
-  return activity.hostname;
-}
+    return {
+      key: `${activity.dateTime}:${activity.type}:${activity.detail ?? activity.title}`,
+      icon: icon.name,
+      iconColor: icon.color,
+      eventLabel: formatActivityEventLabel(activity),
+      keyChip: formatActivityKeyChip(activity),
+      time: formatDate(activity.dateTime),
+      statusLabel: formatActivityStatus(activity),
+      statusVariant: formatActivityStatusVariant(activity),
+    };
+  }),
+);
 
 async function loadSummary() {
   loading.value = true;
@@ -113,32 +180,33 @@ onMounted(() => {
         <h2 class="dashboard-widget-card__title">{{ t('dashboard.widgets.recentActivity.title') }}</h2>
       </div>
 
-      <q-list v-if="!loading && items.length > 0" dense class="dashboard-widget-card__list">
-        <q-item
-          v-for="activity in items"
-          :key="`${activity.dateTime}:${activity.type}:${activity.detail ?? activity.title}`"
-          class="dashboard-widget-card__list-item"
-        >
-          <q-item-section>
-            <q-item-label class="dashboard-widget-card__line dashboard-widget-card__line--title">
-              {{ activity.title }}
-            </q-item-label>
-            <q-item-label
-              v-if="activity.detail"
-              caption
-              class="dashboard-widget-card__line dashboard-widget-card__line--detail"
-            >
-              {{ activity.detail }}
-            </q-item-label>
-            <q-item-label caption class="dashboard-widget-card__meta">
-              <span>{{ formatActivityStatus(activity) }}</span>
-              <span>{{ formatActivityHost(activity) }}</span>
-              <span v-if="formatActivityKind(activity)">{{ formatActivityKind(activity) }}</span>
-              <span>{{ formatDate(activity.dateTime) }}</span>
-            </q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
+      <div v-if="!loading && recentActivityRows.length > 0" class="dashboard-widget-card__table">
+        <div class="dashboard-widget-card__table-head">
+          <span>{{ t('dashboard.widgets.recentActivity.columns.eventType') }}</span>
+          <span>{{ t('dashboard.widgets.recentActivity.columns.keyPubkey') }}</span>
+          <span>{{ t('dashboard.widgets.recentActivity.columns.time') }}</span>
+          <span>{{ t('dashboard.widgets.recentActivity.columns.status') }}</span>
+        </div>
+
+        <div v-for="row in recentActivityRows" :key="row.key" class="dashboard-widget-card__table-row">
+          <div class="dashboard-widget-card__event">
+            <q-icon :name="row.icon" :color="row.iconColor" size="16px" />
+            <span class="dashboard-widget-card__event-label">{{ row.eventLabel }}</span>
+          </div>
+
+          <q-chip square dense class="dashboard-widget-card__chip">{{ row.keyChip }}</q-chip>
+
+          <span class="dashboard-widget-card__time">{{ row.time }}</span>
+
+          <q-badge
+            rounded
+            class="dashboard-widget-card__status"
+            :class="`dashboard-widget-card__status--${row.statusVariant}`"
+          >
+            {{ row.statusLabel }}
+          </q-badge>
+        </div>
+      </div>
 
       <div v-else class="dashboard-widget-card__state">
         <q-spinner v-if="loading" color="primary" size="24px" />
@@ -169,49 +237,72 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.dashboard-widget-card__list {
-  padding: 0;
-}
-
-.dashboard-widget-card__list-item {
-  min-height: 56px;
-  padding-left: 0;
-  padding-right: 0;
-}
-
-.dashboard-widget-card__line {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.dashboard-widget-card__line--title {
-  font-weight: 500;
-}
-
-.dashboard-widget-card__line--detail {
-  margin-top: 2px;
-}
-
-.dashboard-widget-card__meta {
-  margin-top: 2px;
+.dashboard-widget-card__table {
   display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-.dashboard-widget-card__meta > span {
+.dashboard-widget-card__table-head,
+.dashboard-widget-card__table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.9fr);
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+}
+
+.dashboard-widget-card__table-head {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dashboard-widget-card__table-row:not(:last-child) {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.dashboard-widget-card__event {
   min-width: 0;
-  max-width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard-widget-card__event-label,
+.dashboard-widget-card__time,
+.dashboard-widget-card__table-head > span,
+.dashboard-widget-card__chip {
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.dashboard-widget-card__meta > span:not(:last-child)::after {
-  content: '•';
-  margin-left: 4px;
+.dashboard-widget-card__chip {
+  justify-self: start;
+  max-width: 100%;
+}
+
+.dashboard-widget-card__time {
   color: var(--text-muted);
+}
+
+.dashboard-widget-card__status {
+  justify-self: start;
+}
+
+.dashboard-widget-card__status--success {
+  background: rgba(33, 186, 69, 0.16);
+  color: #1a9f38;
+}
+
+.dashboard-widget-card__status--exception {
+  background: rgba(193, 0, 21, 0.14);
+  color: #b20016;
 }
 
 .dashboard-widget-card__state {
@@ -229,7 +320,17 @@ onMounted(() => {
   line-height: 1.5;
 }
 
-.dashboard-widget-card__action {
-  margin-top: auto;
+@media (max-width: 680px) {
+  .dashboard-widget-card__table-head,
+  .dashboard-widget-card__table-row {
+    grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  }
+
+  .dashboard-widget-card__table-head > span:nth-child(3),
+  .dashboard-widget-card__table-head > span:nth-child(4),
+  .dashboard-widget-card__table-row > :nth-child(3),
+  .dashboard-widget-card__table-row > :nth-child(4) {
+    display: none;
+  }
 }
 </style>

@@ -251,7 +251,17 @@ describe('dashboard-service', () => {
     const result = await dashboardService.getRecentActivityForActiveKey(2);
 
     expect(result).toHaveLength(2);
-    expect(result[0]).toMatchObject({ type: 'exception', detail: 'approval timeout' });
-    expect(result[1]).toMatchObject({ type: 'approval', eventKind: 1 });
+    expect(result[0]).toMatchObject({
+      type: 'exception',
+      detail: 'approval timeout',
+      accountAlias: 'alpha',
+      accountNpub: 'pubkey-alpha',
+    });
+    expect(result[1]).toMatchObject({
+      type: 'approval',
+      eventKind: 1,
+      accountAlias: 'alpha',
+      accountNpub: 'pubkey-alpha',
+    });
   });
 });

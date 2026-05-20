@@ -18,6 +18,8 @@ export interface DashboardActivityItem {
   detail?: string;
   eventKind?: number | string;
   hostname?: string | null;
+  accountAlias?: string;
+  accountNpub?: string;
 }
 
 export type DashboardDataState = 'ready' | 'locked' | 'no-account';
@@ -151,7 +153,11 @@ export async function getConnectedRelaySummaryForActiveKey(): Promise<{
   return { count, state: 'ready' };
 }
 
-function toRecentApprovalActivity(log: ApprovalLog): DashboardActivityItem {
+function toRecentApprovalActivity(
+  log: ApprovalLog,
+  accountAlias: string,
+  accountNpub?: string,
+): DashboardActivityItem {
   return {
     type: 'approval',
     status: 'approved',
@@ -160,10 +166,16 @@ function toRecentApprovalActivity(log: ApprovalLog): DashboardActivityItem {
     detail: `Event kind ${String(log.eventKind)}`,
     eventKind: log.eventKind,
     hostname: log.hostname,
+    accountAlias,
+    ...(accountNpub ? { accountNpub } : {}),
   };
 }
 
-function toRecentExceptionActivity(log: ExceptionLog): DashboardActivityItem {
+function toRecentExceptionActivity(
+  log: ExceptionLog,
+  accountAlias: string,
+  accountNpub?: string,
+): DashboardActivityItem {
   const hostname = typeof log.hostname === 'undefined' ? null : log.hostname;
 
   return {
@@ -173,6 +185,8 @@ function toRecentExceptionActivity(log: ExceptionLog): DashboardActivityItem {
     title: 'Extension exception',
     detail: log.message,
     hostname,
+    accountAlias,
+    ...(accountNpub ? { accountNpub } : {}),
   };
 }
 
@@ -191,12 +205,18 @@ export async function getRecentActivityForActiveKey(limit = 10): Promise<Dashboa
     return [];
   }
 
+  const keys = await get();
+  const activeKey = keys[activeAccount];
+
   const [approvals, exceptions] = await Promise.all([
     db.approvals.where('account').equals(activeAccount).toArray(),
     db.exceptions.where('account').equals(activeAccount).toArray(),
   ]);
 
-  return [...approvals.map(toRecentApprovalActivity), ...exceptions.map(toRecentExceptionActivity)]
+  return [
+    ...approvals.map((log) => toRecentApprovalActivity(log, activeAccount, activeKey?.id)),
+    ...exceptions.map((log) => toRecentExceptionActivity(log, activeAccount, activeKey?.id)),
+  ]
     .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime())
     .slice(0, limit);
 }
