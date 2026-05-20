@@ -10,6 +10,9 @@ import {
   quickSignEvent,
   type QuickSignAccountOption,
   type QuickSignFormInput,
+  type QuickSignSupportedKind,
+  type QuickSignTagInput,
+  type QuickSignTagType,
   type QuickSignPreparedEvent,
 } from 'src/services/quick-sign-service';
 
@@ -18,24 +21,28 @@ const { t } = useI18n();
 const loading = ref(false);
 const accountAlias = ref('');
 const accounts = ref<QuickSignAccountOption[]>([]);
-const eventJson = ref(
-  JSON.stringify(
-    {
-      kind: 1,
-      content: '',
-      tags: [],
-    },
-    null,
-    2,
-  ),
-);
-const publish = ref(false);
+const kind = ref<QuickSignSupportedKind>(1);
+const content = ref('');
+const tags = ref<QuickSignTagInput[]>([]);
 const relayOptions = ref<string[]>([]);
 const selectedRelayUrls = ref<string[]>([]);
 const showPreviewDialog = ref(false);
 const errorMessage = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
 const previewEvent = ref<QuickSignPreparedEvent | null>(null);
+
+const kindOptions: { label: string; value: QuickSignSupportedKind }[] = [
+  {
+    label: 'Text Note (Kind 1)',
+    value: 1,
+  },
+  {
+    label: 'Long Form (Kind 30023)',
+    value: 30023,
+  },
+];
+
+const tagTypeOptions: QuickSignTagType[] = ['p', 'a', 't', 'e'];
 
 const selectedAccountLabel = computed(() => {
   const selected = accounts.value.find((account) => account.value === accountAlias.value);
@@ -49,32 +56,27 @@ const stateMessage = computed(() => {
   return t('dashboard.widgets.quickSign.ready');
 });
 
+const kindContentHint = computed(() =>
+  kind.value === 30023
+    ? t('dashboard.widgets.quickSign.contentHelpLongForm')
+    : t('dashboard.widgets.quickSign.contentHelpTextNote'),
+);
+
 function buildInput(): QuickSignFormInput {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(eventJson.value);
-  } catch {
-    parsed = {};
-  }
-
-  const payload = (parsed !== null && typeof parsed === 'object') ? parsed as Record<string, unknown> : {};
-  const kind = payload.kind === 30023 ? 30023 : 1;
-  const content = typeof payload.content === 'string' ? payload.content : '';
-  const tags = Array.isArray(payload.tags)
-    ? payload.tags
-      .filter((tag): tag is [unknown, unknown] => Array.isArray(tag) && tag.length >= 2)
-      .map((tag) => ({
-        type: String(tag[0]) as 'p' | 'a' | 't' | 'e',
-        value: String(tag[1]),
-      }))
-    : [];
-
   return {
     accountAlias: accountAlias.value,
-    kind,
-    content,
-    tags,
+    kind: kind.value,
+    content: content.value,
+    tags: tags.value,
   };
+}
+
+function addTag(): void {
+  tags.value = [...tags.value, { type: 't', value: '' }];
+}
+
+function removeTag(index: number): void {
+  tags.value = tags.value.filter((_, currentIndex) => currentIndex !== index);
 }
 
 async function loadOptions(): Promise<void> {
@@ -97,15 +99,6 @@ async function loadOptions(): Promise<void> {
 
 watch(accountAlias, async (alias) => {
   relayOptions.value = await listQuickSignAccountRelayUrls(alias);
-  selectedRelayUrls.value = publish.value ? relayOptions.value : [];
-});
-
-watch(publish, (enabled) => {
-  if (!enabled) {
-    selectedRelayUrls.value = [];
-    return;
-  }
-
   selectedRelayUrls.value = relayOptions.value;
 });
 
@@ -113,7 +106,7 @@ async function openPreview(): Promise<void> {
   successMessage.value = null;
   errorMessage.value = null;
 
-  const availability = await getQuickSignAvailability(publish.value, selectedRelayUrls.value);
+  const availability = await getQuickSignAvailability(true, selectedRelayUrls.value);
   if (availability.state !== 'ready') {
     if (availability.state === 'locked') {
       errorMessage.value = t('dashboard.widgets.quickSign.states.locked');
@@ -170,24 +163,16 @@ async function confirmSign(): Promise<void> {
   successMessage.value = null;
 
   try {
-    const result = await quickSignEvent(previewEvent.value.event, publish.value, selectedRelayUrls.value);
+    const result = await quickSignEvent(previewEvent.value.event, true, selectedRelayUrls.value);
     if (!result.success || !result.signedEvent) {
       errorMessage.value = result.error || t('dashboard.widgets.quickSign.signFailure');
       return;
     }
 
-    successMessage.value = result.published
-      ? t('dashboard.widgets.quickSign.signPublishSuccess')
-      : t('dashboard.widgets.quickSign.signSuccess');
-    eventJson.value = JSON.stringify(
-      {
-        kind: 1,
-        content: '',
-        tags: [],
-      },
-      null,
-      2,
-    );
+    successMessage.value = result.published ? t('dashboard.widgets.quickSign.signPublishSuccess') : t('dashboard.widgets.quickSign.signSuccess');
+    kind.value = 1;
+    content.value = '';
+    tags.value = [];
     showPreviewDialog.value = false;
   } finally {
     loading.value = false;
@@ -221,33 +206,60 @@ onMounted(async () => {
         dense
       />
 
+      <q-select
+        v-model="kind"
+        :label="t('dashboard.widgets.quickSign.kind')"
+        :options="kindOptions"
+        option-label="label"
+        option-value="value"
+        emit-value
+        map-options
+        outlined
+        dense
+      />
+
       <q-input
-        v-model="eventJson"
-        :label="t('dashboard.widgets.quickSign.eventJson')"
+        v-model="content"
+        :label="t('dashboard.widgets.quickSign.content')"
         outlined
         type="textarea"
         autogrow
         dense
       />
 
-      <p class="quick-sign-card__hint">{{ t('dashboard.widgets.quickSign.supportedKinds') }}</p>
+      <p class="quick-sign-card__hint">{{ kindContentHint }}</p>
 
-      <q-toggle v-model="publish" :label="t('dashboard.widgets.quickSign.publish')" />
+      <div class="quick-sign-card__tags-header">
+        <p class="quick-sign-card__hint">{{ t('dashboard.widgets.quickSign.tags') }}</p>
+        <q-btn flat dense icon="add" :label="t('dashboard.widgets.quickSign.addTag')" @click="addTag" />
+      </div>
 
-      <p v-if="publish" class="quick-sign-card__hint">
+      <div v-for="(tag, index) in tags" :key="`tag-${index}`" class="quick-sign-card__tag-row">
+        <q-select
+          v-model="tag.type"
+          :label="t('dashboard.widgets.quickSign.tagType')"
+          :options="tagTypeOptions"
+          outlined
+          dense
+        />
+        <q-input v-model="tag.value" :label="t('dashboard.widgets.quickSign.tagValue')" outlined dense />
+        <q-btn
+          flat
+          dense
+          color="negative"
+          icon="delete"
+          :aria-label="t('dashboard.widgets.quickSign.removeTag')"
+          @click="removeTag(index)"
+        />
+      </div>
+
+      <p class="quick-sign-card__hint">
         {{ t('dashboard.widgets.quickSign.publishDestinationSummary', { count: selectedRelayUrls.length }) }}
       </p>
 
-      <q-select
-        v-if="publish"
-        v-model="selectedRelayUrls"
-        :label="t('dashboard.widgets.quickSign.relays')"
-        :options="relayOptions"
-        outlined
-        dense
-        multiple
-        use-chips
-      />
+      <p v-if="selectedRelayUrls.length === 0" class="quick-sign-card__hint quick-sign-card__hint--warning">
+        {{ t('dashboard.widgets.quickSign.noRelayMeta') }}
+      </p>
 
       <q-btn color="primary" :label="t('dashboard.widgets.quickSign.preview')" @click="openPreview" />
 
@@ -266,7 +278,7 @@ onMounted(async () => {
         <p class="quick-sign-preview__meta">
           {{ t('dashboard.widgets.quickSign.previewAccount') }} <strong>{{ selectedAccountLabel }}</strong>
         </p>
-        <p class="quick-sign-preview__meta" v-if="publish">
+        <p class="quick-sign-preview__meta">
           {{ t('dashboard.widgets.quickSign.previewRelays') }}
           <strong>
             {{
@@ -325,6 +337,24 @@ onMounted(async () => {
   margin: 0;
   font-size: 0.8125rem;
   color: var(--text-muted);
+}
+
+.quick-sign-card__hint--warning {
+  color: #c62828;
+}
+
+.quick-sign-card__tags-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.quick-sign-card__tag-row {
+  display: grid;
+  grid-template-columns: minmax(0, 120px) 1fr auto;
+  gap: 8px;
+  align-items: center;
 }
 
 .quick-sign-preview {
