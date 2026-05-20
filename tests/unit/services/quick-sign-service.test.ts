@@ -5,6 +5,7 @@ import {
   buildQuickSignPreviewEvent,
   getQuickSignAvailability,
   listQuickSignAccounts,
+  QUICK_SIGN_SUPPORTED_KINDS,
   validateQuickSignInput,
 } from 'src/services/quick-sign-service';
 
@@ -60,44 +61,106 @@ describe('quick-sign-service', () => {
   it('validates missing account, malformed JSON and empty relay selection', () => {
     const result = validateQuickSignInput({
       accountAlias: ' ',
-      eventJson: '{',
-      publish: true,
-      selectedRelayUrls: [],
+      kind: 1,
+      content: 'hello nostr',
+      tags: [],
+    }, {
+      relayUrls: [],
     });
 
     expect(result.valid).toBe(false);
-    expect(result.errors).toHaveLength(3);
+    expect(result.errors).toContain('Signing account is required.');
+    expect(result.errors).toContain('Select at least one relay to publish.');
   });
 
-  it('accepts supported kind and valid event JSON', () => {
+  it('declares supported kinds as 1 and 30023 only', () => {
+    expect(QUICK_SIGN_SUPPORTED_KINDS).toEqual([1, 30023]);
+  });
+
+  it('accepts valid kind 1 input', () => {
     const result = validateQuickSignInput({
       accountAlias: 'alpha',
-      eventJson: JSON.stringify({
-        kind: 30023,
-        content: 'hello nostr',
-        tags: [['title', 'example']],
-      }),
-      publish: false,
-      selectedRelayUrls: [],
+      kind: 1,
+      content: 'hello nostr',
+      tags: [{ type: 't', value: 'tag-value' }],
     });
 
     expect(result.valid).toBe(true);
     expect(result.errors).toHaveLength(0);
   });
 
+  it('accepts valid kind 30023 input', () => {
+    const result = validateQuickSignInput({
+      accountAlias: 'alpha',
+      kind: 30023,
+      content: 'Long form content body',
+      tags: [{ type: 'a', value: '30023:pubkey:slug' }],
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
+  });
+
+  it('rejects unsupported kind', () => {
+    const result = validateQuickSignInput({
+      accountAlias: 'alpha',
+      kind: 7 as unknown as 1,
+      content: 'hello nostr',
+      tags: [],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Event kind is not supported by quick-sign.');
+  });
+
+  it('rejects kind 1 content with markdown syntax', () => {
+    const result = validateQuickSignInput({
+      accountAlias: 'alpha',
+      kind: 1,
+      content: '# Heading',
+      tags: [],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Kind 1 content cannot contain Markdown formatting.');
+  });
+
+  it('rejects content with raw html', () => {
+    const result = validateQuickSignInput({
+      accountAlias: 'alpha',
+      kind: 30023,
+      content: '<b>hello</b>',
+      tags: [],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Event content cannot contain raw HTML tags.');
+  });
+
+  it('rejects unsupported tag type and empty tag value', () => {
+    const result = validateQuickSignInput({
+      accountAlias: 'alpha',
+      kind: 30023,
+      content: 'hello nostr',
+      tags: [
+        { type: 't', value: 'ok' },
+        { type: 'x' as 't', value: '' },
+      ],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Tag #2 has unsupported type.');
+    expect(result.errors).toContain('Tag #2 value is required.');
+  });
+
   it('builds preview event with sanitized pubkey and generated signature fields', () => {
+    vi.setSystemTime(new Date('2026-05-20T00:00:00.000Z'));
+
     const prepared = buildQuickSignPreviewEvent('pubkey-test', {
       accountAlias: 'alpha',
-      eventJson: JSON.stringify({
-        kind: 1,
-        content: 'hello nostr',
-        tags: [['e', '123']],
-        id: 'forged-id',
-        sig: 'forged-sig',
-        pubkey: 'forged-pubkey',
-      }),
-      publish: false,
-      selectedRelayUrls: [],
+      kind: 1,
+      content: 'hello nostr',
+      tags: [{ type: 'e', value: '123' }],
     });
 
     expect(prepared.validation.valid).toBe(true);
@@ -106,10 +169,11 @@ describe('quick-sign-service', () => {
       content: 'hello nostr',
       pubkey: 'pubkey-test',
       tags: [['e', '123']],
+      created_at: Math.floor(new Date('2026-05-20T00:00:00.000Z').getTime() / 1000),
     });
     expect('id' in prepared.event).toBe(false);
     expect('sig' in prepared.event).toBe(false);
-    expect(typeof prepared.event.created_at).toBe('number');
+    vi.useRealTimers();
   });
 
   it('lists quick sign accounts', async () => {
@@ -125,16 +189,28 @@ describe('quick-sign-service', () => {
   it('flags publish mode as invalid when relay selection is empty', () => {
     const result = validateQuickSignInput({
       accountAlias: 'alpha',
-      eventJson: JSON.stringify({
-        kind: 1,
-        content: 'hello nostr',
-        tags: [],
-      }),
-      publish: true,
-      selectedRelayUrls: [],
+      kind: 1,
+      content: 'hello nostr',
+      tags: [],
+    }, {
+      relayUrls: [],
     });
 
     expect(result.valid).toBe(false);
     expect(result.errors).toContain('Select at least one relay to publish.');
+  });
+
+  it('flags publish mode as invalid when relay url is malformed', () => {
+    const result = validateQuickSignInput({
+      accountAlias: 'alpha',
+      kind: 1,
+      content: 'hello nostr',
+      tags: [],
+    }, {
+      relayUrls: ['https://relay.example'],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Relay URLs must be valid ws:// or wss:// URLs.');
   });
 });

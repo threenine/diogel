@@ -9,15 +9,25 @@ import useSettingsStore from 'src/stores/settings-store';
 import { ErrorCode } from 'src/types/error-codes';
 import type { StoredKey } from 'src/types/bridge';
 
-export const QUICK_SIGN_SUPPORTED_KINDS = [0, 1, 3, 7, 30023] as const;
+export const QUICK_SIGN_SUPPORTED_KINDS = [1, 30023] as const;
 export type QuickSignSupportedKind = (typeof QUICK_SIGN_SUPPORTED_KINDS)[number];
-const MAX_EVENT_JSON_BYTES = 16 * 1024;
+
+export type QuickSignTagType = 'p' | 'a' | 't' | 'e';
+
+export interface QuickSignTagInput {
+  type: QuickSignTagType;
+  value: string;
+}
 
 export interface QuickSignFormInput {
   accountAlias: string;
-  eventJson: string;
-  publish: boolean;
-  selectedRelayUrls: string[];
+  kind: QuickSignSupportedKind;
+  content: string;
+  tags: QuickSignTagInput[];
+}
+
+export interface QuickSignPublishInput {
+  relayUrls: string[];
 }
 
 export type QuickSignAvailabilityState = 'ready' | 'locked' | 'no-account' | 'no-relay' | 'invalid-account';
@@ -55,8 +65,7 @@ export interface QuickSignAccountOption {
 interface QuickSignSanitizedInput {
   kind: QuickSignSupportedKind;
   content: string;
-  tags: string[][];
-  created_at?: number;
+  tags: QuickSignTagInput[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -69,6 +78,27 @@ function hasBexSuccess(value: unknown): value is { success: boolean; event?: Nos
   }
 
   return typeof value.success === 'boolean';
+}
+
+function isQuickSignTagType(value: string): value is QuickSignTagType {
+  return value === 'p' || value === 'a' || value === 't' || value === 'e';
+}
+
+function containsRawHtml(content: string): boolean {
+  return /<[^>]+>/.test(content);
+}
+
+function containsLikelyMarkdown(content: string): boolean {
+  return /(^|\n)\s{0,3}(#{1,6}\s|[-*+]\s|\d+\.\s|>\s)|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|__[^_]+__|`[^`]+`/.test(content);
+}
+
+function isValidRelayUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'ws:' || parsed.protocol === 'wss:';
+  } catch {
+    return false;
+  }
 }
 
 export async function getQuickSignAvailability(publish: boolean, relayUrls: string[] = []): Promise<QuickSignAvailabilityResult> {
@@ -164,47 +194,49 @@ function isQuickSignSupportedKind(kind: number): kind is QuickSignSupportedKind 
   return QUICK_SIGN_SUPPORTED_KINDS.includes(kind as QuickSignSupportedKind);
 }
 
-function parseQuickSignInput(eventJson: string): { value?: QuickSignSanitizedInput; errors: string[] } {
+function parseQuickSignInput(input: QuickSignFormInput): { value?: QuickSignSanitizedInput; errors: string[] } {
   const errors: string[] = [];
-  const payloadSize = new TextEncoder().encode(eventJson).length;
-  if (payloadSize > MAX_EVENT_JSON_BYTES) {
-    errors.push(`Event JSON is too large (max ${MAX_EVENT_JSON_BYTES} bytes).`);
-    return { errors };
-  }
 
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(eventJson);
-  } catch {
-    errors.push('Event must be valid JSON.');
-    return { errors };
-  }
-
-  if (!isRecord(parsed) || Array.isArray(parsed)) {
-    errors.push('Event must be a JSON object.');
-    return { errors };
-  }
-
-  const kindRaw = parsed.kind;
-  if (typeof kindRaw !== 'number' || !Number.isInteger(kindRaw)) {
+  const kindRaw: number = input.kind;
+  if (!Number.isInteger(kindRaw)) {
     errors.push('Event kind must be an integer.');
   } else if (!isQuickSignSupportedKind(kindRaw)) {
     errors.push('Event kind is not supported by quick-sign.');
   }
 
-  const contentRaw = parsed.content;
+  const contentRaw = input.content;
   if (typeof contentRaw !== 'string') {
     errors.push('Event content must be a string.');
+  } else {
+    if (contentRaw.trim().length === 0) {
+      errors.push('Event content is required.');
+    }
+    if (containsRawHtml(contentRaw)) {
+      errors.push('Event content cannot contain raw HTML tags.');
+    }
+    if (kindRaw === 1 && containsLikelyMarkdown(contentRaw)) {
+      errors.push('Kind 1 content cannot contain Markdown formatting.');
+    }
   }
 
-  const tagsRaw = parsed.tags;
-  if (!Array.isArray(tagsRaw) || !tagsRaw.every((tag) => Array.isArray(tag) && tag.every((value) => typeof value === 'string'))) {
-    errors.push('Event tags must be an array of string arrays.');
-  }
+  const tagsRaw = input.tags;
+  if (!Array.isArray(tagsRaw)) {
+    errors.push('Event tags must be an array.');
+  } else {
+    tagsRaw.forEach((tag, index) => {
+      if (!isRecord(tag)) {
+        errors.push(`Tag #${index + 1} is invalid.`);
+        return;
+      }
 
-  const createdAtRaw = parsed.created_at;
-  if (typeof createdAtRaw !== 'undefined' && (typeof createdAtRaw !== 'number' || !Number.isInteger(createdAtRaw))) {
-    errors.push('Event created_at must be an integer UNIX timestamp.');
+      if (!('type' in tag) || typeof tag.type !== 'string' || !isQuickSignTagType(tag.type)) {
+        errors.push(`Tag #${index + 1} has unsupported type.`);
+      }
+
+      if (!('value' in tag) || typeof tag.value !== 'string' || tag.value.trim().length === 0) {
+        errors.push(`Tag #${index + 1} value is required.`);
+      }
+    });
   }
 
   if (errors.length > 0) {
@@ -213,13 +245,9 @@ function parseQuickSignInput(eventJson: string): { value?: QuickSignSanitizedInp
 
   const sanitizedValue: QuickSignSanitizedInput = {
     kind: kindRaw as QuickSignSupportedKind,
-    content: contentRaw as string,
-    tags: tagsRaw as string[][],
+    content: contentRaw,
+    tags: tagsRaw,
   };
-
-  if (typeof createdAtRaw === 'number') {
-    sanitizedValue.created_at = createdAtRaw;
-  }
 
   return {
     value: sanitizedValue,
@@ -227,22 +255,24 @@ function parseQuickSignInput(eventJson: string): { value?: QuickSignSanitizedInp
   };
 }
 
-export function validateQuickSignInput(input: QuickSignFormInput): QuickSignValidationResult {
+export function validateQuickSignInput(input: QuickSignFormInput, publishInput?: QuickSignPublishInput): QuickSignValidationResult {
   const errors: string[] = [];
 
   if (!input.accountAlias.trim()) {
     errors.push('Signing account is required.');
   }
 
-  const parsed = parseQuickSignInput(input.eventJson);
+  const parsed = parseQuickSignInput(input);
   errors.push(...parsed.errors);
 
-  if (input.publish && input.selectedRelayUrls.length === 0) {
-    errors.push('Select at least one relay to publish.');
-  }
+  if (publishInput) {
+    if (publishInput.relayUrls.length === 0) {
+      errors.push('Select at least one relay to publish.');
+    }
 
-  if (input.selectedRelayUrls.some((url) => url.trim().length === 0)) {
-    errors.push('Relay URLs must be valid non-empty strings.');
+    if (publishInput.relayUrls.some((url) => url.trim().length === 0 || !isValidRelayUrl(url.trim()))) {
+      errors.push('Relay URLs must be valid ws:// or wss:// URLs.');
+    }
   }
 
   return {
@@ -253,21 +283,20 @@ export function validateQuickSignInput(input: QuickSignFormInput): QuickSignVali
 
 export function buildQuickSignPreviewEvent(pubkey: string, input: QuickSignFormInput): QuickSignPreparedEvent {
   const validation = validateQuickSignInput(input);
-  const parsed = parseQuickSignInput(input.eventJson);
+  const parsed = parseQuickSignInput(input);
 
   const now = Math.floor(Date.now() / 1000);
   const sanitizedInput: QuickSignSanitizedInput = parsed.value || {
     kind: 1,
     content: '',
     tags: [],
-    created_at: now,
   };
 
   const event: UnsignedEvent = {
     kind: sanitizedInput.kind,
     content: sanitizedInput.content,
-    tags: sanitizedInput.tags,
-    created_at: sanitizedInput.created_at || now,
+    tags: sanitizedInput.tags.map((tag) => [tag.type, tag.value]),
+    created_at: now,
     pubkey,
   };
 

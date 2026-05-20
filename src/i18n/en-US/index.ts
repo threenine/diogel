@@ -80,7 +80,7 @@ export default {
   },
   dashboard: {
     title: 'Dashboard',
-    caption: 'Welcome to your workspace. Monitor signing activity, keys, and relay status at a glance.',
+    caption: 'Monitor signing activity, keys, and relay status.',
     widgets: {
       common: {
         locked: 'Vault is locked. Unlock to load dashboard data.',

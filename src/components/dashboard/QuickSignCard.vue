@@ -50,11 +50,30 @@ const stateMessage = computed(() => {
 });
 
 function buildInput(): QuickSignFormInput {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(eventJson.value);
+  } catch {
+    parsed = {};
+  }
+
+  const payload = (parsed !== null && typeof parsed === 'object') ? parsed as Record<string, unknown> : {};
+  const kind = payload.kind === 30023 ? 30023 : 1;
+  const content = typeof payload.content === 'string' ? payload.content : '';
+  const tags = Array.isArray(payload.tags)
+    ? payload.tags
+      .filter((tag): tag is [unknown, unknown] => Array.isArray(tag) && tag.length >= 2)
+      .map((tag) => ({
+        type: String(tag[0]) as 'p' | 'a' | 't' | 'e',
+        value: String(tag[1]),
+      }))
+    : [];
+
   return {
     accountAlias: accountAlias.value,
-    eventJson: eventJson.value,
-    publish: publish.value,
-    selectedRelayUrls: selectedRelayUrls.value,
+    kind,
+    content,
+    tags,
   };
 }
 
