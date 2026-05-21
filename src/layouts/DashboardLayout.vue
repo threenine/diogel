@@ -22,7 +22,7 @@
       </div>
     </q-page-container>
 
-    <main-layout-footer />
+    <dashboard-footer />
   </q-layout>
 </template>
 
@@ -31,7 +31,7 @@ import { ref } from 'vue';
 import { useQuasar } from 'quasar';
 import DashboardHeader from 'components/DashboardHeader.vue';
 import DashboardNavigation from 'components/DashboardNavigation.vue';
-import MainLayoutFooter from 'components/MainLayoutFooter.vue';
+import DashboardFooter from '../components/DashboardFooter.vue';
 
 const $q = useQuasar();
 const leftDrawerOpen = ref($q.screen.gt.md);
