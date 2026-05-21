@@ -154,7 +154,7 @@ export default {
         },
       },
       quickSign: {
-        title: 'Quick Sign',
+        title: 'Quick Publish',
         caption:
           'Choose a signing account, select a note type, add content and tags, then preview before signing and publishing.',
         ready: 'Complete the form, review the preview, then sign and publish.',
