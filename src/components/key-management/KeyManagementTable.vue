@@ -125,22 +125,24 @@ async function copyPublicKey(npub: string): Promise<void> {
   >
     <template v-slot:body-cell-npub="slotProps">
       <q-td :props="slotProps" class="key-management-table__public-key-cell">
-        <span
-          class="key-management-table__npub-display"
-          :title="slotProps.row.npub || slotProps.row.npubDisplay"
-        >
-          {{ slotProps.row.npubDisplay }}
-        </span>
-        <q-btn
-          :aria-label="t('keyManagement.table.copyPublicKeyAriaLabel', { alias: slotProps.row.alias })"
-          class="key-management-table__copy-btn"
-          color="secondary"
-          :disable="!slotProps.row.canCopyNpub"
-          flat
-          icon="content_copy"
-          round
-          @click.stop="copyPublicKey(slotProps.row.npub)"
-        />
+        <div class="key-management-table__public-key-content">
+          <span
+            class="key-management-table__npub-display"
+            :title="slotProps.row.npub || slotProps.row.npubDisplay"
+          >
+            {{ slotProps.row.npubDisplay }}
+          </span>
+          <q-btn
+            :aria-label="t('keyManagement.table.copyPublicKeyAriaLabel', { alias: slotProps.row.alias })"
+            class="key-management-table__copy-btn"
+            color="secondary"
+            :disable="!slotProps.row.canCopyNpub"
+            flat
+            icon="content_copy"
+            round
+            @click.stop="copyPublicKey(slotProps.row.npub)"
+          />
+        </div>
       </q-td>
     </template>
 
@@ -172,6 +174,10 @@ async function copyPublicKey(npub: string): Promise<void> {
 }
 
 .key-management-table__public-key-cell {
+  min-width: 0;
+}
+
+.key-management-table__public-key-content {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -210,7 +216,7 @@ async function copyPublicKey(npub: string): Promise<void> {
 }
 
 @media (max-width: 640px) {
-  .key-management-table__public-key-cell {
+  .key-management-table__public-key-content {
     gap: 4px;
   }
 
