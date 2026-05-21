@@ -1,17 +1,28 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
 import KeyManagementTable from 'src/components/key-management/KeyManagementTable.vue';
 import type { StoredKey } from 'src/types';
 
+const notifyMock = vi.fn();
+const clipboardWriteTextMock = vi.fn();
+
+const npubEncodeMock = vi.fn((value: string) => `npub_${value}`);
+
 vi.mock('nostr-tools/nip19', () => ({
-  npubEncode: (value: string) => `npub_${value}`,
+  npubEncode: (value: string) => npubEncodeMock(value),
 }));
 
 vi.mock('vue-i18n', () => ({
   useI18n: () => ({
     t: (key: string) => key,
     d: (date: Date) => `formatted:${date.toISOString()}`,
+  }),
+}));
+
+vi.mock('quasar', () => ({
+  useQuasar: () => ({
+    notify: notifyMock,
   }),
 }));
 
@@ -33,12 +44,28 @@ const globalStubs = {
   },
   'q-btn': {
     template:
-      '<button class="q-btn-stub" :data-to-name="to?.name" :data-to-alias="to?.params?.alias" :data-label="label"><slot /></button>',
-    props: ['to', 'label'],
+      '<button class="q-btn-stub" :data-to-name="to?.name" :data-to-alias="to?.params?.alias" :data-label="label" :data-icon="icon" :disabled="disable" @click="!disable && $emit(\'click\', $event)"><slot /></button>',
+    props: ['to', 'label', 'icon', 'disable'],
   },
 };
 
 describe('KeyManagementTable.vue', () => {
+  Object.assign(navigator, {
+    clipboard: {
+      writeText: clipboardWriteTextMock,
+    },
+  });
+
+  clipboardWriteTextMock.mockResolvedValue(undefined);
+
+  beforeEach(() => {
+    notifyMock.mockReset();
+    clipboardWriteTextMock.mockReset();
+    clipboardWriteTextMock.mockResolvedValue(undefined);
+    npubEncodeMock.mockReset();
+    npubEncodeMock.mockImplementation((value: string) => `npub_${value}`);
+  });
+
   it('renders key rows with npub-encoded public keys', () => {
     const keys: StoredKey[] = [
       {
@@ -69,6 +96,103 @@ describe('KeyManagementTable.vue', () => {
     expect(wrapper.text()).toContain('formatted:2026-02-01T00:00:00.000Z');
   });
 
+  it('shows unknown date when createdAt is invalid', () => {
+    const keys: StoredKey[] = [
+      {
+        id: 'pubkey-a',
+        alias: 'alpha',
+        account: { privkey: 'secret-a' },
+        createdAt: 'not-a-date',
+      },
+    ];
+
+    const wrapper = mount(KeyManagementTable, {
+      props: { keys },
+      global: { stubs: globalStubs },
+    });
+
+    expect(wrapper.text()).toContain('keyManagement.table.unknownDate');
+  });
+
+  it('copies full npub value from copy action', async () => {
+    const keys: StoredKey[] = [
+      {
+        id: 'pubkey-a',
+        alias: 'alpha',
+        account: { privkey: 'secret-a' },
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ];
+
+    const wrapper = mount(KeyManagementTable, {
+      props: { keys },
+      global: { stubs: globalStubs },
+    });
+
+    const copyButton = wrapper.find('[data-icon="content_copy"]');
+    await copyButton.trigger('click');
+
+    expect(clipboardWriteTextMock).toHaveBeenCalledWith('npub_pubkey-a');
+    expect(notifyMock).toHaveBeenCalledWith({
+      type: 'positive',
+      message: 'account.copySuccess',
+    });
+  });
+
+  it('shows negative notification when clipboard write fails', async () => {
+    clipboardWriteTextMock.mockRejectedValueOnce(new Error('clipboard denied'));
+
+    const keys: StoredKey[] = [
+      {
+        id: 'pubkey-a',
+        alias: 'alpha',
+        account: { privkey: 'secret-a' },
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ];
+
+    const wrapper = mount(KeyManagementTable, {
+      props: { keys },
+      global: { stubs: globalStubs },
+    });
+
+    const copyButton = wrapper.find('[data-icon="content_copy"]');
+    await copyButton.trigger('click');
+
+    expect(clipboardWriteTextMock).toHaveBeenCalledWith('npub_pubkey-a');
+    expect(notifyMock).toHaveBeenCalledWith({
+      type: 'negative',
+      message: 'keyManagement.table.copyPublicKeyFailed',
+    });
+  });
+
+  it('disables copy action when npub encoding fails', async () => {
+    npubEncodeMock.mockImplementationOnce(() => {
+      throw new Error('invalid key');
+    });
+
+    const keys: StoredKey[] = [
+      {
+        id: 'pubkey-a',
+        alias: 'alpha',
+        account: { privkey: 'secret-a' },
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ];
+
+    const wrapper = mount(KeyManagementTable, {
+      props: { keys },
+      global: { stubs: globalStubs },
+    });
+
+    const copyButton = wrapper.find('[data-icon="content_copy"]');
+    expect(copyButton.attributes('disabled')).toBeDefined();
+
+    await copyButton.trigger('click');
+    expect(clipboardWriteTextMock).not.toHaveBeenCalled();
+    expect(notifyMock).not.toHaveBeenCalled();
+  });
+
   it('binds View action route to selected alias', () => {
     const keys: StoredKey[] = [
       {
@@ -84,7 +208,7 @@ describe('KeyManagementTable.vue', () => {
       global: { stubs: globalStubs },
     });
 
-    const viewButton = wrapper.find('.q-btn-stub');
+    const viewButton = wrapper.find('[data-label="keyManagement.viewAction"]');
     expect(viewButton.exists()).toBe(true);
     expect(viewButton.attributes('data-to-name')).toBe('view-key');
     expect(viewButton.attributes('data-to-alias')).toBe('alpha');

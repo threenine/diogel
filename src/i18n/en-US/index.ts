@@ -61,11 +61,19 @@ export default {
     addNewTitle: 'Add New Key',
     addNewCaption: 'Generate and register a new key in your vault.',
     keyNotFound: 'The selected key could not be found.',
+    securityWarning: {
+      title: 'Security Warning',
+      message:
+        'Nostr keys control your identity. Never share private keys or nsec values. Only copy and share public npub values when needed.',
+    },
     table: {
       name: 'Name',
       publicKey: 'Public Key',
       createdDate: 'Created Date',
+      unknownDate: 'Unknown',
       action: 'Action',
+      copyPublicKeyAriaLabel: 'Copy public key for {alias}',
+      copyPublicKeyFailed: 'Failed to copy public key.',
       noKeys: 'No keys are registered yet.',
     },
   },
