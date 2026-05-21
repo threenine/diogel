@@ -151,6 +151,7 @@ export default {
         status: {
           success: 'SUCCESS',
           error: 'ERROR',
+          rejected: 'REJECTED',
         },
       },
       quickSign: {

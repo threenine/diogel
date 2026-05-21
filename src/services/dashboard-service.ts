@@ -8,7 +8,7 @@ import { isVaultUnlocked } from './vault-service';
 
 export type DashboardActivityType = 'approval' | 'exception';
 
-export type DashboardActivityStatus = 'approved' | 'exception';
+export type DashboardActivityStatus = 'approved' | 'exception' | 'rejected';
 
 export interface DashboardActivityItem {
   type: DashboardActivityType;

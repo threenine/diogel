@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { getDashboardSummary, type DashboardActivityItem, type DashboardDataState } from 'src/services/dashboard-service';
+import { nip19 } from 'nostr-tools';
 
 const props = withDefaults(
   defineProps<{
@@ -23,7 +24,7 @@ const error = ref<string | null>(null);
 const state = ref<DashboardDataState>('no-account');
 const items = ref<DashboardActivityItem[]>([]);
 
-type ActivityStatusVariant = 'success' | 'exception';
+type ActivityStatusVariant = 'success' | 'error' | 'rejected';
 
 interface RecentActivityRow {
   key: string;
@@ -64,11 +65,15 @@ function onClick() {
   emit('open');
 }
 
-function formatDate(value: string): string {
+function formatActivityTime(value: string | undefined): string {
+  if (!value) {
+    return '-';
+  }
+
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return value;
+    return '-';
   }
 
   return d(date, 'short');
@@ -105,7 +110,12 @@ function formatActivityEventLabel(activity: DashboardActivityItem): string {
 
 function formatActivityKeyChip(activity: DashboardActivityItem): string {
   if (activity.accountNpub) {
-    return formatShortNpub(activity.accountNpub);
+    try {
+      const npub = nip19.npubEncode(activity.accountNpub);
+      return formatShortNpub(npub);
+    } catch {
+      return formatShortNpub(activity.accountNpub);
+    }
   }
 
   if (activity.accountAlias) {
@@ -146,11 +156,23 @@ function formatActivityStatus(activity: DashboardActivityItem): string {
     return t('dashboard.widgets.recentActivity.status.success');
   }
 
+  if (activity.status === 'rejected') {
+    return t('dashboard.widgets.recentActivity.status.rejected');
+  }
+
   return t('dashboard.widgets.recentActivity.status.error');
 }
 
 function formatActivityStatusVariant(activity: DashboardActivityItem): ActivityStatusVariant {
-  return activity.status === 'approved' ? 'success' : 'exception';
+  if (activity.status === 'approved') {
+    return 'success';
+  }
+
+  if (activity.status === 'rejected') {
+    return 'rejected';
+  }
+
+  return 'error';
 }
 
 const recentActivityRows = computed<RecentActivityRow[]>(() =>
@@ -163,7 +185,7 @@ const recentActivityRows = computed<RecentActivityRow[]>(() =>
       iconColor: icon.color,
       eventLabel: formatActivityEventLabel(activity),
       keyChip: formatActivityKeyChip(activity),
-      time: formatDate(activity.dateTime),
+      time: formatActivityTime(activity.dateTime),
       statusLabel: formatActivityStatus(activity),
       statusVariant: formatActivityStatusVariant(activity),
     };
@@ -311,6 +333,21 @@ onMounted(() => {
 
 .dashboard-widget-card__status {
   justify-self: start;
+}
+
+.dashboard-widget-card__status--success {
+  background: var(--q-primary);
+  color: white;
+}
+
+.dashboard-widget-card__status--error {
+  background: var(--q-negative);
+  color: white;
+}
+
+.dashboard-widget-card__status--rejected {
+  background: var(--q-warning);
+  color: black;
 }
 
 

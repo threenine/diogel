@@ -26,6 +26,7 @@ vi.mock('vue-i18n', () => ({
         'dashboard.widgets.recentActivity.eventType.extensionException': 'Extension exception',
         'dashboard.widgets.recentActivity.status.success': 'SUCCESS',
         'dashboard.widgets.recentActivity.status.error': 'ERROR',
+        'dashboard.widgets.recentActivity.status.rejected': 'REJECTED',
         'dashboard.widgets.recentActivity.ready': 'Ready',
         'dashboard.widgets.common.error': 'Error',
         'dashboard.widgets.common.locked': 'Locked',
@@ -92,7 +93,7 @@ describe('RecentActivityCard.vue', () => {
           title: 'Approval request accepted',
           eventKind: 1,
           accountAlias: 'alpha',
-          accountNpub: 'npub1qqqqqqqqqqqqqqqq8xf3',
+          accountNpub: 'f'.repeat(64),
         },
       ],
     });
@@ -113,9 +114,61 @@ describe('RecentActivityCard.vue', () => {
     expect(text).toContain('Time');
     expect(text).toContain('Status');
     expect(text).toContain('Kind 1: Note');
-    expect(text).toContain('npub1...8xf3');
+    expect(text).toMatch(/npub1\.\.\.[a-z0-9]{4}/);
     expect(text).toContain('formatted:2026-01-01T10:00:00.000Z');
     expect(text).toContain('SUCCESS');
+  });
+
+  it('shows fallback time and semantic status classes', async () => {
+    getDashboardSummaryMock.mockResolvedValueOnce({
+      state: 'ready',
+      signedEvents: 0,
+      activeKeys: 1,
+      connectedRelays: 0,
+      connectedRelaysState: 'unavailable',
+      recentActivity: [
+        {
+          type: 'approval',
+          status: 'approved',
+          dateTime: '',
+          title: 'Approval request accepted',
+          eventKind: 1,
+          accountAlias: 'alpha',
+          accountNpub: 'f'.repeat(64),
+        },
+        {
+          type: 'exception',
+          status: 'exception',
+          dateTime: '2026-01-01T11:00:00.000Z',
+          title: 'Extension exception',
+          detail: 'bad payload',
+          accountAlias: 'alpha',
+        },
+        {
+          type: 'approval',
+          status: 'rejected',
+          dateTime: '2026-01-01T12:00:00.000Z',
+          title: 'Approval request rejected',
+          eventKind: 1,
+          accountAlias: 'alpha',
+        },
+      ],
+    });
+
+    const wrapper = mount(RecentActivityCard, {
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+    await flushComponent();
+
+    expect(wrapper.findAll('.dashboard-widget-card__time').at(0)?.text()).toBe('-');
+
+    const badges = wrapper.findAll('.q-badge-stub');
+    expect(badges.at(0)?.classes()).toContain('dashboard-widget-card__status--success');
+    expect(badges.at(1)?.classes()).toContain('dashboard-widget-card__status--error');
+    expect(badges.at(2)?.classes()).toContain('dashboard-widget-card__status--rejected');
   });
 
   it('emits open when clickable is true', async () => {
