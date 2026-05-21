@@ -139,7 +139,6 @@ function navigateTo(item: NavigationItem) {
   void router.push(item.target);
 
   if (props.vertical) {
-
     return;
   }
 }
@@ -166,8 +165,6 @@ function openUtilityLink(item: UtilityLinkItem) {
         <p class="main-navigation__brand-version">{{ t('footer.version') }} {{ appVersion }}</p>
       </div>
     </div>
-
-    <q-separator class="main-navigation__separator" />
 
     <div class="main-navigation__primary-list">
       <q-item

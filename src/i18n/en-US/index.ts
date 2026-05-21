@@ -209,7 +209,7 @@ export default {
     },
     keys: {
       label: 'Key Management',
-      caption: 'Manage account keys and backups',
+      caption: 'Securely manage your Nostr Identity keys and backups',
     },
     profile: {
       label: 'Profile Management',
@@ -329,7 +329,7 @@ export default {
     noData: 'No activity found',
   },
   footer: {
-    version: 'Version',
+    version: 'V',
   },
   errors: {
     notFound: 'Oops. Nothing here...',
