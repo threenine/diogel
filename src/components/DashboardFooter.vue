@@ -5,7 +5,7 @@
 </template>
 
 <script setup lang="ts">
-const version = process.env.APP_VERSION;
+
 </script>
 
 <style scoped>
