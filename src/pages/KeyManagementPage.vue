@@ -3,6 +3,7 @@ import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import useAccountStore from '../stores/account-store';
 import KeyManagementTable from 'components/key-management/KeyManagementTable.vue';
+import SecurityWarning from 'components/SecurityWarning.vue';
 
 const { t } = useI18n();
 const accountStore = useAccountStore();
@@ -21,13 +22,10 @@ onMounted(async () => {
       <p class="dashboard-hero-caption">{{ t('navigation.keys.caption') }}</p>
     </section>
 
-    <section class="key-management-page__security-warning" :aria-label="t('keyManagement.securityWarning.title')">
-      <q-icon class="key-management-page__security-icon" name="warning_amber" aria-hidden="true" />
-      <div>
-        <h2 class="key-management-page__security-title">{{ t('keyManagement.securityWarning.title') }}</h2>
-        <p class="key-management-page__security-message">{{ t('keyManagement.securityWarning.message') }}</p>
-      </div>
-    </section>
+    <security-warning
+      :title="t('keyManagement.securityWarning.title')"
+      :message="t('keyManagement.securityWarning.message')"
+    />
 
     <q-card class="dashboard-card key-management-page__card">
       <q-card-section class="row q-col-gutter-sm justify-end items-center">
@@ -64,32 +62,5 @@ onMounted(async () => {
 
 .key-management-page__card {
   overflow: hidden;
-}
-
-.key-management-page__security-warning {
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  margin-bottom: 16px;
-  padding: 12px 14px;
-  border: 1px solid var(--q-warning);
-  border-radius: 12px;
-  background: color-mix(in srgb, var(--q-warning) 14%, transparent);
-}
-
-.key-management-page__security-icon {
-  color: var(--q-warning);
-}
-
-.key-management-page__security-title {
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.2;
-  font-weight: 600;
-}
-
-.key-management-page__security-message {
-  margin: 4px 0 0;
-  line-height: 1.4;
 }
 </style>

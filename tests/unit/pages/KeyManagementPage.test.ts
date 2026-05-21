@@ -4,7 +4,7 @@ import { mount } from '@vue/test-utils';
 import KeyManagementPage from 'src/pages/KeyManagementPage.vue';
 import type { StoredKey } from 'src/types';
 
-const getKeysMock = vi.fn(async () => undefined);
+const getKeysMock = vi.fn(() => undefined);
 const storedKeys: StoredKey[] = [
   {
     id: 'pubkey-a',
@@ -52,7 +52,7 @@ describe('KeyManagementPage.vue', () => {
 
     await wrapper.vm.$nextTick();
 
-    expect(wrapper.find('.key-management-page__security-warning').exists()).toBe(true);
+    expect(wrapper.find('.security-warning').exists()).toBe(true);
     expect(wrapper.text()).toContain('keyManagement.securityWarning.title');
     expect(wrapper.text()).toContain('keyManagement.securityWarning.message');
 

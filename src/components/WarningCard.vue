@@ -10,9 +10,13 @@ defineProps<{ message: string; headline?: string }>();
     </q-card-section>
     <q-card-section class="paddings-sm">
       <p class="paddings-sm text-grey-1 text-weight-bold text-h6">{{ headline }}</p>
-      <p class="text-grey-1 text-weight-bold">{{ message }}</p>
+      <p class="text-grey-1 text-weight-bold warning-card-message">{{ message }}</p>
     </q-card-section>
   </q-card>
 </template>
 
-<style scoped></style>
+<style scoped>
+.warning-card-message {
+  white-space: pre-line;
+}
+</style>
