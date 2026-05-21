@@ -16,10 +16,14 @@ const props = defineProps<{
 interface KeyRow {
   alias: string;
   npub: string;
+  npubDisplay: string;
   canCopyNpub: boolean;
   createdAt: string | null;
   isActive: boolean;
 }
+
+const NPUB_DISPLAY_HEAD_LENGTH = 14;
+const NPUB_DISPLAY_TAIL_LENGTH = 10;
 
 const columns = computed(() => [
   { name: 'alias', label: t('keyManagement.table.name'), field: 'alias', align: 'left' as const },
@@ -55,12 +59,21 @@ const rows = computed<KeyRow[]>(() =>
     return {
       alias: key.alias,
       npub,
+      npubDisplay: formatNpubDisplay(npub),
       canCopyNpub: npub.length > 0,
       createdAt: key.createdAt,
       isActive: false,
     };
   }),
 );
+
+function formatNpubDisplay(npub: string): string {
+  if (npub.length <= NPUB_DISPLAY_HEAD_LENGTH + NPUB_DISPLAY_TAIL_LENGTH + 1) {
+    return npub;
+  }
+
+  return `${npub.slice(0, NPUB_DISPLAY_HEAD_LENGTH)}…${npub.slice(-NPUB_DISPLAY_TAIL_LENGTH)}`;
+}
 
 function formatCreatedDate(value: unknown): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
@@ -110,16 +123,17 @@ async function copyPublicKey(npub: string): Promise<void> {
     flat
     row-key="alias"
   >
-    <template v-slot:body-cell-createdAt="slotProps">
-      <q-td :props="slotProps">
-        {{ formatCreatedDate(slotProps.row.createdAt) }}
-      </q-td>
-    </template>
-
-    <template v-slot:body-cell-action="slotProps">
-      <q-td :props="slotProps" class="text-right">
+    <template v-slot:body-cell-npub="slotProps">
+      <q-td :props="slotProps" class="key-management-table__public-key-cell">
+        <span
+          class="key-management-table__npub-display"
+          :title="slotProps.row.npub || slotProps.row.npubDisplay"
+        >
+          {{ slotProps.row.npubDisplay }}
+        </span>
         <q-btn
           :aria-label="t('keyManagement.table.copyPublicKeyAriaLabel', { alias: slotProps.row.alias })"
+          class="key-management-table__copy-btn"
           color="secondary"
           :disable="!slotProps.row.canCopyNpub"
           flat
@@ -127,6 +141,19 @@ async function copyPublicKey(npub: string): Promise<void> {
           round
           @click.stop="copyPublicKey(slotProps.row.npub)"
         />
+      </q-td>
+    </template>
+
+    <template v-slot:body-cell-createdAt="slotProps">
+      <q-td :props="slotProps" class="key-management-table__created-date-cell">
+        <span class="key-management-table__created-date-text" :title="formatCreatedDate(slotProps.row.createdAt)">
+          {{ formatCreatedDate(slotProps.row.createdAt) }}
+        </span>
+      </q-td>
+    </template>
+
+    <template v-slot:body-cell-action="slotProps">
+      <q-td :props="slotProps" class="text-right key-management-table__action-cell">
         <q-btn
           :label="t('keyManagement.viewAction')"
           :to="{ name: 'view-key', params: { alias: slotProps.row.alias } }"
@@ -142,5 +169,53 @@ async function copyPublicKey(npub: string): Promise<void> {
 <style scoped>
 .key-management-table {
   width: 100%;
+}
+
+.key-management-table__public-key-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.key-management-table__npub-display {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.875rem;
+}
+
+.key-management-table__copy-btn {
+  flex-shrink: 0;
+}
+
+.key-management-table__created-date-cell {
+  min-width: 0;
+}
+
+.key-management-table__created-date-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.key-management-table__action-cell {
+  border-left: 1px solid color-mix(in srgb, currentColor 14%, transparent);
+  padding-left: 12px;
+}
+
+@media (max-width: 640px) {
+  .key-management-table__public-key-cell {
+    gap: 4px;
+  }
+
+  .key-management-table__npub-display {
+    max-width: 17ch;
+  }
 }
 </style>

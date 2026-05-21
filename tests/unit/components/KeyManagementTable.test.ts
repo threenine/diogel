@@ -31,7 +31,7 @@ const globalStubs = {
     template: `<div class="q-table-stub">
       <div v-for="row in rows" :key="row.alias" class="row-item">
         <span class="row-alias">{{ row.alias }}</span>
-        <span class="row-npub">{{ row.npub }}</span>
+        <slot name="body-cell-npub" :row="row" :props="{ row }" />
         <slot name="body-cell-createdAt" :row="row" :props="{ row }" />
         <slot name="body-cell-action" :row="row" :props="{ row }" />
       </div>
@@ -94,6 +94,31 @@ describe('KeyManagementTable.vue', () => {
     expect(wrapper.text()).toContain('npub_pubkey-b');
     expect(wrapper.text()).toContain('formatted:2026-01-01T00:00:00.000Z');
     expect(wrapper.text()).toContain('formatted:2026-02-01T00:00:00.000Z');
+  });
+
+  it('keeps copy action in public key cell and view action in action cell', () => {
+    const keys: StoredKey[] = [
+      {
+        id: 'pubkey-a',
+        alias: 'alpha',
+        account: { privkey: 'secret-a' },
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ];
+
+    const wrapper = mount(KeyManagementTable, {
+      props: { keys },
+      global: { stubs: globalStubs },
+    });
+
+    const publicKeyCell = wrapper.find('.key-management-table__public-key-cell');
+    expect(publicKeyCell.exists()).toBe(true);
+    expect(publicKeyCell.find('[data-icon="content_copy"]').exists()).toBe(true);
+
+    const actionCell = wrapper.find('.key-management-table__action-cell');
+    expect(actionCell.exists()).toBe(true);
+    expect(actionCell.find('[data-label="keyManagement.viewAction"]').exists()).toBe(true);
+    expect(actionCell.find('[data-icon="content_copy"]').exists()).toBe(false);
   });
 
   it('shows unknown date when createdAt is invalid', () => {
