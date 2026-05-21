@@ -62,8 +62,8 @@ const rows = computed<KeyRow[]>(() =>
   }),
 );
 
-function formatCreatedDate(value: string | null): string {
-  if (!value) {
+function formatCreatedDate(value: unknown): string {
+  if (typeof value !== 'string' || value.trim().length === 0) {
     return t('keyManagement.table.unknownDate');
   }
 
@@ -72,7 +72,19 @@ function formatCreatedDate(value: string | null): string {
     return t('keyManagement.table.unknownDate');
   }
 
-  return d(date, 'short');
+  try {
+    const formatted = d(date, 'short');
+    if (formatted.trim().length > 0) {
+      return formatted;
+    }
+  } catch {
+    // Fall through to Intl formatting fallback.
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date);
 }
 
 async function copyPublicKey(npub: string): Promise<void> {
@@ -100,7 +112,7 @@ async function copyPublicKey(npub: string): Promise<void> {
   >
     <template v-slot:body-cell-createdAt="slotProps">
       <q-td :props="slotProps">
-        {{ formatCreatedDate(String(slotProps.row.createdAt)) }}
+        {{ formatCreatedDate(slotProps.row.createdAt) }}
       </q-td>
     </template>
 

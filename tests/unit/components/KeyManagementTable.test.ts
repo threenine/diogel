@@ -114,6 +114,23 @@ describe('KeyManagementTable.vue', () => {
     expect(wrapper.text()).toContain('keyManagement.table.unknownDate');
   });
 
+  it('shows unknown date when createdAt is missing', () => {
+    const keys = [
+      {
+        id: 'pubkey-a',
+        alias: 'alpha',
+        account: { privkey: 'secret-a' },
+      },
+    ] as unknown as StoredKey[];
+
+    const wrapper = mount(KeyManagementTable, {
+      props: { keys },
+      global: { stubs: globalStubs },
+    });
+
+    expect(wrapper.text()).toContain('keyManagement.table.unknownDate');
+  });
+
   it('copies full npub value from copy action', async () => {
     const keys: StoredKey[] = [
       {
