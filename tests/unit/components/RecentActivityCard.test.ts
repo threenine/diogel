@@ -3,8 +3,9 @@ import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import RecentActivityCard from 'src/components/dashboard/RecentActivityCard.vue';
 
-const { getDashboardSummaryMock } = vi.hoisted(() => ({
+const { getDashboardSummaryMock, dateFormatterMock } = vi.hoisted(() => ({
   getDashboardSummaryMock: vi.fn(),
+  dateFormatterMock: vi.fn((value: Date) => `formatted:${value.toISOString()}`),
 }));
 
 vi.mock('src/services/dashboard-service', () => ({
@@ -41,7 +42,7 @@ vi.mock('vue-i18n', () => ({
 
       return template.replace(/\{(\w+)\}/g, (_, token: string) => params[token] ?? `{${token}}`);
     },
-    d: (value: Date) => `formatted:${value.toISOString()}`,
+    d: dateFormatterMock,
   }),
 }));
 
@@ -79,6 +80,7 @@ async function flushComponent(): Promise<void> {
 describe('RecentActivityCard.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    dateFormatterMock.mockImplementation((value: Date) => `formatted:${value.toISOString()}`);
     getDashboardSummaryMock.mockResolvedValue({
       state: 'ready',
       signedEvents: 0,
@@ -113,10 +115,13 @@ describe('RecentActivityCard.vue', () => {
     expect(text).toContain('Key/Pubkey');
     expect(text).toContain('Time');
     expect(text).toContain('Status');
+    expect(wrapper.find('.dashboard-widget-card__table').exists()).toBe(true);
+    expect(wrapper.findAll('.dashboard-widget-card__table-row')).toHaveLength(1);
     expect(text).toContain('Kind 1: Note');
     expect(text).toMatch(/npub1\.\.\.[a-z0-9]{4}/);
     expect(text).toContain('formatted:2026-01-01T10:00:00.000Z');
     expect(text).toContain('SUCCESS');
+    expect(text).not.toContain('View All');
   });
 
   it('shows fallback time and semantic status classes', async () => {
@@ -169,6 +174,23 @@ describe('RecentActivityCard.vue', () => {
     expect(badges.at(0)?.classes()).toContain('dashboard-widget-card__status--success');
     expect(badges.at(1)?.classes()).toContain('dashboard-widget-card__status--error');
     expect(badges.at(2)?.classes()).toContain('dashboard-widget-card__status--rejected');
+  });
+
+  it('falls back to Intl formatting when i18n datetime format is unavailable', async () => {
+    dateFormatterMock.mockImplementation(() => '');
+
+    const wrapper = mount(RecentActivityCard, {
+      global: {
+        stubs: globalStubs,
+      },
+    });
+
+    await flushComponent();
+
+    const timeText = wrapper.find('.dashboard-widget-card__time').text();
+    expect(timeText).not.toBe('');
+    expect(timeText).not.toBe('-');
+    expect(timeText).not.toContain('formatted:');
   });
 
   it('emits open when clickable is true', async () => {

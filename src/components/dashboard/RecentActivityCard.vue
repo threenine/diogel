@@ -76,7 +76,19 @@ function formatActivityTime(value: string | undefined): string {
     return '-';
   }
 
-  return d(date, 'short');
+  try {
+    const localized = d(date, 'short');
+    if (localized.trim().length > 0) {
+      return localized;
+    }
+  } catch {
+    // Fall through to Intl fallback when i18n datetime formats are unavailable.
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date);
 }
 
 function formatShortNpub(npub: string): string {
@@ -336,18 +348,18 @@ onMounted(() => {
 }
 
 .dashboard-widget-card__status--success {
-  background: var(--q-primary);
-  color: white;
+  background: rgba(25, 118, 210, 0.14);
+  color: #1976d2;
 }
 
 .dashboard-widget-card__status--error {
-  background: var(--q-negative);
-  color: white;
+  background: rgba(211, 47, 47, 0.14);
+  color: #d32f2f;
 }
 
 .dashboard-widget-card__status--rejected {
-  background: var(--q-warning);
-  color: black;
+  background: rgba(245, 124, 0, 0.16);
+  color: #f57c00;
 }
 
 
