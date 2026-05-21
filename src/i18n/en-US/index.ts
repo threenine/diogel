@@ -95,7 +95,7 @@ export default {
     website: 'Website',
     nip05: 'NIP-05 Identifier',
     lud16: 'Lightning Address (LUD-16)',
-    save: 'Update Profile',
+    save: 'Save',
     fetchError: 'Failed to fetch profile from relays',
     saveSuccess: 'Profile updated successfully',
     saveError: 'Failed to update profile',
