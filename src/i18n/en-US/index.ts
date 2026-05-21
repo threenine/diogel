@@ -317,8 +317,10 @@ export default {
     },
   },
   warning: {
-    exportKeys: 'Ensure you Export & Back up your keys',
-    backupNotice: 'If you lose them, you will lose access to your account and there is no way to recover them.',
+    icon: 'info',
+    title: 'important',
+    message: `Ensure you export and securely store your keys.
+      If you lose them, you will lose access to your account and there is no way to recover them.`,
   },
   logs: {
     title: 'Event History',

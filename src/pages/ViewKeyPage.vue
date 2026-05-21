@@ -8,7 +8,7 @@ import type { StoredKey } from 'src/types';
 import useAccountStore from 'src/stores/account-store';
 import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
 import ExportButton from 'components/ExportButton.vue';
-import WarningCard from 'components/WarningCard.vue';
+import SecurityWarning from 'components/SecurityWarning.vue';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -29,7 +29,9 @@ watch(
   () => requestedAlias.value,
   async () => {
     await accountStore.getKeys();
-    const selected = Array.from(accountStore.storedKeys).find((item) => item.alias === requestedAlias.value);
+    const selected = Array.from(accountStore.storedKeys).find(
+      (item) => item.alias === requestedAlias.value,
+    );
     storedKey.value = selected;
     originalAlias.value = selected?.alias ?? '';
     alias.value = selected?.alias ?? '';
@@ -44,7 +46,10 @@ function validateAlias(): boolean {
     return false;
   }
 
-  if (trimmedAlias.value === t('account.mainAccountReserved') && originalAlias.value !== trimmedAlias.value) {
+  if (
+    trimmedAlias.value === t('account.mainAccountReserved') &&
+    originalAlias.value !== trimmedAlias.value
+  ) {
     $q.notify({
       type: 'negative',
       message: t('account.mainAccountReservedError', { name: t('account.mainAccountReserved') }),
@@ -92,6 +97,12 @@ async function saveAlias() {
       <p class="dashboard-hero-caption">{{ t('keyManagement.viewCaption') }}</p>
     </section>
 
+    <security-warning
+      :icon="t('warning.icon')"
+      :title="t('warning.title')"
+      :message="t('warning.message')"
+    />
+
     <q-card v-if="storedKey" class="dashboard-card view-key-page__card">
       <q-card-section class="q-pa-lg">
         <div class="row items-end q-col-gutter-md">
@@ -100,7 +111,9 @@ async function saveAlias() {
             v-model="alias"
             class="col text-input"
             :label="t('account.profileName')"
-            :rules="[(v) => !!String(v ?? '').trim() || String(t('validation.profileNameRequired'))]"
+            :rules="[
+              (v) => !!String(v ?? '').trim() || String(t('validation.profileNameRequired')),
+            ]"
             lazy-rules
             hide-bottom-space
           >
@@ -131,11 +144,6 @@ async function saveAlias() {
         <ExportButton :stored-key="storedKey" />
       </q-card-section>
 
-      <q-separator horizontal class="q-mt-xl q-mb-md" inset />
-
-      <q-card-section class="text-center">
-        <warning-card :headline="t('warning.exportKeys')" :message="t('warning.backupNotice')" />
-      </q-card-section>
     </q-card>
 
     <q-card v-else class="dashboard-card">
