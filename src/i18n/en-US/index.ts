@@ -50,7 +50,7 @@ export default {
     title: 'Key Management',
     importKey: 'Import Key',
     addNewKey: 'Add New Key',
-    saveAlias: 'Save Alias',
+    saveAlias: 'Update',
     aliasSaved: 'Alias updated successfully.',
     aliasSaveFailed: 'Failed to update alias.',
     viewAction: 'View',

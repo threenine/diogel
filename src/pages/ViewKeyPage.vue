@@ -94,26 +94,31 @@ async function saveAlias() {
 
     <q-card v-if="storedKey" class="dashboard-card view-key-page__card">
       <q-card-section class="q-pa-lg">
-        <q-input
-          ref="aliasInputRef"
-          v-model="alias"
-          class="text-input"
-          :label="t('account.profileName')"
-          :rules="[(v) => !!String(v ?? '').trim() || String(t('validation.profileNameRequired'))]"
-          lazy-rules
-        >
-          <template v-slot:prepend>
-            <q-icon name="person" />
-          </template>
-        </q-input>
+        <div class="row items-end q-col-gutter-md">
+          <q-input
+            ref="aliasInputRef"
+            v-model="alias"
+            class="col text-input"
+            :label="t('account.profileName')"
+            :rules="[(v) => !!String(v ?? '').trim() || String(t('validation.profileNameRequired'))]"
+            lazy-rules
+            hide-bottom-space
+          >
+            <template v-slot:prepend>
+              <q-icon name="person" />
+            </template>
+          </q-input>
 
-        <q-btn
-          :disable="isSaving"
-          :label="t('keyManagement.saveAlias')"
-          class="q-mt-md diogel-btn-primary"
-          no-caps
-          @click="saveAlias"
-        />
+          <div class="col-auto">
+            <q-btn
+              :disable="isSaving"
+              :label="t('keyManagement.saveAlias')"
+              class="diogel-btn-primary"
+              no-caps
+              @click="saveAlias"
+            />
+          </div>
+        </div>
       </q-card-section>
 
       <q-separator inset />
