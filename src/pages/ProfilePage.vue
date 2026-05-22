@@ -5,26 +5,28 @@ import { useRoute, useRouter } from 'vue-router';
 import useAccountStore from '../stores/account-store';
 import ProfileImage from '../components/ProfileImage.vue';
 import ProfileEditor from '../components/ProfileEditor.vue';
+import ProfilePreview from '../components/ProfilePreview.vue';
 
 
 const { t } = useI18n();
 const accountStore = useAccountStore();
 const route = useRoute();
 const router = useRouter();
+const profileRefreshKey = ref(0);
 
-type ProfileTab = 'profile' | 'images';
-
-function resolveTabFromRoute(): ProfileTab {
-  const routeTab = route.query.tab;
-
-  if (routeTab === 'profile' || routeTab === 'images') {
-    return routeTab;
-  }
-
-  return 'profile';
+function handleProfileSaved() {
+  profileRefreshKey.value += 1;
 }
 
-const tab = ref<ProfileTab>(resolveTabFromRoute());
+function clearLegacyTabQuery() {
+  if (typeof route.query.tab === 'undefined') {
+    return;
+  }
+
+  const queryWithoutTab = { ...route.query };
+  delete queryWithoutTab.tab;
+  void router.replace({ query: queryWithoutTab });
+}
 
 const activeStoredKey = computed(() => {
   const activeAlias = accountStore.activeKey;
@@ -34,34 +36,15 @@ const activeStoredKey = computed(() => {
 
 onMounted(async () => {
   await accountStore.getKeys();
+  clearLegacyTabQuery();
 });
 
 watch(
-  () => [route.path, route.query.tab],
+  () => route.query.tab,
   () => {
-    const resolvedTab = resolveTabFromRoute();
-
-    if (tab.value !== resolvedTab) {
-      tab.value = resolvedTab;
-    }
+    clearLegacyTabQuery();
   },
 );
-
-watch(tab, (newTab) => {
-  const currentTab = typeof route.query.tab === 'string' ? route.query.tab : undefined;
-  const queryTab = newTab === 'profile' ? undefined : newTab;
-
-  if (currentTab === queryTab) {
-    return;
-  }
-
-  void router.replace({
-    query: {
-      ...route.query,
-      tab: queryTab,
-    },
-  });
-});
 </script>
 
 <template>
@@ -71,43 +54,37 @@ watch(tab, (newTab) => {
       <p class="dashboard-hero-caption">{{ t('profile.dashboardCaption') }}</p>
     </section>
 
-    <q-card class="dashboard-card profile-page__card">
-      <div v-if="activeStoredKey">
-        <q-tabs
-          v-model="tab"
-          active-color="primary"
-          align="justify"
-          class="dashboard-tabs text-primary text-caption"
-          dense
-          indicator-color="primary"
-          inline-label
-          narrow-indicator
-        >
-          <q-tab
-            :label="t('profile.title')"
-            class="text-caption"
-            icon="person"
-            name="profile"
-          />
-          <q-tab
-            :label="t('profile.imagesTitle')"
-            class="text-caption"
-            icon="image"
-            name="images"
-          />
-        </q-tabs>
+    <template v-if="activeStoredKey">
+      <q-card class="dashboard-card profile-page__card profile-page__editor-card">
+        <q-card-section class="q-pb-none">
+          <div class="text-h6">{{ t('profile.editorTitle') }}</div>
+        </q-card-section>
+        <q-card-section>
+          <ProfileEditor :stored-key="activeStoredKey" @saved="handleProfileSaved" />
+        </q-card-section>
+      </q-card>
 
-        <q-tab-panels v-model="tab" animated class="profile-page__tab-panels">
-          <q-tab-panel class="q-pa-none" name="profile">
-            <ProfileEditor :stored-key="activeStoredKey" />
-          </q-tab-panel>
+      <q-card class="dashboard-card profile-page__card profile-page__preview-card">
+        <q-card-section class="q-pb-none">
+          <div class="text-h6">{{ t('profile.previewTitle') }}</div>
+        </q-card-section>
+        <q-card-section>
+          <ProfilePreview :refresh-key="profileRefreshKey" :stored-key="activeStoredKey" />
+        </q-card-section>
+      </q-card>
 
-          <q-tab-panel class="q-pa-none" name="images">
-            <ProfileImage :stored-key="activeStoredKey" />
-          </q-tab-panel>
-        </q-tab-panels>
-      </div>
-      <div v-else class="text-center q-pa-xl">
+      <q-card class="dashboard-card profile-page__card profile-page__images-card">
+        <q-card-section class="q-pb-none">
+          <div class="text-h6">{{ t('profile.imagesSectionTitle') }}</div>
+        </q-card-section>
+        <q-card-section>
+          <ProfileImage :stored-key="activeStoredKey" />
+        </q-card-section>
+      </q-card>
+    </template>
+
+    <q-card v-else class="dashboard-card profile-page__card">
+      <div class="text-center q-pa-xl">
         <q-icon color="grey-5" name="account_circle" size="4em" />
         <div class="text-h6 text-grey-7 q-mt-md">{{ t('account.noAccounts') }}</div>
         <p class="text-grey-6">{{ t('account.noAccountDesc') }}</p>
@@ -128,9 +105,5 @@ watch(tab, (newTab) => {
 
 .profile-page__card {
   overflow: hidden;
-}
-
-.profile-page__tab-panels {
-  background: transparent;
 }
 </style>

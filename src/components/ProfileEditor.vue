@@ -12,6 +12,10 @@ const props = defineProps<{
   storedKey: StoredKey;
 }>();
 
+const emit = defineEmits<{
+  saved: [];
+}>();
+
 const $q = useQuasar();
 const { t } = useI18n();
 
@@ -234,6 +238,8 @@ async function saveProfile() {
     }
 
     await profileService.saveProfile(props.storedKey.account.privkey, profileToSave);
+
+    emit('saved');
 
     $q.notify({
       type: 'positive',
