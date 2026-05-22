@@ -20,6 +20,14 @@ export interface NostrProfile {
   website?: string;
   nip05?: string;
   lud16?: string;
+  bot?: boolean;
+  birthday?: NostrBirthday;
+}
+
+export interface NostrBirthday {
+  year?: number;
+  month?: number;
+  day?: number;
 }
 
 export interface NostrRelay {
