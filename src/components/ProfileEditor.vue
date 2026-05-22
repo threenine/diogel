@@ -14,7 +14,24 @@ const props = defineProps<{
 const $q = useQuasar();
 const { t } = useI18n();
 
-const profile = ref<NostrProfile>({
+interface ProfileEditorForm extends Omit<NostrProfile, 'bot' | 'birthday'> {
+  bot: boolean;
+  birthday: {
+    year?: number;
+    month?: number;
+    day?: number;
+  };
+}
+
+function toBirthdayFields(birthday?: NostrProfile['birthday']): ProfileEditorForm['birthday'] {
+  return {
+    ...(birthday?.year !== undefined ? { year: birthday.year } : {}),
+    ...(birthday?.month !== undefined ? { month: birthday.month } : {}),
+    ...(birthday?.day !== undefined ? { day: birthday.day } : {}),
+  };
+}
+
+const profile = ref<ProfileEditorForm>({
   name: '',
   display_name: '',
   about: '',
@@ -23,6 +40,8 @@ const profile = ref<NostrProfile>({
   website: '',
   nip05: '',
   lud16: '',
+  bot: false,
+  birthday: {},
 });
 
 const loading = ref(false);
@@ -41,6 +60,8 @@ async function fetchProfile() {
     website: '',
     nip05: '',
     lud16: '',
+    bot: false,
+    birthday: {},
   };
 
   loading.value = true;
@@ -55,6 +76,8 @@ async function fetchProfile() {
         website: profileData.website || '',
         nip05: profileData.nip05 || '',
         lud16: profileData.lud16 || '',
+        bot: profileData.bot === true,
+        birthday: toBirthdayFields(profileData.birthday),
       };
     }
   } catch (error) {
@@ -71,7 +94,18 @@ async function fetchProfile() {
 async function saveProfile() {
   saving.value = true;
   try {
-    await profileService.saveProfile(props.storedKey.account.privkey, profile.value);
+    const hasBirthday =
+      profile.value.birthday?.year !== undefined ||
+      profile.value.birthday?.month !== undefined ||
+      profile.value.birthday?.day !== undefined;
+
+    const profileToSave: NostrProfile = {
+      ...profile.value,
+      ...(profile.value.bot ? { bot: true } : {}),
+      ...(hasBirthday ? { birthday: toBirthdayFields(profile.value.birthday) } : {}),
+    };
+
+    await profileService.saveProfile(props.storedKey.account.privkey, profileToSave);
 
     $q.notify({
       type: 'positive',
@@ -105,13 +139,13 @@ watch(
     <div v-if="loading" class="flex flex-center q-pa-lg">
       <q-spinner color="primary" size="3em" />
     </div>
-    <q-form v-else class="q-gutter-md" @submit="saveProfile">
+    <q-form v-else class="profile-editor__form" @submit="saveProfile">
       <q-input
         v-model="profile.name"
         :label="t('profile.name')"
         outlined
         dense
-        class="diogel-input"
+        class="diogel-input profile-editor__field"
         hide-bottom-space
       />
       <q-input
@@ -119,16 +153,7 @@ watch(
         :label="t('profile.displayName')"
         outlined
         dense
-        class="diogel-input"
-        hide-bottom-space
-      />
-      <q-input
-        v-model="profile.about"
-        :label="t('profile.about')"
-        outlined
-        dense
-        class="diogel-input"
-        type="textarea"
+        class="diogel-input profile-editor__field"
         hide-bottom-space
       />
       <q-input
@@ -136,7 +161,7 @@ watch(
         :label="t('profile.website')"
         outlined
         dense
-        class="diogel-input"
+        class="diogel-input profile-editor__field"
         hide-bottom-space
       />
       <q-input
@@ -144,7 +169,7 @@ watch(
         :label="t('profile.nip05')"
         outlined
         dense
-        class="diogel-input"
+        class="diogel-input profile-editor__field"
         hide-bottom-space
       />
       <q-input
@@ -152,11 +177,59 @@ watch(
         :label="t('profile.lud16')"
         outlined
         dense
-        class="diogel-input"
+        class="diogel-input profile-editor__field"
+        hide-bottom-space
+      />
+      <q-toggle
+        v-model="profile.bot"
+        :label="t('profile.bot')"
+        color="primary"
+        class="profile-editor__field profile-editor__field--toggle"
+      />
+
+      <div class="profile-editor__field profile-editor__birthday">
+        <div class="profile-editor__birthday-label text-caption">{{ t('profile.birthday') }}</div>
+        <div class="profile-editor__birthday-grid">
+          <q-input
+            v-model.number="profile.birthday.year"
+            :label="t('profile.birthdayYear')"
+            outlined
+            dense
+            type="number"
+            class="diogel-input"
+            hide-bottom-space
+          />
+          <q-input
+            v-model.number="profile.birthday.month"
+            :label="t('profile.birthdayMonth')"
+            outlined
+            dense
+            type="number"
+            class="diogel-input"
+            hide-bottom-space
+          />
+          <q-input
+            v-model.number="profile.birthday.day"
+            :label="t('profile.birthdayDay')"
+            outlined
+            dense
+            type="number"
+            class="diogel-input"
+            hide-bottom-space
+          />
+        </div>
+      </div>
+      <q-input
+        v-model="profile.about"
+        :label="t('profile.about')"
+        outlined
+        dense
+        class="diogel-input profile-editor__field profile-editor__field--full"
+        type="textarea"
         hide-bottom-space
       />
 
-      <div class="row justify-end q-mt-md q-pt-sm">
+      <div class="row justify-end q-mt-sm profile-editor__field--full">
         <q-btn
           :label="t('profile.save')"
           :loading="saving"
@@ -168,3 +241,45 @@ watch(
     </q-form>
   </div>
 </template>
+
+<style lang="scss" scoped>
+.profile-editor__form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.profile-editor__field {
+  min-width: 0;
+}
+
+.profile-editor__field--full {
+  grid-column: 1 / -1;
+}
+
+.profile-editor__field--toggle {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+}
+
+.profile-editor__birthday-label {
+  margin-bottom: 8px;
+}
+
+.profile-editor__birthday-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .profile-editor__form {
+    grid-template-columns: 1fr;
+  }
+
+  .profile-editor__birthday-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
