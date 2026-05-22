@@ -16,20 +16,85 @@ const { t } = useI18n();
 
 interface ProfileEditorForm extends Omit<NostrProfile, 'bot' | 'birthday'> {
   bot: boolean;
-  birthday: {
-    year?: number;
-    month?: number;
-    day?: number;
+  birthday: BirthdayFormState;
+}
+
+interface BirthdayFormState {
+  year: string;
+  month: string;
+  day: string;
+}
+
+type ParsedBirthdayValue = number | undefined | null;
+
+function toBirthdayFields(birthday?: NostrProfile['birthday']): BirthdayFormState {
+  return {
+    year: birthday?.year !== undefined ? String(birthday.year) : '',
+    month: birthday?.month !== undefined ? String(birthday.month) : '',
+    day: birthday?.day !== undefined ? String(birthday.day) : '',
   };
 }
 
-function toBirthdayFields(birthday?: NostrProfile['birthday']): ProfileEditorForm['birthday'] {
-  return {
-    ...(birthday?.year !== undefined ? { year: birthday.year } : {}),
-    ...(birthday?.month !== undefined ? { month: birthday.month } : {}),
-    ...(birthday?.day !== undefined ? { day: birthday.day } : {}),
-  };
+function parseBirthdayValue(value: string, min: number, max: number, exactDigits?: number): ParsedBirthdayValue {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return undefined;
+  }
+
+  if (!/^\d+$/.test(trimmedValue)) {
+    return null;
+  }
+
+  if (exactDigits !== undefined && trimmedValue.length !== exactDigits) {
+    return null;
+  }
+
+  const parsedValue = Number(trimmedValue);
+  if (!Number.isInteger(parsedValue) || parsedValue < min || parsedValue > max) {
+    return null;
+  }
+
+  return parsedValue;
 }
+
+function buildBirthdayPayload(form: BirthdayFormState): NostrProfile['birthday'] | undefined {
+  const year = parseBirthdayValue(form.year, 1000, 9999, 4);
+  const month = parseBirthdayValue(form.month, 1, 12);
+  const day = parseBirthdayValue(form.day, 1, 31);
+
+  if (year === null || month === null || day === null) {
+    return undefined;
+  }
+
+  const birthday: NonNullable<NostrProfile['birthday']> = {
+    ...(year !== undefined ? { year } : {}),
+    ...(month !== undefined ? { month } : {}),
+    ...(day !== undefined ? { day } : {}),
+  };
+
+  return Object.keys(birthday).length > 0 ? birthday : undefined;
+}
+
+const birthdayYearRules = [
+  (value: string) => {
+    const parsedYear = parseBirthdayValue(value, 1000, 9999, 4);
+    return parsedYear !== null || t('profile.birthdayYearInvalid');
+  },
+];
+
+const birthdayMonthRules = [
+  (value: string) => {
+    const parsedMonth = parseBirthdayValue(value, 1, 12);
+    return parsedMonth !== null || t('profile.birthdayMonthInvalid');
+  },
+];
+
+const birthdayDayRules = [
+  (value: string) => {
+    const parsedDay = parseBirthdayValue(value, 1, 31);
+    return parsedDay !== null || t('profile.birthdayDayInvalid');
+  },
+];
 
 const profile = ref<ProfileEditorForm>({
   name: '',
@@ -41,7 +106,7 @@ const profile = ref<ProfileEditorForm>({
   nip05: '',
   lud16: '',
   bot: false,
-  birthday: {},
+  birthday: { year: '', month: '', day: '' },
 });
 
 const loading = ref(false);
@@ -61,7 +126,7 @@ async function fetchProfile() {
     nip05: '',
     lud16: '',
     bot: false,
-    birthday: {},
+    birthday: { year: '', month: '', day: '' },
   };
 
   loading.value = true;
@@ -94,16 +159,20 @@ async function fetchProfile() {
 async function saveProfile() {
   saving.value = true;
   try {
-    const hasBirthday =
-      profile.value.birthday?.year !== undefined ||
-      profile.value.birthday?.month !== undefined ||
-      profile.value.birthday?.day !== undefined;
+    const { bot, birthday, ...profileBase } = profile.value;
+    const birthdayPayload = buildBirthdayPayload(birthday);
 
     const profileToSave: NostrProfile = {
-      ...profile.value,
-      ...(profile.value.bot ? { bot: true } : {}),
-      ...(hasBirthday ? { birthday: toBirthdayFields(profile.value.birthday) } : {}),
+      ...profileBase,
     };
+
+    if (bot) {
+      profileToSave.bot = true;
+    }
+
+    if (birthdayPayload) {
+      profileToSave.birthday = birthdayPayload;
+    }
 
     await profileService.saveProfile(props.storedKey.account.privkey, profileToSave);
 
@@ -191,31 +260,31 @@ watch(
         <div class="profile-editor__birthday-label text-caption">{{ t('profile.birthday') }}</div>
         <div class="profile-editor__birthday-grid">
           <q-input
-            v-model.number="profile.birthday.year"
+            v-model="profile.birthday.year"
             :label="t('profile.birthdayYear')"
+            :rules="birthdayYearRules"
             outlined
             dense
             type="number"
             class="diogel-input"
-            hide-bottom-space
           />
           <q-input
-            v-model.number="profile.birthday.month"
+            v-model="profile.birthday.month"
             :label="t('profile.birthdayMonth')"
+            :rules="birthdayMonthRules"
             outlined
             dense
             type="number"
             class="diogel-input"
-            hide-bottom-space
           />
           <q-input
-            v-model.number="profile.birthday.day"
+            v-model="profile.birthday.day"
             :label="t('profile.birthdayDay')"
+            :rules="birthdayDayRules"
             outlined
             dense
             type="number"
             class="diogel-input"
-            hide-bottom-space
           />
         </div>
       </div>
