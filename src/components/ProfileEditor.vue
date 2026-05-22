@@ -4,6 +4,7 @@ import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { NostrProfile, StoredKey } from '../types';
 import { profileService } from '../services/profile-service';
+import { nip05Service, parseNip05Identifier, type Nip05VerificationStatus } from '../services/nip05-service';
 
 defineOptions({ name: 'ProfileEditor' });
 
@@ -111,6 +112,64 @@ const profile = ref<ProfileEditorForm>({
 
 const loading = ref(false);
 const saving = ref(false);
+const nip05Verifying = ref(false);
+const nip05Status = ref<Nip05VerificationStatus | null>(null);
+
+function canVerifyNip05Identifier(identifier: string): boolean {
+  return parseNip05Identifier(identifier) !== null;
+}
+
+function getNip05VerificationMessage(status: Nip05VerificationStatus): string {
+  switch (status) {
+    case 'verified':
+      return t('profile.nip05Verified');
+    case 'malformed':
+      return t('profile.nip05Malformed');
+    case 'network-error':
+      return t('profile.nip05NetworkError');
+    case 'invalid-response':
+      return t('profile.nip05InvalidResponse');
+    case 'not-found':
+      return t('profile.nip05NotFound');
+    case 'pubkey-mismatch':
+      return t('profile.nip05PubkeyMismatch');
+    default:
+      return t('profile.nip05NetworkError');
+  }
+}
+
+function isNip05VerifyDisabled(): boolean {
+  if (nip05Verifying.value) {
+    return true;
+  }
+
+  return !canVerifyNip05Identifier(profile.value.nip05 ?? '');
+}
+
+async function verifyNip05() {
+  const identifier = profile.value.nip05 ?? '';
+  if (!canVerifyNip05Identifier(identifier)) {
+    nip05Status.value = 'malformed';
+    $q.notify({
+      type: 'negative',
+      message: getNip05VerificationMessage('malformed'),
+    });
+    return;
+  }
+
+  nip05Verifying.value = true;
+  try {
+    const result = await nip05Service.verifyIdentifier(identifier, props.storedKey.id);
+    nip05Status.value = result.status;
+
+    $q.notify({
+      type: result.status === 'verified' ? 'positive' : 'negative',
+      message: getNip05VerificationMessage(result.status),
+    });
+  } finally {
+    nip05Verifying.value = false;
+  }
+}
 
 async function fetchProfile() {
   if (!props.storedKey.id) return;
@@ -198,7 +257,15 @@ onMounted(() => {
 watch(
   () => props.storedKey.id,
   () => {
+    nip05Status.value = null;
     void fetchProfile();
+  },
+);
+
+watch(
+  () => profile.value.nip05,
+  () => {
+    nip05Status.value = null;
   },
 );
 </script>
@@ -240,7 +307,21 @@ watch(
         dense
         class="diogel-input profile-editor__field"
         hide-bottom-space
-      />
+      >
+        <template #append>
+          <q-btn
+            :label="t('profile.nip05Verify')"
+            :loading="nip05Verifying"
+            :disable="isNip05VerifyDisabled()"
+            color="primary"
+            flat
+            dense
+            no-caps
+            class="profile-editor__nip05-verify"
+            @click="verifyNip05"
+          />
+        </template>
+      </q-input>
       <q-input
         v-model="profile.lud16"
         :label="t('profile.lud16')"
@@ -340,6 +421,10 @@ watch(
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.profile-editor__nip05-verify {
+  white-space: nowrap;
 }
 
 @media (max-width: 720px) {
