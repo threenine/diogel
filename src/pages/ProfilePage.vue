@@ -54,22 +54,13 @@ watch(
       <p class="dashboard-hero-caption">{{ t('profile.dashboardCaption') }}</p>
     </section>
 
-    <template v-if="activeStoredKey">
+    <div v-if="activeStoredKey" class="profile-page__layout">
       <q-card class="dashboard-card profile-page__card profile-page__editor-card">
         <q-card-section class="q-pb-none">
           <div class="text-h6">{{ t('profile.editorTitle') }}</div>
         </q-card-section>
         <q-card-section>
           <ProfileEditor :stored-key="activeStoredKey" @saved="handleProfileSaved" />
-        </q-card-section>
-      </q-card>
-
-      <q-card class="dashboard-card profile-page__card profile-page__preview-card">
-        <q-card-section class="q-pb-none">
-          <div class="text-h6">{{ t('profile.previewTitle') }}</div>
-        </q-card-section>
-        <q-card-section>
-          <ProfilePreview :refresh-key="profileRefreshKey" :stored-key="activeStoredKey" />
         </q-card-section>
       </q-card>
 
@@ -81,7 +72,16 @@ watch(
           <ProfileImage :stored-key="activeStoredKey" />
         </q-card-section>
       </q-card>
-    </template>
+
+      <q-card class="dashboard-card profile-page__card profile-page__preview-card">
+        <q-card-section class="q-pb-none">
+          <div class="text-h6">{{ t('profile.previewTitle') }}</div>
+        </q-card-section>
+        <q-card-section>
+          <ProfilePreview :refresh-key="profileRefreshKey" :stored-key="activeStoredKey" />
+        </q-card-section>
+      </q-card>
+    </div>
 
     <q-card v-else class="dashboard-card profile-page__card">
       <div class="text-center q-pa-xl">
@@ -103,7 +103,39 @@ watch(
   width: 100%;
 }
 
+.profile-page__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(18rem, 2fr);
+  grid-template-areas:
+    'editor preview'
+    'images preview';
+  gap: 1.5rem;
+  align-items: start;
+}
+
 .profile-page__card {
   overflow: hidden;
+}
+
+.profile-page__editor-card {
+  grid-area: editor;
+}
+
+.profile-page__images-card {
+  grid-area: images;
+}
+
+.profile-page__preview-card {
+  grid-area: preview;
+}
+
+@media (max-width: 900px) {
+  .profile-page__layout {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'editor'
+      'images'
+      'preview';
+  }
 }
 </style>

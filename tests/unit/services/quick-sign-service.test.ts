@@ -295,36 +295,23 @@ describe('quick-sign-service', () => {
     expect(result.errors).toContain('Event kind is not supported by quick-sign.');
   });
 
-  it('rejects kind 1 content with markdown syntax', () => {
+  it('accepts markdown for kind 1', () => {
     const result = validateQuickSignInput({
       accountAlias: 'alpha',
       kind: 1,
-      content: '# Heading',
+      content: '# Heading\n- item\n[text](https://example.com)\n`inline`',
       tags: [],
     });
-
-    expect(result.valid).toBe(false);
-    expect(result.errors).toContain('Kind 1 content cannot contain Markdown formatting.');
-  });
-
-  it('accepts kind 1 normal multiline plain text', () => {
-    const result = validateQuickSignContent(1, 'first line\nsecond line\n1 < 2');
 
     expect(result.valid).toBe(true);
     expect(result.errors).toHaveLength(0);
   });
 
-  it('rejects kind 1 obvious markdown patterns', () => {
-    const heading = validateQuickSignContent(1, '# Heading');
-    const link = validateQuickSignContent(1, '[text](https://example.com)');
-    const code = validateQuickSignContent(1, '`inline`');
-    const list = validateQuickSignContent(1, '- item');
+  it('accepts kind 1 normal multiline plain text with comparison operators', () => {
+    const result = validateQuickSignContent(1, 'first line\nsecond line\n1 < 2 and 3 > 2');
 
-    expect(heading.valid).toBe(false);
-    expect(link.valid).toBe(false);
-    expect(code.valid).toBe(false);
-    expect(list.valid).toBe(false);
-    expect(heading.errors).toContain('Kind 1 content cannot contain Markdown formatting.');
+    expect(result.valid).toBe(true);
+    expect(result.errors).toHaveLength(0);
   });
 
   it('accepts markdown for kind 30023', () => {
@@ -336,6 +323,13 @@ describe('quick-sign-service', () => {
 
   it('rejects raw html for kind 30023 content helper', () => {
     const result = validateQuickSignContent(30023, '<article>Body</article>');
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain('Event content cannot contain raw HTML tags.');
+  });
+
+  it('rejects raw html for kind 1 content helper', () => {
+    const result = validateQuickSignContent(1, 'hello<br />world');
 
     expect(result.valid).toBe(false);
     expect(result.errors).toContain('Event content cannot contain raw HTML tags.');

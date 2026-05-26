@@ -51,15 +51,7 @@ function isQuickSignTagType(value: string): value is QuickSignTagType {
 }
 
 function containsRawHtml(content: string): boolean {
-  return /<[^>]+>/.test(content);
-}
-
-function containsLikelyMarkdown(content: string): boolean {
-  // This is intentionally conservative for MVP. We only block obvious Markdown
-  // markers and do not attempt full Markdown parsing.
-  // - May miss uncommon Markdown constructs.
-  // - May flag plain text that intentionally starts with markdown-like prefixes.
-  return /(^|\n)\s{0,3}(#{1,6}\s|[-*+]\s|\d+\.\s|>\s)|\[[^\]]+\]\([^)]+\)|\*\*[^*]+\*\*|__[^_]+__|`[^`]+`/.test(content);
+  return /<\/?[A-Za-z][A-Za-z0-9:-]*(?:\s+[^<>]*)?\s*\/?>/.test(content);
 }
 
 export function validateQuickSignContent(
@@ -72,14 +64,10 @@ export function validateQuickSignContent(
     errors.push('Event content is required.');
   }
 
-  // Intentionally blocks obvious raw HTML tags (opening/closing). Comparison
+  // Intentionally blocks HTML-like tags (opening/closing/self-closing). Comparison
   // text like `1 < 2` is allowed because it does not match the tag pattern.
   if (containsRawHtml(content)) {
     errors.push('Event content cannot contain raw HTML tags.');
-  }
-
-  if (kind === 1 && containsLikelyMarkdown(content)) {
-    errors.push('Kind 1 content cannot contain Markdown formatting.');
   }
 
   return {
