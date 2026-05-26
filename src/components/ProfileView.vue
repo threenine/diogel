@@ -121,20 +121,14 @@ watch(
 
       <!-- Actions -->
       <q-card-actions align="right">
-        <q-btn
-          round
-          icon="edit"
-          size="sm"
-          class="diogel-btn-ghost"
-          @click="openInTab('/profile')"
-        >
+        <q-btn round icon="edit" size="sm" class="diogel-btn-ghost" @click="openInTab('/profile')">
           <q-tooltip>{{ t('profile.edit') }}</q-tooltip>
         </q-btn>
       </q-card-actions>
     </q-card>
 
     <div v-if="!loading" class="text-center q-pa-md text-caption text-warning">
-      {{ $t('warning.exportKeys') }}
+      <a @click="openInTab('/keys')"> {{ $t('warning.exportKeys') }}</a>
     </div>
   </div>
 </template>

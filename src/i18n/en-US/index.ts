@@ -164,7 +164,8 @@ export default {
       recentActivity: {
         title: 'Recent Activity',
         ready: 'Latest approval and exception events recorded for your active account.',
-        empty: 'No approvals or exceptions yet. Open Event History to review activity as it appears.',
+        empty:
+          'No approvals or exceptions yet. Open Event History to review activity as it appears.',
         unknownKey: 'Unknown key',
         columns: {
           eventType: 'Event Type',
@@ -219,19 +220,22 @@ export default {
         previewTagCount: 'Tag count: {count}',
         previewRelays: 'Publish destinations:',
         previewRelayCount: 'Relay count: {count}',
-        previewWarning: 'Approving this action will sign and publish this event to the relays listed above.',
+        previewWarning:
+          'Approving this action will sign and publish this event to the relays listed above.',
         previewTechnicalDetails: 'Technical details (JSON)',
         backToEdit: 'Back to edit',
         cancel: 'Cancel',
         confirm: 'Sign and publish',
         signPublishSuccess: 'Event signed and published successfully.',
-        signPublishPartialFailure: 'Event signed and published to some relays, but failed on others.',
+        signPublishPartialFailure:
+          'Event signed and published to some relays, but failed on others.',
         signFailure: 'Failed to sign event.',
         states: {
           locked: 'Vault is locked. Unlock your vault before quick signing.',
           noAccount: 'No active account is selected. Choose an account first.',
           invalidAccount: 'Selected account is unavailable. Choose a valid account.',
-          noRelay: 'No eligible account relays are selected. Choose at least one relay from account kind 10002 metadata.',
+          noRelay:
+            'No eligible account relays are selected. Choose at least one relay from account kind 10002 metadata.',
           error: 'Unable to prepare quick sign right now.',
         },
       },
@@ -347,6 +351,7 @@ export default {
     title: 'important',
     message: `Ensure you export and securely store your keys.
       If you lose them, you will lose access to your account and there is no way to recover them.`,
+    exportKeys: 'Ensure you export and securely store your keys',
   },
   logs: {
     title: 'Event History',
