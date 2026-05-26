@@ -109,7 +109,7 @@ watch(
 
     <div v-else class="profile-preview__card">
       <div class="profile-preview__banner">
-        <q-img v-if="profile.banner" :src="profile.banner" class="profile-preview__banner-image" fit="cover" ratio="3" />
+        <q-img v-if="profile.banner" :src="profile.banner" class="profile-preview__banner-image" fit="contain" ratio="3" />
         <div v-else class="profile-preview__banner-placeholder" />
       </div>
 
