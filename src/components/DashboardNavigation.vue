@@ -189,7 +189,7 @@ function openUtilityLink(item: UtilityLinkItem) {
     </div>
 
     <div class="main-navigation__footer">
-      <q-btn
+<!--      <q-btn
         color="primary"
         class="main-navigation__new-signature"
         icon="edit_note"
@@ -197,7 +197,7 @@ function openUtilityLink(item: UtilityLinkItem) {
         unelevated
         :label="t('navigation.newSignature')"
         @click="openNewSignature"
-      />
+      />-->
 
       <q-separator class="main-navigation__separator" />
 
