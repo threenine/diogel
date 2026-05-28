@@ -65,14 +65,14 @@ const utilityLinks = computed<UtilityLinkItem[]>(() => [
     icon: 'support_agent',
     label: t('navigation.support.label'),
     caption: t('navigation.support.caption'),
-    href: '#',
+    href: 'https://github.com/threenine/diogel/issues',
   },
   {
     id: 'documentation',
     icon: 'description',
     label: t('navigation.documentation.label'),
     caption: t('navigation.documentation.caption'),
-    href: '#',
+    href: 'https://diogel.io/docs',
   },
 ]);
 
@@ -183,13 +183,12 @@ function openUtilityLink(item: UtilityLinkItem) {
         </q-item-section>
         <q-item-section>
           <q-item-label>{{ item.label }}</q-item-label>
-          <q-item-label caption>{{ item.caption }}</q-item-label>
         </q-item-section>
       </q-item>
     </div>
 
     <div class="main-navigation__footer">
-<!--      <q-btn
+      <!--      <q-btn
         color="primary"
         class="main-navigation__new-signature"
         icon="edit_note"
@@ -215,7 +214,6 @@ function openUtilityLink(item: UtilityLinkItem) {
         </q-item-section>
         <q-item-section>
           <q-item-label>{{ item.label }}</q-item-label>
-          <q-item-label caption>{{ item.caption }}</q-item-label>
         </q-item-section>
       </q-item>
 
