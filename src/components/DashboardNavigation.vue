@@ -160,7 +160,7 @@ function openUtilityLink(item: UtilityLinkItem) {
 <template>
   <q-list v-if="vertical" class="main-navigation main-navigation--vertical">
     <div class="main-navigation__brand">
-      <DiogelLogo size="md" />
+      <DiogelLogo size="lg" />
       <div class="main-navigation__brand-content">
         <p class="main-navigation__brand-title">Diogel</p>
         <p class="main-navigation__brand-version">{{ t('footer.version') }} {{ appVersion }}</p>

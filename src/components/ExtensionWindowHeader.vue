@@ -13,7 +13,7 @@ const vaultStore = useVaultStore();
     <q-toolbar>
       <div class="q-pa-lg-lg">
         <dashboard-navigation />
-        <DiogelLogo size="md" />
+        <DiogelLogo size="lg" />
       </div>
       <q-space />
       <div v-if="vaultStore.isUnlocked" class="q-pa-lg-lg"><account-dropdown /></div>

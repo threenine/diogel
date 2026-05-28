@@ -8,7 +8,7 @@ import DiogelLogo from 'components/DiogelLogo/Index.vue';
     <!-- Header -->
     <div class="popup-header">
       <div class="app-brand">
-        <DiogelLogo size="sm" />
+        <DiogelLogo size="lg" />
         <span class="app-name">Diogel</span>
       </div>
       <div class="header-actions">
