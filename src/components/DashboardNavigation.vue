@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useVault } from 'src/composables/useVault';
+import DiogelLogo from 'components/DiogelLogo/Index.vue';
 
 type NavigationRouteName =
   | 'dashboard'
@@ -159,7 +160,7 @@ function openUtilityLink(item: UtilityLinkItem) {
 <template>
   <q-list v-if="vertical" class="main-navigation main-navigation--vertical">
     <div class="main-navigation__brand">
-      <img src="/images/diogel.svg" alt="Diogel" class="main-navigation__brand-logo" />
+      <DiogelLogo size="md" />
       <div class="main-navigation__brand-content">
         <p class="main-navigation__brand-title">Diogel</p>
         <p class="main-navigation__brand-version">{{ t('footer.version') }} {{ appVersion }}</p>
