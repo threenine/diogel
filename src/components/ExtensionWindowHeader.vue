@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
 import DashboardNavigation from 'components/DashboardNavigation.vue';
-import DiogelLogo from 'components/DiogelLogo/Index.vue';
 import useVaultStore from 'src/stores/vault-store';
 
 const vaultStore = useVaultStore();
@@ -13,7 +12,6 @@ const vaultStore = useVaultStore();
     <q-toolbar>
       <div class="q-pa-lg-lg">
         <dashboard-navigation />
-        <DiogelLogo size="lg" />
       </div>
       <q-space />
       <div v-if="vaultStore.isUnlocked" class="q-pa-lg-lg"><account-dropdown /></div>
