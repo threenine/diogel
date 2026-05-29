@@ -4,7 +4,6 @@
       <q-card bordered class="vault-card shadow-2" flat>
         <q-card-section class="flex flex-center q-pt-lg q-pb-none">
           <DiogelLogo size="xl" />
-
         </q-card-section>
 
         <q-card-section>
