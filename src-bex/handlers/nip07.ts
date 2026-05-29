@@ -37,12 +37,12 @@ export const handleGetPublicKey = logWrapper(async (
   void _payload;
   void _origin;
   if (!isVaultUnlocked()) {
-    return { success: false, error: 'Vault is locked', code: ErrorCode.VLT_LOCKED as string };
+    return { success: false, error: 'Vault is locked', code: ErrorCode.VLT_LOCKED };
   }
 
   const account = await getActiveAccount();
   if (!account) {
-    return { success: false, error: 'No active account', code: ErrorCode.SIG_NO_ACTIVE_KEY as string };
+    return { success: false, error: 'No active account', code: ErrorCode.SIG_NO_ACTIVE_KEY };
   }
 
   void resetAutoLockTimer();
@@ -56,19 +56,19 @@ export const handleSignEvent = logWrapper(async (
 ): Promise<HandlerResult<SignedEvent>> => {
   // Check vault
   if (!isVaultUnlocked()) {
-    return { success: false, error: 'Vault is locked', code: ErrorCode.VLT_LOCKED as string };
+    return { success: false, error: 'Vault is locked', code: ErrorCode.VLT_LOCKED };
   }
 
   // Check permission
   const permission = await checkPermission(origin, payload.event.kind);
   if (!permission.granted) {
-    return { success: false, error: 'Permission denied', code: ErrorCode.PER_DENIED as string };
+    return { success: false, error: 'Permission denied', code: ErrorCode.PER_DENIED };
   }
 
   // Get active account (includes privkey)
   const account = await getActiveAccount();
   if (!account) {
-    return { success: false, error: 'No active account', code: ErrorCode.SIG_NO_ACTIVE_KEY as string };
+    return { success: false, error: 'No active account', code: ErrorCode.SIG_NO_ACTIVE_KEY };
   }
 
   try {
@@ -81,9 +81,9 @@ export const handleSignEvent = logWrapper(async (
 
     void resetAutoLockTimer();
 
-    return { success: true, data: signed as SignedEvent };
+    return { success: true, data: signed };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Failed to sign event';
-    return { success: false, error: message, code: ErrorCode.SIG_FAILED as string };
+    return { success: false, error: message, code: ErrorCode.SIG_FAILED };
   }
 }, 'signEvent');

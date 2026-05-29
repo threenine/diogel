@@ -186,7 +186,7 @@ export async function dispatchMessage<K extends BridgeAction>(
       if (result.success) {
         return result.data as BridgeResponsePayload<K>;
       }
-      return null as BridgeResponsePayload<K>;
+      return null;
     }
 
     case 'relay.browser.refresh': {
