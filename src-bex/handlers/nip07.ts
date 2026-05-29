@@ -11,7 +11,7 @@ import { NOSTR_ACTIVE, storageService } from 'src/services/storage-service';
 import { checkPermission } from './permission-handler';
 import { resetAutoLockTimer } from '../services/auto-lock';
 import { logService } from 'src/services/log-service';
-import { ErrorCode } from 'src/types/error-codes';
+import { ErrorCode } from 'src/types/error-codes.d';
 
 const logWrapper = <TArgs extends unknown[], TResult>(
   fn: (...args: TArgs) => Promise<TResult>,

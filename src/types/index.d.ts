@@ -1,5 +1,5 @@
 import type { Event as NostrEvent, UnsignedEvent } from 'nostr-tools';
-import type { ErrorCode } from 'error-codes';
+import type { ErrorCode } from 'src/types/error-codes';
 import type { QuickSignSupportedKind, QuickSignTagType } from 'src/services/quick-sign-service';
 
 export interface DropdownItem<T = string | number> {

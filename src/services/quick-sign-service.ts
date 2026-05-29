@@ -5,7 +5,7 @@ import { LogLevel, logService } from './log-service';
 import { isVaultUnlocked } from './vault-service';
 import { extractWritePreferredRelayUrls } from './relay-discovery';
 import useSettingsStore from 'src/stores/settings-store';
-import { ErrorCode } from 'src/types/error-codes';
+import { ErrorCode } from 'src/types/error-codes.d';
 import type {
   QuickSignAccountOption,
   QuickSignAvailabilityResult,
