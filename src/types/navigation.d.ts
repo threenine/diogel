@@ -1,3 +1,4 @@
+import type { ComputedRef } from 'vue';
 type NavigationRouteName =
   | 'dashboard'
   | 'keys'
@@ -33,4 +34,9 @@ interface UtilityLinkItem {
   label: string;
   caption: string;
   href: string;
+}
+
+interface UseNavigationResult {
+  navigationItems: ComputedRef<NavigationItem[]>;
+  utilityLinks: ComputedRef<UtilityLinkItem[]>;
 }

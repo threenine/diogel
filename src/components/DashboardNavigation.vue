@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useVault } from 'src/composables/useVault';
 import { useNavigation } from 'src/composables/useNavigation';
 import DiogelLogo from 'components/DiogelLogo/Index.vue';
+import type { NavigationItem, UtilityLinkItem } from 'src/types/navigation';
 
 const { handleLock } = useVault();
 const { t } = useI18n();
@@ -18,7 +19,6 @@ function navigateTo(item: NavigationItem) {
   }
 
   void router.push(item.target);
-
 }
 
 /*function openNewSignature() {

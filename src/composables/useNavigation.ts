@@ -1,13 +1,11 @@
 
 import { computed } from 'vue';
-import type { ComputedRef } from 'vue';
+
 import { useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import type { NavigationItem, UseNavigationResult, UtilityLinkItem } from 'src/types/navigation';
 
-interface UseNavigationResult {
-  navigationItems: ComputedRef<NavigationItem[]>;
-  utilityLinks: ComputedRef<UtilityLinkItem[]>;
-}
+
 
 export function useNavigation(): UseNavigationResult {
   const { t } = useI18n();

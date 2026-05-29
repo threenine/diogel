@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n';
 import { useVault } from 'src/composables/useVault';
 import { useNavigation } from 'src/composables/useNavigation';
+import type { NavigationItem, UtilityLinkItem } from 'src/types/navigation';
 
 const { t } = useI18n();
 const { handleLock } = useVault();
