@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import AccountDropdown from 'components/AccountDropdown/Index.vue';
-import DashboardNavigation from 'components/DashboardNavigation.vue';
+import ExtensionNavigation from 'components/ExtensionNavigation.vue';
 import useVaultStore from 'src/stores/vault-store';
 
 const vaultStore = useVaultStore();
@@ -11,7 +11,7 @@ const vaultStore = useVaultStore();
   <q-header>
     <q-toolbar>
       <div class="q-pa-lg-lg">
-        <dashboard-navigation />
+        <extension-navigation />
       </div>
       <q-space />
       <div v-if="vaultStore.isUnlocked" class="q-pa-lg-lg"><account-dropdown /></div>
