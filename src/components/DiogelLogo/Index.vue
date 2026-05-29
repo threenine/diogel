@@ -14,7 +14,7 @@ defineOptions({ name: 'DiogelLogo' });
 
 const props = withDefaults(
   defineProps<{
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'sm' | 'md' | 'lg' | 'xl';
   }>(),
   {
     size: 'md',
@@ -49,7 +49,12 @@ const sizeClass = computed(() => `diogel-logo--${props.size}`);
 }
 
 .diogel-logo--lg {
-  width: 64px;
-  height: 64px;
+  width: 90px;
+  height: 90px;
+}
+
+.diogel-logo--xl {
+  width: 150px;
+  height: 150px;
 }
 </style>

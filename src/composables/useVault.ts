@@ -6,7 +6,7 @@ import type { StoredKey } from 'src/types/bridge';
 import * as nip06 from 'nostr-tools/nip06';
 import { getPublicKey } from 'nostr-tools';
 import { bytesToHex } from '@noble/hashes/utils';
-import { type ErrorCode, formatErrorForUser } from 'src/types/error-codes';
+import { type ErrorCode, formatErrorForUser } from 'src/types/error-codes.d';
 import { LogLevel, logService } from 'src/services/log-service';
 
 type LoginContext = 'dashboard' | 'extension';
