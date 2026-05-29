@@ -5,43 +5,6 @@ import { useI18n } from 'vue-i18n';
 import { useVault } from 'src/composables/useVault';
 import DiogelLogo from 'components/DiogelLogo/Index.vue';
 
-type NavigationRouteName =
-  | 'dashboard'
-  | 'keys'
-  | 'view-key'
-  | 'import-key'
-  | 'add-new-key'
-  | 'profile'
-  | 'relays'
-  | 'settings'
-  | 'event-history'
-  | 'edit-account';
-type ProfileTab = 'profile' | 'images';
-
-interface NavigationTarget {
-  name: NavigationRouteName;
-  query?: {
-    tab?: ProfileTab;
-  };
-}
-
-interface NavigationItem {
-  id: 'dashboard' | 'keys' | 'profile' | 'relays' | 'event-history' | 'settings';
-  icon: string;
-  label: string;
-  caption: string;
-  target: NavigationTarget;
-  isActive: () => boolean;
-}
-
-interface UtilityLinkItem {
-  id: 'support' | 'documentation';
-  icon: string;
-  label: string;
-  caption: string;
-  href: string;
-}
-
 const { handleLock } = useVault();
 const { t } = useI18n();
 const router = useRouter();
@@ -188,6 +151,7 @@ function openUtilityLink(item: UtilityLinkItem) {
     </div>
 
     <div class="main-navigation__footer">
+      <!-- intentionally commented out this functionality will be implemented in the future -->
       <!--      <q-btn
         color="primary"
         class="main-navigation__new-signature"
