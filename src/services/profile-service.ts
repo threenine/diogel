@@ -10,11 +10,7 @@ export const profileService = {
     if (!pubkey) return null;
 
     const settingsStore = useSettingsStore();
-    // Ensure settings are loaded
-    if (settingsStore.fallbackRelays.length === 0) {
-      await settingsStore.getSettings();
-    }
-    const relays = settingsStore.fallbackRelays;
+    const relays = await settingsStore.getFallbackRelays();
 
     try {
       const event = await pool.get(relays, {
@@ -54,11 +50,7 @@ export const profileService = {
     const signedEvent = finalizeEvent(eventTemplate, sk);
 
     const settingsStore = useSettingsStore();
-    // Ensure settings are loaded
-    if (settingsStore.fallbackRelays.length === 0) {
-      await settingsStore.getSettings();
-    }
-    const relays = settingsStore.fallbackRelays;
+    const relays = await settingsStore.getFallbackRelays();
 
     await Promise.any(pool.publish(relays, signedEvent));
   },

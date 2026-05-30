@@ -3,8 +3,7 @@ import { hexToBytes } from '@noble/hashes/utils';
 import { get, getActive } from './dexie-storage';
 import { LogLevel, logService } from './log-service';
 import { isVaultUnlocked } from './vault-service';
-import { extractWritePreferredRelayUrls } from './relay-discovery';
-import useSettingsStore from 'src/stores/settings-store';
+import { extractWritePreferredRelayUrls, fetchAccountRelayListEvent } from './relay-discovery';
 import { ErrorCode } from 'src/types/error-codes.d';
 import type {
   QuickSignAccountOption,
@@ -133,35 +132,12 @@ export async function listQuickSignAccountRelayUrls(accountAlias: string): Promi
     return [];
   }
 
-  const settingsStore = useSettingsStore();
-  if (settingsStore.fallbackRelays.length === 0) {
-    await settingsStore.getSettings();
-  }
-
-  const fallbackRelays = settingsStore.fallbackRelays;
-  if (fallbackRelays.length === 0) {
+  const event = await fetchAccountRelayListEvent(selectedAccount.id);
+  if (!event) {
     return [];
   }
 
-
-  const pool = new SimplePool();
-
-  try {
-    const event = await pool.get(fallbackRelays, {
-      kinds: [10002],
-      authors: [selectedAccount.id],
-    });
-
-    if (!event) {
-      return [];
-    }
-
-    return extractWritePreferredRelayUrls(event);
-  } catch {
-    return [];
-  } finally {
-    pool.close(fallbackRelays);
-  }
+  return extractWritePreferredRelayUrls(event);
 }
 
 function isQuickSignSupportedKind(kind: number): kind is QuickSignSupportedKind {

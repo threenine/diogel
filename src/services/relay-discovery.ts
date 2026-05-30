@@ -1,5 +1,6 @@
 import { SimplePool, type Event } from 'nostr-tools';
 import { normalizeRelayUrl } from './relay-url';
+import useSettingsStore from 'src/stores/settings-store';
 
 export interface RelayListEntry {
   url: string;
@@ -63,6 +64,33 @@ export function extractWritePreferredRelayUrls(event: Event): string[] {
   }
 
   return normalizeAndDeduplicateRelays(entries.map((entry) => entry.url));
+}
+
+/**
+ * Fetches the kind 10002 relay list event for a given pubkey using fallback relays.
+ * @param pubkey The public key to fetch the relay list for
+ * @returns The kind 10002 event or null if not found
+ */
+export async function fetchAccountRelayListEvent(pubkey: string): Promise<Event | null> {
+  const settingsStore = useSettingsStore();
+  const relays = await settingsStore.getFallbackRelays();
+
+  if (relays.length === 0) {
+    return null;
+  }
+
+  const relayMetadataPool = new SimplePool();
+  try {
+    const event = await relayMetadataPool.get(relays, {
+      kinds: [10002],
+      authors: [pubkey],
+    });
+    return event;
+  } catch {
+    return null;
+  } finally {
+    relayMetadataPool.close(relays);
+  }
 }
 
 export interface DiscoveryResult {

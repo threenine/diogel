@@ -1,8 +1,11 @@
 import { get, getActive } from './dexie-storage';
-import { parseRelayListEvent, normalizeAndDeduplicateRelays } from './relay-discovery';
+import {
+  parseRelayListEvent,
+  normalizeAndDeduplicateRelays,
+  fetchAccountRelayListEvent,
+} from './relay-discovery';
 import useSettingsStore from 'src/stores/settings-store';
 import type { Event } from 'nostr-tools';
-import { SimplePool } from 'nostr-tools';
 import { isVaultUnlocked } from './vault-service';
 import { useEventService } from 'src/composables/useEventService';
 
@@ -34,35 +37,15 @@ export interface DashboardSummary {
   recentActivity: DashboardActivityItem[];
 }
 
-const relayMetadataPool = new SimplePool();
-
 async function getKind10002RelayCount(pubkey: string): Promise<number | null> {
-  const settingsStore = useSettingsStore();
-  if (settingsStore.fallbackRelays.length === 0) {
-    await settingsStore.getSettings();
-  }
+  const event = await fetchAccountRelayListEvent(pubkey);
 
-  const relays = settingsStore.fallbackRelays;
-  if (relays.length === 0) {
-    // Without relay endpoints we cannot fetch kind 10002 relay-list metadata for this account.
+  if (!event) {
     return null;
   }
 
-  try {
-    const event = await relayMetadataPool.get(relays, {
-      kinds: [10002],
-      authors: [pubkey],
-    });
-
-    if (!event) {
-      return null;
-    }
-
-    const relayUrls = parseRelayListEvent(event);
-    return normalizeAndDeduplicateRelays(relayUrls).length;
-  } catch {
-    return null;
-  }
+  const relayUrls = parseRelayListEvent(event);
+  return normalizeAndDeduplicateRelays(relayUrls).length;
 }
 
 async function getDashboardDataState(): Promise<DashboardDataState> {
@@ -123,11 +106,8 @@ export async function getSignedEventCountForActiveKey(): Promise<number> {
   }
 
   const settingsStore = useSettingsStore();
-  if (settingsStore.fallbackRelays.length === 0) {
-    await settingsStore.getSettings();
-  }
+  const relays = await settingsStore.getFallbackRelays();
 
-  const relays = settingsStore.fallbackRelays;
   if (relays.length === 0) {
     return 0;
   }
@@ -216,11 +196,8 @@ export async function getRecentEventsFromRelays(limit = 10): Promise<DashboardAc
   }
 
   const settingsStore = useSettingsStore();
-  if (settingsStore.fallbackRelays.length === 0) {
-    await settingsStore.getSettings();
-  }
+  const relays = await settingsStore.getFallbackRelays();
 
-  const relays = settingsStore.fallbackRelays;
   if (relays.length === 0) {
     return [];
   }

@@ -22,6 +22,13 @@ const useSettingsStore = defineStore('settings', {
   }),
 
   actions: {
+    async getFallbackRelays(): Promise<string[]> {
+      if (this.fallbackRelays.length === 0) {
+        await this.getSettings();
+      }
+      return this.fallbackRelays;
+    },
+
     async getSettings(): Promise<void> {
       const result = await storageService.getMultiple([
         BLOSSOM_SERVER,
