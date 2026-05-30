@@ -242,7 +242,7 @@ export async function getRecentEventsFromRelays(limit = 10): Promise<DashboardAc
   }
 }
 
-export async function getDashboardSummary(activityLimit = 5): Promise<DashboardSummary> {
+export async function getDashboardSummary(activityLimit = 50): Promise<DashboardSummary> {
   const state = await getDashboardDataState();
   const activeKeys = await getActiveKeyCount();
 
