@@ -5,6 +5,7 @@ import { parseRelayListEvent, normalizeAndDeduplicateRelays } from './relay-disc
 import useSettingsStore from 'src/stores/settings-store';
 import { SimplePool } from 'nostr-tools';
 import { isVaultUnlocked } from './vault-service';
+import { useEventService } from 'src/composables/useEventService';
 
 export type DashboardActivityType = 'approval' | 'exception';
 
@@ -116,8 +117,32 @@ export async function getSignedEventCountForActiveKey(): Promise<number> {
     return 0;
   }
 
-  const approvals = await db.approvals.where('account').equals(activeAccount).toArray();
-  return approvals.length;
+  const keys = await get();
+  const activeKey = keys[activeAccount];
+  if (!activeKey?.id) {
+    return 0;
+  }
+
+  const settingsStore = useSettingsStore();
+  if (settingsStore.fallbackRelays.length === 0) {
+    await settingsStore.getSettings();
+  }
+
+  const relays = settingsStore.fallbackRelays;
+  if (relays.length === 0) {
+    return 0;
+  }
+
+  const filter = {
+    authors: [activeKey.id],
+  };
+  const { getEvents, close } = useEventService(relays);
+  try {
+    const events = await getEvents(filter);
+    return events.length;
+  } finally {
+    close();
+  }
 }
 
 export async function getConnectedRelayCountForActiveKey(): Promise<number> {

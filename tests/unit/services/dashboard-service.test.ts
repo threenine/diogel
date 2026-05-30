@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as DashboardService from 'src/services/dashboard-service';
 import type * as DexieStorage from 'src/services/dexie-storage';
 import type * as VaultService from 'src/services/vault-service';
+import { useEventService } from 'src/composables/useEventService';
 
 vi.mock('src/services/dexie-storage', () => ({
   get: vi.fn(),
@@ -20,12 +21,14 @@ const { approvalsToArrayMock, exceptionsToArrayMock } = vi.hoisted(() => ({
 
 const {
   relayMetadataGetMock,
+  relayMetadataSubscribeManyMock,
   fallbackRelays,
   getSettingsMock,
   parseRelayListEventMock,
   normalizeAndDeduplicateRelaysMock,
 } = vi.hoisted(() => ({
   relayMetadataGetMock: vi.fn(),
+  relayMetadataSubscribeManyMock: vi.fn(),
   fallbackRelays: [] as string[],
   getSettingsMock: vi.fn(async () => undefined),
   parseRelayListEventMock: vi.fn(),
@@ -61,12 +64,18 @@ vi.mock('src/stores/settings-store', () => ({
 vi.mock('nostr-tools', () => ({
   SimplePool: class {
     get = relayMetadataGetMock;
+    subscribeMany = relayMetadataSubscribeManyMock;
+    close = vi.fn();
   },
 }));
 
 vi.mock('src/services/relay-discovery', () => ({
   parseRelayListEvent: parseRelayListEventMock,
   normalizeAndDeduplicateRelays: normalizeAndDeduplicateRelaysMock,
+}));
+
+vi.mock('src/composables/useEventService', () => ({
+  useEventService: vi.fn(),
 }));
 
 describe('dashboard-service', () => {
@@ -81,6 +90,11 @@ describe('dashboard-service', () => {
     exceptionsToArrayMock.mockResolvedValue([]);
     relayMetadataGetMock.mockReset();
     relayMetadataGetMock.mockResolvedValue(undefined);
+    relayMetadataSubscribeManyMock.mockReset();
+    relayMetadataSubscribeManyMock.mockImplementation((relays, filters, handlers) => {
+      handlers.oneose?.();
+      return { close: vi.fn() };
+    });
     parseRelayListEventMock.mockReset();
     parseRelayListEventMock.mockReturnValue([]);
     normalizeAndDeduplicateRelaysMock.mockReset();
@@ -114,18 +128,25 @@ describe('dashboard-service', () => {
     await expect(dashboardService.getSignedEventCountForActiveKey()).resolves.toBe(0);
   });
 
-  it('counts signed events from approval logs for active account', async () => {
+  it('counts signed events from relays for active account', async () => {
     vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
     vi.mocked(dexieStorage.get).mockResolvedValue({
       alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
     });
-    approvalsToArrayMock.mockResolvedValue([
-      { id: 1, dateTime: '2026-01-01T00:00:00.000Z', eventKind: 1, hostname: 'a.com', account: 'alpha' },
-      { id: 2, dateTime: '2026-01-01T00:01:00.000Z', eventKind: 4, hostname: 'b.com', account: 'alpha' },
-    ]);
 
-    // This intentionally reflects the documented approximation: local approval logs only.
+    const getEventsMock = vi.fn();
+    const closeMock = vi.fn();
+    vi.mocked(useEventService).mockReturnValue({
+      getEvents: getEventsMock,
+      close: closeMock,
+      relayUrls: ['wss://relay.default'],
+    });
+
+    getEventsMock.mockResolvedValue([{ id: 'evt-1' }, { id: 'evt-2' }]);
+
     await expect(dashboardService.getSignedEventCountForActiveKey()).resolves.toBe(2);
+    expect(getEventsMock).toHaveBeenCalledWith({ authors: ['pubkey-alpha'] });
+    expect(closeMock).toHaveBeenCalled();
   });
 
   it('returns 0 connected relays when no active account', async () => {
