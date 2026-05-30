@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
+import { type DashboardSummary } from 'src/services/dashboard-service';
 import RecentActivityCard from 'src/components/dashboard/RecentActivityCard.vue';
 
 const { getDashboardSummaryMock, dateFormatterMock } = vi.hoisted(() => ({
@@ -81,28 +82,32 @@ describe('RecentActivityCard.vue', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     dateFormatterMock.mockImplementation((value: Date) => `formatted:${value.toISOString()}`);
-    getDashboardSummaryMock.mockResolvedValue({
-      state: 'ready',
-      signedEvents: 0,
-      activeKeys: 1,
-      connectedRelays: 0,
-      connectedRelaysState: 'unavailable',
-      recentActivity: [
-        {
-          type: 'approval',
-          status: 'approved',
-          dateTime: '2026-01-01T10:00:00.000Z',
-          title: 'Approval request accepted',
-          eventKind: 1,
-          accountAlias: 'alpha',
-          accountNpub: 'f'.repeat(64),
-        },
-      ],
-    });
   });
+
+  const mockSummary: DashboardSummary = {
+    state: 'ready',
+    signedEvents: 0,
+    activeKeys: 1,
+    connectedRelays: 0,
+    connectedRelaysState: 'unavailable',
+    recentActivity: [
+      {
+        type: 'approval',
+        status: 'approved',
+        dateTime: '2026-01-01T10:00:00.000Z',
+        title: 'Approval request accepted',
+        eventKind: 1,
+        accountAlias: 'alpha',
+        accountNpub: 'f'.repeat(64),
+      },
+    ],
+  };
 
   it('renders table headers and activity row fields when rows exist', async () => {
     const wrapper = mount(RecentActivityCard, {
+      props: {
+        summary: mockSummary,
+      },
       global: {
         stubs: globalStubs,
       },
@@ -125,7 +130,7 @@ describe('RecentActivityCard.vue', () => {
   });
 
   it('shows fallback time and semantic status classes', async () => {
-    getDashboardSummaryMock.mockResolvedValueOnce({
+    const customSummary: DashboardSummary = {
       state: 'ready',
       signedEvents: 0,
       activeKeys: 1,
@@ -158,9 +163,12 @@ describe('RecentActivityCard.vue', () => {
           accountAlias: 'alpha',
         },
       ],
-    });
+    };
 
     const wrapper = mount(RecentActivityCard, {
+      props: {
+        summary: customSummary,
+      },
       global: {
         stubs: globalStubs,
       },
@@ -180,6 +188,9 @@ describe('RecentActivityCard.vue', () => {
     dateFormatterMock.mockImplementation(() => '');
 
     const wrapper = mount(RecentActivityCard, {
+      props: {
+        summary: mockSummary,
+      },
       global: {
         stubs: globalStubs,
       },

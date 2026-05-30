@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import {
-  getDashboardSummary,
-  type ConnectedRelaysDataState,
-  type DashboardDataState,
-} from 'src/services/dashboard-service';
+import { type DashboardSummary } from 'src/services/dashboard-service';
 
 const props = withDefaults(
   defineProps<{
+    summary?: DashboardSummary | null;
+    loading?: boolean;
     clickable?: boolean;
   }>(),
   {
+    summary: null,
+    loading: false,
     clickable: false,
   },
 );
@@ -22,19 +22,12 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const loading = ref(true);
-const error = ref<string | null>(null);
-const state = ref<DashboardDataState>('no-account');
-const connectedRelaysState = ref<ConnectedRelaysDataState>('unavailable');
-const total = ref(0);
-
-
 const metricText = computed(() => {
-  if (connectedRelaysState.value === 'unavailable') {
+  if (!props.summary || props.summary.connectedRelaysState === 'unavailable') {
     return '—';
   }
 
-  return String(total.value);
+  return String(props.summary.connectedRelays);
 });
 
 function onClick() {
@@ -44,26 +37,6 @@ function onClick() {
 
   emit('open');
 }
-
-async function loadSummary() {
-  loading.value = true;
-  error.value = null;
-
-  try {
-    const summary = await getDashboardSummary();
-    state.value = summary.state;
-    total.value = summary.connectedRelays;
-    connectedRelaysState.value = summary.connectedRelaysState;
-  } catch {
-    error.value = t('dashboard.widgets.common.error');
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(() => {
-  void loadSummary();
-});
 </script>
 
 <template>

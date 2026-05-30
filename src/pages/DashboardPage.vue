@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { onMounted, ref } from 'vue';
 import ActiveKeysCard from 'src/components/dashboard/ActiveKeysCard.vue';
 import ConnectedRelaysCard from 'src/components/dashboard/ConnectedRelaysCard.vue';
 import QuickSignCard from 'src/components/dashboard/QuickSignCard.vue';
@@ -6,9 +7,31 @@ import RecentActivityCard from 'src/components/dashboard/RecentActivityCard.vue'
 import TotalSignedEventsCard from 'src/components/dashboard/TotalSignedEventsCard.vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
+import { getDashboardSummary, type DashboardSummary } from 'src/services/dashboard-service';
 
 const { t } = useI18n();
 const router = useRouter();
+
+const summary = ref<DashboardSummary | null>(null);
+const loading = ref(true);
+const error = ref<string | null>(null);
+
+async function loadDashboardSummary() {
+  loading.value = true;
+  error.value = null;
+  try {
+    summary.value = await getDashboardSummary(9);
+  } catch (e) {
+    console.error('Failed to load dashboard summary', e);
+    error.value = t('dashboard.widgets.common.error');
+  } finally {
+    loading.value = false;
+  }
+}
+
+onMounted(() => {
+  void loadDashboardSummary();
+});
 
 function openKeyManagement() {
   void router.push({ name: 'keys' });
@@ -32,16 +55,32 @@ function openEventHistory() {
 
     <section class="dashboard-widget-grid">
       <div class="dashboard-widget-grid__item dashboard-widget-grid__item--total-signed">
-        <TotalSignedEventsCard />
+        <TotalSignedEventsCard :summary="summary" :loading="loading" :error="error" />
       </div>
       <div class="dashboard-widget-grid__item dashboard-widget-grid__item--active-keys">
-        <ActiveKeysCard clickable @open="openKeyManagement" />
+        <ActiveKeysCard
+          clickable
+          :summary="summary"
+          :loading="loading"
+          @open="openKeyManagement"
+        />
       </div>
       <div class="dashboard-widget-grid__item dashboard-widget-grid__item--connected-relays">
-        <ConnectedRelaysCard clickable @open="openRelayManagement" />
+        <ConnectedRelaysCard
+          clickable
+          :summary="summary"
+          :loading="loading"
+          @open="openRelayManagement"
+        />
       </div>
       <div class="dashboard-widget-grid__item dashboard-widget-grid__item--recent-activity">
-        <RecentActivityCard clickable @open="openEventHistory" />
+        <RecentActivityCard
+          clickable
+          :summary="summary"
+          :loading="loading"
+          :error="error"
+          @open="openEventHistory"
+        />
       </div>
       <div class="dashboard-widget-grid__item dashboard-widget-grid__item--quick-sign">
         <QuickSignCard />

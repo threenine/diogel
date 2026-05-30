@@ -1,14 +1,21 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { getDashboardSummary, type DashboardActivityItem, type DashboardDataState } from 'src/services/dashboard-service';
+import { type DashboardSummary, type DashboardActivityItem } from 'src/services/dashboard-service';
 import { nip19 } from 'nostr-tools';
+import type { DataActivityRow } from 'src/types';
 
 const props = withDefaults(
   defineProps<{
+    summary?: DashboardSummary | null;
+    loading?: boolean;
+    error?: string | null;
     clickable?: boolean;
   }>(),
   {
+    summary: null,
+    loading: false,
+    error: null,
     clickable: false,
   },
 );
@@ -19,34 +26,24 @@ const emit = defineEmits<{
 
 const { t, d } = useI18n();
 
-const loading = ref(true);
-const error = ref<string | null>(null);
-const state = ref<DashboardDataState>('no-account');
-const items = ref<DashboardActivityItem[]>([]);
+const items = computed(() => props.summary?.recentActivity ?? []);
 
 type ActivityStatusVariant = 'success' | 'error' | 'rejected';
 
-interface RecentActivityRow {
-  key: string;
-  icon: string;
-  iconColor: string;
-  eventLabel: string;
-  keyChip: string;
-  time: string;
-  statusLabel: string;
-  statusVariant: ActivityStatusVariant;
-}
+
 
 const statusText = computed(() => {
-  if (error.value) {
+  if (props.error) {
     return t('dashboard.widgets.common.error');
   }
 
-  if (state.value === 'locked') {
+  const state = props.summary?.state ?? 'no-account';
+
+  if (state === 'locked') {
     return t('dashboard.widgets.common.locked');
   }
 
-  if (state.value === 'no-account') {
+  if (state === 'no-account') {
     return t('dashboard.widgets.common.noAccount');
   }
 
@@ -187,7 +184,7 @@ function formatActivityStatusVariant(activity: DashboardActivityItem): ActivityS
   return 'error';
 }
 
-const recentActivityRows = computed<RecentActivityRow[]>(() =>
+const recentActivityRows = computed<DataActivityRow[]>(() =>
   items.value.map((activity) => {
     const icon = resolveActivityIcon(activity);
 
@@ -204,24 +201,6 @@ const recentActivityRows = computed<RecentActivityRow[]>(() =>
   }),
 );
 
-async function loadSummary() {
-  loading.value = true;
-  error.value = null;
-
-  try {
-    const summary = await getDashboardSummary(9);
-    state.value = summary.state;
-    items.value = summary.recentActivity;
-  } catch {
-    error.value = t('dashboard.widgets.common.error');
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(() => {
-  void loadSummary();
-});
 </script>
 
 <template>

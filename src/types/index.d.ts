@@ -114,3 +114,14 @@ export interface QuickSignSanitizedInput {
   content: string;
   tags: QuickSignTagInput[];
 }
+
+interface DataActivityRow {
+  key: string;
+  icon: string;
+  iconColor: string;
+  eventLabel: string;
+  keyChip: string;
+  time: string;
+  statusLabel: string;
+  statusVariant: ActivityStatusVariant;
+}

@@ -1,34 +1,22 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { getDashboardSummary, type DashboardDataState } from 'src/services/dashboard-service';
+import { type DashboardSummary } from 'src/services/dashboard-service';
+
+withDefaults(
+  defineProps<{
+    summary?: DashboardSummary | null;
+    loading?: boolean;
+    error?: string | null;
+  }>(),
+  {
+    summary: null,
+    loading: false,
+    error: null,
+  },
+);
+
 
 const { t } = useI18n();
-
-const loading = ref(true);
-const error = ref<string | null>(null);
-const state = ref<DashboardDataState>('no-account');
-const total = ref(0);
-
-
-async function loadSummary() {
-  loading.value = true;
-  error.value = null;
-
-  try {
-    const summary = await getDashboardSummary();
-    state.value = summary.state;
-    total.value = summary.signedEvents;
-  } catch {
-    error.value = t('dashboard.widgets.common.error');
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(() => {
-  void loadSummary();
-});
 </script>
 
 <template>
@@ -41,7 +29,7 @@ onMounted(() => {
 
       <div class="dashboard-widget-card__metric">
         <q-spinner v-if="loading" color="primary" size="24px" />
-        <span v-else>{{ total }}</span>
+        <span v-else>{{ summary?.signedEvents ?? 0 }}</span>
       </div>
 
     </q-card-section>

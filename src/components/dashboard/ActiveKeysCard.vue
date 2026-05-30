@@ -1,13 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { getDashboardSummary, type DashboardDataState } from 'src/services/dashboard-service';
+import { type DashboardSummary } from 'src/services/dashboard-service';
 
 const props = withDefaults(
   defineProps<{
+    summary?: DashboardSummary | null;
+    loading?: boolean;
     clickable?: boolean;
   }>(),
   {
+    summary: null,
+    loading: false,
     clickable: false,
   },
 );
@@ -18,12 +21,6 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const loading = ref(true);
-const error = ref<string | null>(null);
-const state = ref<DashboardDataState>('no-account');
-const total = ref(0);
-
-
 function onClick() {
   if (!props.clickable) {
     return;
@@ -31,25 +28,6 @@ function onClick() {
 
   emit('open');
 }
-
-async function loadSummary() {
-  loading.value = true;
-  error.value = null;
-
-  try {
-    const summary = await getDashboardSummary();
-    state.value = summary.state;
-    total.value = summary.activeKeys;
-  } catch {
-    error.value = t('dashboard.widgets.common.error');
-  } finally {
-    loading.value = false;
-  }
-}
-
-onMounted(() => {
-  void loadSummary();
-});
 </script>
 
 <template>
@@ -63,7 +41,7 @@ onMounted(() => {
 
       <div class="dashboard-widget-card__metric">
         <q-spinner v-if="loading" color="primary" size="24px" />
-        <span v-else>{{ total }}</span>
+        <span v-else>{{ summary?.activeKeys ?? 0 }}</span>
       </div>
 
     </q-card-section>
