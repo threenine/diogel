@@ -83,9 +83,22 @@ describe('dashboard-service', () => {
   let dexieStorage: typeof DexieStorage;
   let vaultService: typeof VaultService;
 
+  const getEventsMock = vi.fn();
+  const closeMock = vi.fn();
+
   beforeEach(() => {
     vi.resetModules();
     vi.clearAllMocks();
+
+    getEventsMock.mockReset();
+    closeMock.mockReset();
+
+    vi.mocked(useEventService).mockReturnValue({
+      getEvents: getEventsMock,
+      close: closeMock,
+      relayUrls: ['wss://relay.default'],
+    });
+
     approvalsToArrayMock.mockResolvedValue([]);
     exceptionsToArrayMock.mockResolvedValue([]);
     relayMetadataGetMock.mockReset();
@@ -132,14 +145,6 @@ describe('dashboard-service', () => {
     vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
     vi.mocked(dexieStorage.get).mockResolvedValue({
       alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
-    });
-
-    const getEventsMock = vi.fn();
-    const closeMock = vi.fn();
-    vi.mocked(useEventService).mockReturnValue({
-      getEvents: getEventsMock,
-      close: closeMock,
-      relayUrls: ['wss://relay.default'],
     });
 
     getEventsMock.mockResolvedValue([{ id: 'evt-1' }, { id: 'evt-2' }]);
@@ -247,58 +252,52 @@ describe('dashboard-service', () => {
   it('returns empty recent activity when no active account', async () => {
     vi.mocked(dexieStorage.getActive).mockResolvedValue(undefined);
 
-    await expect(dashboardService.getRecentActivityForActiveKey(5)).resolves.toEqual([]);
+    await expect(dashboardService.getRecentEventsFromRelays(5)).resolves.toEqual([]);
   });
 
   it('returns empty recent activity when vault is locked', async () => {
     vi.mocked(vaultService.isVaultUnlocked).mockResolvedValue(false);
 
-    await expect(dashboardService.getRecentActivityForActiveKey(5)).resolves.toEqual([]);
+    await expect(dashboardService.getRecentEventsFromRelays(5)).resolves.toEqual([]);
   });
 
-  it('returns merged and sorted recent activity for active account with limit', async () => {
+  it('returns sorted recent events for active account with limit', async () => {
     vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
     vi.mocked(dexieStorage.get).mockResolvedValue({
       alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
     });
-    approvalsToArrayMock.mockResolvedValue([
-      { id: 1, dateTime: '2026-01-01T10:00:00.000Z', eventKind: 1, hostname: 'a.com', account: 'alpha' },
-      { id: 2, dateTime: '2026-01-01T09:00:00.000Z', eventKind: 4, hostname: 'b.com', account: 'alpha' },
-    ]);
-    exceptionsToArrayMock.mockResolvedValue([
-      {
-        id: 3,
-        dateTime: '2026-01-01T11:00:00.000Z',
-        message: 'approval timeout',
-        account: 'alpha',
-        hostname: 'c.com',
-      },
+
+    getEventsMock.mockResolvedValue([
+      { id: '1', kind: 1, created_at: 1735689600, tags: [], content: 'hello', pubkey: 'pubkey-alpha', sig: 'sig' },
+      { id: '2', kind: 0, created_at: 1735693200, tags: [], content: '{}', pubkey: 'pubkey-alpha', sig: 'sig' },
     ]);
 
-    const result = await dashboardService.getRecentActivityForActiveKey(2);
+    const result = await dashboardService.getRecentEventsFromRelays(2);
 
     expect(result).toHaveLength(2);
-    expect(result[0]).toMatchObject({
-      type: 'exception',
-      status: 'exception',
-      title: 'Extension exception',
-      detail: 'approval timeout',
+    const [first, second] = result;
+
+    expect(first).toBeDefined();
+    expect(second).toBeDefined();
+
+    expect(first).toMatchObject({
+      type: 'event',
+      status: 'signed',
+      title: 'Signed event',
+      eventKind: 0,
       accountAlias: 'alpha',
       accountNpub: 'pubkey-alpha',
     });
-    expect(result[0]).not.toHaveProperty('eventKind');
-    expect(result[1]).toMatchObject({
-      type: 'approval',
-      status: 'approved',
-      title: 'Approval request accepted',
+    expect(second).toMatchObject({
+      type: 'event',
+      status: 'signed',
+      title: 'Signed event',
       eventKind: 1,
       accountAlias: 'alpha',
       accountNpub: 'pubkey-alpha',
     });
 
-    expect(result.map((item) => item.dateTime)).toEqual([
-      '2026-01-01T11:00:00.000Z',
-      '2026-01-01T10:00:00.000Z',
-    ]);
+    expect(first?.dateTime).toBe(new Date(1735693200 * 1000).toISOString());
+    expect(second?.dateTime).toBe(new Date(1735689600 * 1000).toISOString());
   });
 });

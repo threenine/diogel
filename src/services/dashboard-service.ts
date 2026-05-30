@@ -1,15 +1,14 @@
-import type { ApprovalLog, ExceptionLog } from './database';
-import { db } from './database';
 import { get, getActive } from './dexie-storage';
 import { parseRelayListEvent, normalizeAndDeduplicateRelays } from './relay-discovery';
 import useSettingsStore from 'src/stores/settings-store';
+import type { Event } from 'nostr-tools';
 import { SimplePool } from 'nostr-tools';
 import { isVaultUnlocked } from './vault-service';
 import { useEventService } from 'src/composables/useEventService';
 
-export type DashboardActivityType = 'approval' | 'exception';
+export type DashboardActivityType = 'approval' | 'exception' | 'event';
 
-export type DashboardActivityStatus = 'approved' | 'exception' | 'rejected';
+export type DashboardActivityStatus = 'approved' | 'exception' | 'rejected' | 'signed';
 
 export interface DashboardActivityItem {
   type: DashboardActivityType;
@@ -178,44 +177,24 @@ export async function getConnectedRelaySummaryForActiveKey(): Promise<{
   return { count, state: 'ready' };
 }
 
-function toRecentApprovalActivity(
-  log: ApprovalLog,
+function fromNostrEventToActivityItem(
+  event: Event,
   accountAlias: string,
   accountNpub?: string,
 ): DashboardActivityItem {
   return {
-    type: 'approval',
-    status: 'approved',
-    dateTime: log.dateTime,
-    title: 'Approval request accepted',
-    detail: `Event kind ${String(log.eventKind)}`,
-    eventKind: log.eventKind,
-    hostname: log.hostname,
+    type: 'event',
+    status: 'signed',
+    dateTime: new Date(event.created_at * 1000).toISOString(),
+    title: 'Signed event',
+    detail: `Event kind ${String(event.kind)}`,
+    eventKind: event.kind,
     accountAlias,
     ...(accountNpub ? { accountNpub } : {}),
   };
 }
 
-function toRecentExceptionActivity(
-  log: ExceptionLog,
-  accountAlias: string,
-  accountNpub?: string,
-): DashboardActivityItem {
-  const hostname = typeof log.hostname === 'undefined' ? null : log.hostname;
-
-  return {
-    type: 'exception',
-    status: 'exception',
-    dateTime: log.dateTime,
-    title: 'Extension exception',
-    detail: log.message,
-    hostname,
-    accountAlias,
-    ...(accountNpub ? { accountNpub } : {}),
-  };
-}
-
-export async function getRecentActivityForActiveKey(limit = 10): Promise<DashboardActivityItem[]> {
+export async function getRecentEventsFromRelays(limit = 10): Promise<DashboardActivityItem[]> {
   if (limit <= 0) {
     return [];
   }
@@ -232,18 +211,35 @@ export async function getRecentActivityForActiveKey(limit = 10): Promise<Dashboa
 
   const keys = await get();
   const activeKey = keys[activeAccount];
+  if (!activeKey?.id) {
+    return [];
+  }
 
-  const [approvals, exceptions] = await Promise.all([
-    db.approvals.where('account').equals(activeAccount).toArray(),
-    db.exceptions.where('account').equals(activeAccount).toArray(),
-  ]);
+  const settingsStore = useSettingsStore();
+  if (settingsStore.fallbackRelays.length === 0) {
+    await settingsStore.getSettings();
+  }
 
-  return [
-    ...approvals.map((log) => toRecentApprovalActivity(log, activeAccount, activeKey?.id)),
-    ...exceptions.map((log) => toRecentExceptionActivity(log, activeAccount, activeKey?.id)),
-  ]
-    .sort((a, b) => new Date(b.dateTime).getTime() - new Date(a.dateTime).getTime())
-    .slice(0, limit);
+  const relays = settingsStore.fallbackRelays;
+  if (relays.length === 0) {
+    return [];
+  }
+
+  const filter = {
+    authors: [activeKey.id],
+    limit,
+  };
+
+  const { getEvents, close } = useEventService(relays);
+  try {
+    const events = await getEvents(filter);
+    return events
+      .sort((a, b) => b.created_at - a.created_at)
+      .slice(0, limit)
+      .map((event) => fromNostrEventToActivityItem(event, activeAccount, activeKey.id));
+  } finally {
+    close();
+  }
 }
 
 export async function getDashboardSummary(activityLimit = 5): Promise<DashboardSummary> {
@@ -264,7 +260,7 @@ export async function getDashboardSummary(activityLimit = 5): Promise<DashboardS
   const [signedEvents, connectedRelaysSummary, recentActivity] = await Promise.all([
     getSignedEventCountForActiveKey(),
     getConnectedRelaySummaryForActiveKey(),
-    getRecentActivityForActiveKey(activityLimit),
+    getRecentEventsFromRelays(activityLimit),
   ]);
 
   return {

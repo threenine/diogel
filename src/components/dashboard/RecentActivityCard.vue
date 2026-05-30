@@ -138,7 +138,7 @@ function formatActivityKeyChip(activity: DashboardActivityItem): string {
 }
 
 function resolveActivityIcon(activity: DashboardActivityItem): { name: string; color: string } {
-  if (activity.status !== 'approved') {
+  if (activity.status === 'exception' || activity.status === 'rejected') {
     return { name: 'error_outline', color: 'negative' };
   }
 
@@ -164,7 +164,7 @@ function resolveActivityIcon(activity: DashboardActivityItem): { name: string; c
 }
 
 function formatActivityStatus(activity: DashboardActivityItem): string {
-  if (activity.status === 'approved') {
+  if (activity.status === 'approved' || activity.status === 'signed') {
     return t('dashboard.widgets.recentActivity.status.success');
   }
 
@@ -176,7 +176,7 @@ function formatActivityStatus(activity: DashboardActivityItem): string {
 }
 
 function formatActivityStatusVariant(activity: DashboardActivityItem): ActivityStatusVariant {
-  if (activity.status === 'approved') {
+  if (activity.status === 'approved' || activity.status === 'signed') {
     return 'success';
   }
 
