@@ -7,7 +7,8 @@ import RecentActivityCard from 'src/components/dashboard/RecentActivityCard.vue'
 import TotalSignedEventsCard from 'src/components/dashboard/TotalSignedEventsCard.vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
-import { getDashboardSummary, type DashboardSummary } from 'src/services/dashboard-service';
+import { getDashboardSummary } from 'src/services/dashboard-service';
+import { type DashboardSummary } from 'src/types';
 
 const { t } = useI18n();
 const router = useRouter();

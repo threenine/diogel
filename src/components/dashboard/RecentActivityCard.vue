@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { type DashboardSummary, type DashboardActivityItem } from 'src/services/dashboard-service';
+import type { DashboardActivityItem } from 'src/services/dashboard-service';
 import { nip19 } from 'nostr-tools';
-import type { DataActivityRow } from 'src/types';
+import type { DashboardSummary, DataActivityRow } from 'src/types';
 
 const props = withDefaults(
   defineProps<{
@@ -29,8 +29,6 @@ const { t, d } = useI18n();
 const items = computed(() => props.summary?.recentActivity ?? []);
 
 type ActivityStatusVariant = 'success' | 'error' | 'rejected';
-
-
 
 const statusText = computed(() => {
   if (props.error) {
@@ -200,7 +198,6 @@ const recentActivityRows = computed<DataActivityRow[]>(() =>
     };
   }),
 );
-
 </script>
 
 <template>
@@ -208,18 +205,32 @@ const recentActivityRows = computed<DataActivityRow[]>(() =>
     <q-card-section class="dashboard-card-section dashboard-widget-card__section">
       <div class="dashboard-widget-card__header">
         <q-icon name="flaky" size="sm" color="primary" />
-        <h2 class="dashboard-widget-card__title">{{ t('dashboard.widgets.recentActivity.title') }}</h2>
+        <h2 class="dashboard-widget-card__title">
+          {{ t('dashboard.widgets.recentActivity.title') }}
+        </h2>
       </div>
 
       <div v-if="!loading && recentActivityRows.length > 0" class="dashboard-widget-card__table">
         <div class="dashboard-widget-card__table-head">
-          <span class="dashboard-widget-card__head-event">{{ t('dashboard.widgets.recentActivity.columns.eventType') }}</span>
-          <span class="dashboard-widget-card__head-key">{{ t('dashboard.widgets.recentActivity.columns.keyPubkey') }}</span>
-          <span class="dashboard-widget-card__head-time">{{ t('dashboard.widgets.recentActivity.columns.time') }}</span>
-          <span class="dashboard-widget-card__head-status">{{ t('dashboard.widgets.recentActivity.columns.status') }}</span>
+          <span class="dashboard-widget-card__head-event">{{
+            t('dashboard.widgets.recentActivity.columns.eventType')
+          }}</span>
+          <span class="dashboard-widget-card__head-key">{{
+            t('dashboard.widgets.recentActivity.columns.keyPubkey')
+          }}</span>
+          <span class="dashboard-widget-card__head-time">{{
+            t('dashboard.widgets.recentActivity.columns.time')
+          }}</span>
+          <span class="dashboard-widget-card__head-status">{{
+            t('dashboard.widgets.recentActivity.columns.status')
+          }}</span>
         </div>
 
-        <div v-for="row in recentActivityRows" :key="row.key" class="dashboard-widget-card__table-row">
+        <div
+          v-for="row in recentActivityRows"
+          :key="row.key"
+          class="dashboard-widget-card__table-row"
+        >
           <div class="dashboard-widget-card__event">
             <q-icon :name="row.icon" :color="row.iconColor" size="16px" />
             <span class="dashboard-widget-card__event-label">{{ row.eventLabel }}</span>
@@ -340,7 +351,6 @@ const recentActivityRows = computed<DataActivityRow[]>(() =>
   background: rgba(245, 124, 0, 0.16);
   color: #f57c00;
 }
-
 
 .dashboard-widget-card__state {
   min-height: 78px;

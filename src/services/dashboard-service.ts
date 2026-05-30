@@ -8,6 +8,7 @@ import useSettingsStore from 'src/stores/settings-store';
 import type { Event } from 'nostr-tools';
 import { isVaultUnlocked } from './vault-service';
 import { useEventService } from 'src/composables/useEventService';
+import type { DashboardSummary } from 'src/types';
 
 export type DashboardActivityType = 'approval' | 'exception' | 'event';
 
@@ -28,14 +29,6 @@ export interface DashboardActivityItem {
 export type DashboardDataState = 'ready' | 'locked' | 'no-account';
 export type ConnectedRelaysDataState = 'ready' | 'unavailable';
 
-export interface DashboardSummary {
-  state: DashboardDataState;
-  signedEvents: number;
-  activeKeys: number;
-  connectedRelays: number;
-  connectedRelaysState: ConnectedRelaysDataState;
-  recentActivity: DashboardActivityItem[];
-}
 
 async function getKind10002RelayCount(pubkey: string): Promise<number | null> {
   const event = await fetchAccountRelayListEvent(pubkey);

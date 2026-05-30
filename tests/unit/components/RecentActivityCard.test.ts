@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
-import { type DashboardSummary } from 'src/services/dashboard-service';
+import type { DashboardSummary } from 'src/types';
 import RecentActivityCard from 'src/components/dashboard/RecentActivityCard.vue';
 
 const { getDashboardSummaryMock, dateFormatterMock } = vi.hoisted(() => ({
@@ -41,7 +41,7 @@ vi.mock('vue-i18n', () => ({
         return template;
       }
 
-      return template.replace(/\{(\w+)\}/g, (_, token: string) => params[token] ?? `{${token}}`);
+      return template.replace(/{(\w+)}/g, (_, token: string) => params[token] ?? `{${token}}`);
     },
     d: dateFormatterMock,
   }),
