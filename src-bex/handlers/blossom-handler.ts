@@ -71,10 +71,6 @@ export async function handleBlossomUpload(
 
     for (const option of uploadOptions) {
       try {
-        if (option !== uploadOptions[0]) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
-        }
-
         logService.log(LogLevel.DEBUG, `[BEX] Attempting ${option.method} upload`, {
           url: option.url,
         });
