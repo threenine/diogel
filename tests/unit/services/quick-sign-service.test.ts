@@ -30,12 +30,14 @@ const { poolGetMock, poolCloseMock, poolPublishMock, verifyEventMock } = vi.hois
   verifyEventMock: vi.fn(),
 }));
 
-const { settingsStoreMock } = vi.hoisted(() => ({
-  settingsStoreMock: {
+const { settingsStoreMock } = vi.hoisted(() => {
+  const mock = {
     fallbackRelays: ['wss://seed-relay.example'],
     getSettings: vi.fn(async () => undefined),
-  },
-}));
+    getFallbackRelays: vi.fn(async () => mock.fallbackRelays),
+  };
+  return { settingsStoreMock: mock };
+});
 
 vi.mock('src/stores/settings-store', () => ({
   default: () => settingsStoreMock,

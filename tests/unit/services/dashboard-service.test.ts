@@ -26,6 +26,7 @@ const {
   getSettingsMock,
   parseRelayListEventMock,
   normalizeAndDeduplicateRelaysMock,
+  fetchAccountRelayListEventMock,
 } = vi.hoisted(() => ({
   relayMetadataGetMock: vi.fn(),
   relayMetadataSubscribeManyMock: vi.fn(),
@@ -33,6 +34,7 @@ const {
   getSettingsMock: vi.fn(async () => undefined),
   parseRelayListEventMock: vi.fn(),
   normalizeAndDeduplicateRelaysMock: vi.fn(),
+  fetchAccountRelayListEventMock: vi.fn(),
 }));
 
 vi.mock('src/services/database', () => ({
@@ -58,6 +60,7 @@ vi.mock('src/stores/settings-store', () => ({
   default: () => ({
     fallbackRelays,
     getSettings: getSettingsMock,
+    getFallbackRelays: vi.fn(async () => fallbackRelays),
   }),
 }));
 
@@ -72,6 +75,7 @@ vi.mock('nostr-tools', () => ({
 vi.mock('src/services/relay-discovery', () => ({
   parseRelayListEvent: parseRelayListEventMock,
   normalizeAndDeduplicateRelays: normalizeAndDeduplicateRelaysMock,
+  fetchAccountRelayListEvent: fetchAccountRelayListEventMock,
 }));
 
 vi.mock('src/composables/useEventService', () => ({
@@ -165,8 +169,8 @@ describe('dashboard-service', () => {
     vi.mocked(dexieStorage.get).mockResolvedValue({
       alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
     });
-    const event = { id: 'evt-1', tags: [] };
-    relayMetadataGetMock.mockResolvedValue(event);
+    const event = { id: 'evt-1', kind: 10002, tags: [['r', 'wss://relay.one'], ['r', 'wss://relay.two']] };
+    fetchAccountRelayListEventMock.mockResolvedValue(event);
     parseRelayListEventMock.mockReturnValue(['wss://relay.one', 'wss://relay.two']);
     normalizeAndDeduplicateRelaysMock.mockReturnValue(['wss://relay.one', 'wss://relay.two']);
 
@@ -178,8 +182,8 @@ describe('dashboard-service', () => {
     vi.mocked(dexieStorage.get).mockResolvedValue({
       alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
     });
-    const event = { id: 'evt-2', tags: [] };
-    relayMetadataGetMock.mockResolvedValue(event);
+    const event = { id: 'evt-2', kind: 10002, tags: [] };
+    fetchAccountRelayListEventMock.mockResolvedValue(event);
     parseRelayListEventMock.mockReturnValue([
       'wss://relay.one',
       'wss://relay.one',
@@ -196,8 +200,8 @@ describe('dashboard-service', () => {
     vi.mocked(dexieStorage.get).mockResolvedValue({
       alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
     });
-    const event = { id: 'evt-3', tags: [] };
-    relayMetadataGetMock.mockResolvedValue(event);
+    const event = { id: 'evt-3', kind: 10002, tags: [] };
+    fetchAccountRelayListEventMock.mockResolvedValue(event);
     parseRelayListEventMock.mockReturnValue(['wss://relay.good', 'bad-url']);
     normalizeAndDeduplicateRelaysMock.mockReturnValue(['wss://relay.good']);
 
@@ -209,7 +213,7 @@ describe('dashboard-service', () => {
     vi.mocked(dexieStorage.get).mockResolvedValue({
       alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
     });
-    relayMetadataGetMock.mockResolvedValue(undefined);
+    fetchAccountRelayListEventMock.mockResolvedValue(null);
 
     await expect(dashboardService.getConnectedRelaySummaryForActiveKey()).resolves.toEqual({
       count: 0,
@@ -240,13 +244,13 @@ describe('dashboard-service', () => {
     vi.mocked(dexieStorage.get).mockResolvedValue({
       alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
     });
+    fetchAccountRelayListEventMock.mockResolvedValue(null);
     fallbackRelays.splice(0, fallbackRelays.length);
 
     await expect(dashboardService.getConnectedRelaySummaryForActiveKey()).resolves.toEqual({
       count: 0,
       state: 'unavailable',
     });
-    expect(getSettingsMock).toHaveBeenCalledTimes(1);
   });
 
   it('returns empty recent activity when no active account', async () => {

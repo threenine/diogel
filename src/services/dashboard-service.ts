@@ -82,10 +82,6 @@ export async function getActiveKeyCount(): Promise<number> {
  * logging was enabled.
  */
 export async function getSignedEventCountForActiveKey(): Promise<number> {
-  const state = await getDashboardDataState();
-  if (state !== 'ready') {
-    return 0;
-  }
 
   const activeAccount = await getActiveAccountAlias();
   if (!activeAccount) {

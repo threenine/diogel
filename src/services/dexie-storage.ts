@@ -2,6 +2,8 @@ import type { StoredKey } from 'src/types/bridge';
 import { getVaultData, isVaultUnlocked, updateVaultData } from './vault-service';
 import { NOSTR_ACTIVE, storageService } from './storage-service';
 
+import { db } from './database';
+
 const RESERVED_MAIN_ACCOUNT_ALIAS = 'Main Account';
 
 export async function get(): Promise<Record<string, StoredKey>> {
@@ -98,7 +100,12 @@ export async function renameAlias(currentAlias: string, newAlias: string): Promi
     return;
   }
 
+  targetAccount.alias = normalizedNextAlias;
   await updateVaultData(vaultData);
+
+  // Migrate logs
+  await db.approvals.where('account').equals(currentAlias).modify({ account: normalizedNextAlias });
+  await db.exceptions.where('account').equals(currentAlias).modify({ account: normalizedNextAlias });
 
   const activeAlias = await getActive();
   if (activeAlias === currentAlias) {
