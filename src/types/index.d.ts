@@ -139,3 +139,4 @@ export interface DashboardSummary {
   connectedRelaysState: ConnectedRelaysDataState;
   recentActivity: DashboardActivityItem[];
 }
+export type DashboardActivityType = 'approval' | 'exception' | 'event';

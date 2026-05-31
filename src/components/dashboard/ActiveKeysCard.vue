@@ -35,7 +35,7 @@ function onClick() {
     <q-card-section class="dashboard-card-section dashboard-widget-card__section">
 
       <div class="dashboard-widget-card__header">
-        <q-icon name="key" size="lg" color="primary" />
+        <q-icon name="key" size="xl" color="primary" />
         <span class="dashboard-widget-card__title">{{ t('dashboard.widgets.activeKeys.title') }}</span>
       </div>
 
@@ -78,6 +78,5 @@ function onClick() {
   font-size: 1.9rem;
   font-weight: 700;
 }
-
 
 </style>

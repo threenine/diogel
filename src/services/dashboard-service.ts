@@ -1,17 +1,15 @@
 import { get, getActive } from './dexie-storage';
 import {
-  parseRelayListEvent,
-  normalizeAndDeduplicateRelays,
   fetchAccountRelayListEvent,
+  normalizeAndDeduplicateRelays,
+  parseRelayListEvent,
 } from './relay-discovery';
 import useSettingsStore from 'src/stores/settings-store';
 import type { Event } from 'nostr-tools';
 import { isVaultUnlocked } from './vault-service';
 import { useEventService } from 'src/composables/useEventService';
 import { db } from './database';
-import type { DashboardSummary } from 'src/types';
-
-export type DashboardActivityType = 'approval' | 'exception' | 'event';
+import type { DashboardActivityType, DashboardSummary } from 'src/types';
 
 export type DashboardActivityStatus = 'approved' | 'exception' | 'rejected' | 'signed';
 
@@ -29,7 +27,6 @@ export interface DashboardActivityItem {
 
 export type DashboardDataState = 'ready' | 'locked' | 'no-account';
 export type ConnectedRelaysDataState = 'ready' | 'unavailable';
-
 
 async function getKind10002RelayCount(pubkey: string): Promise<number | null> {
   const event = await fetchAccountRelayListEvent(pubkey);
