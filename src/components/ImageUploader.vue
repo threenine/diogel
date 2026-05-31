@@ -2,6 +2,7 @@
 import { onMounted, onUnmounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
+import { uploadImageToBlossom } from 'src/services/blossom-upload-service';
 import { storageService } from 'src/services/storage-service';
 import type { StoredKey } from '../types';
 
@@ -27,14 +28,15 @@ const { t } = useI18n();
 
 const uploading = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
+const lastUploadedUrl = ref<string | null>(null);
 
-interface UploadStatus {
+interface StorageUploadStatus {
   uploading?: boolean;
   url?: string;
   error?: string;
 }
 
-function isUploadStatus(value: unknown): value is UploadStatus {
+function isUploadStatus(value: unknown): value is StorageUploadStatus {
   if (typeof value !== 'object' || value === null) {
     return false;
   }
@@ -52,14 +54,12 @@ const BLOSSOM_UPLOAD_STATUS = props.uploadId
   : 'blossom:upload_status';
 
 function emitStatus(type: 'uploading' | 'uploaded', value: boolean | string) {
-  // Always emit the generic one
   if (type === 'uploading') {
     emit('uploading', value as boolean);
   } else {
     emit('uploaded', value as string);
   }
 
-  // Also emit the specific one if uploadId is set
   if (props.uploadId) {
     if (props.uploadId === 'avatar') {
       if (type === 'uploading') {
@@ -77,6 +77,12 @@ function emitStatus(type: 'uploading' | 'uploaded', value: boolean | string) {
   }
 }
 
+function emitUploadedOnce(url: string) {
+  if (lastUploadedUrl.value === url) return;
+  lastUploadedUrl.value = url;
+  emitStatus('uploaded', url);
+}
+
 async function handleFileChange(e: Event) {
   const target = e.target as HTMLInputElement;
   if (target.files && target.files.length > 0 && target.files[0]) {
@@ -84,95 +90,77 @@ async function handleFileChange(e: Event) {
   }
 }
 
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') {
+        reject(new Error('Failed to read image file'));
+        return;
+      }
+
+      const [, base64] = reader.result.split(',');
+      if (!base64) {
+        reject(new Error('Failed to extract base64 data'));
+        return;
+      }
+
+      resolve(base64);
+    };
+    reader.onerror = () => reject(reader.error || new Error('Failed to read image file'));
+    reader.readAsDataURL(file);
+  });
+}
+
 async function uploadImage(file: File) {
   uploading.value = true;
   emitStatus('uploading', true);
 
   try {
-    const reader = new FileReader();
-    const base64Promise = new Promise<string>((resolve, reject) => {
-      reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(',')[1];
-        if (base64) {
-          resolve(base64);
-        } else {
-          reject(new Error('Failed to extract base64 data'));
-        }
-      };
-      reader.onerror = reject;
+    const base64Data = await readFileAsBase64(file);
+
+    const result = await uploadImageToBlossom({
+      base64Data,
+      fileType: file.type,
+      ...(props.uploadId ? { uploadId: props.uploadId } : {}),
     });
 
-    reader.readAsDataURL(file);
-    const base64Data = await base64Promise;
-
-    const bex = $q.bex;
-    if (!bex) {
-      const errorMessage = 'BEX bridge not available';
-      console.error('Error uploading image:', errorMessage);
-      $q.notify({
-        type: 'negative',
-        message: errorMessage,
-      });
-      uploading.value = false;
-      emitStatus('uploading', false);
-      return;
-    }
-
-    const useSettingsStore = (await import('../stores/settings-store')).default;
-    const settingsStore = useSettingsStore();
-    await settingsStore.getSettings();
-
-    await bex.send({
-      event: 'blossom.upload',
-      to: 'background',
-      payload: {
-        base64Data,
-        fileType: file.type,
-        blossomServer: settingsStore.blossomServer,
-        uploadId: props.uploadId,
-      },
+    emitUploadedOnce(result.url);
+    $q.notify({
+      type: 'positive',
+      message: t('profile.uploadSuccess'),
     });
-
-    // The BEX send resolves once the background handler completes.
-    // The storage listener handles success/error notifications,
-    // but we must always clear the uploading state here to avoid
-    // a stuck spinner if the storage change event is missed.
-    uploading.value = false;
-    emitStatus('uploading', false);
   } catch (error: unknown) {
     console.error('Error uploading image:', error);
     let errorMessage = t('profile.uploadError');
     if (error instanceof Error) {
       errorMessage = error.message;
     } else if (typeof error === 'object' && error !== null) {
-      // BEX errors often come back as objects with a message property
-      errorMessage =
-        ((error as Record<string, unknown>).message as string) || JSON.stringify(error);
-    } else if (typeof error === 'string') {
-      errorMessage = error;
+      const message = (error as Record<string, unknown>).message;
+      if (typeof message === 'string') {
+        errorMessage = message;
+      }
     }
 
     $q.notify({
       type: 'negative',
       message: errorMessage,
     });
+  } finally {
     uploading.value = false;
     emitStatus('uploading', false);
+    if (fileInput.value) {
+      fileInput.value.value = '';
+    }
   }
 }
 
 onMounted(async () => {
-  // Check for ongoing or recently completed uploads
-  const status = await storageService.get<UploadStatus>(BLOSSOM_UPLOAD_STATUS);
+  // Check for completed uploads from a previous session
+  const status = await storageService.get<StorageUploadStatus>(BLOSSOM_UPLOAD_STATUS);
   if (status) {
-    if (status.uploading) {
-      uploading.value = true;
-      emitStatus('uploading', true);
-    } else if (status.url) {
-      // If we found a URL, it might be from a completed upload while popup was closed
-      emitStatus('uploaded', status.url);
-      // Clear the status after processing
+    if (status.url) {
+      emitUploadedOnce(status.url);
       void storageService.remove(BLOSSOM_UPLOAD_STATUS);
     } else if (status.error) {
       $q.notify({
@@ -183,6 +171,9 @@ onMounted(async () => {
     }
   }
 
+  // Storage listener kept as optional recovery for edge cases
+  // (e.g. upload completed while popup was closed).
+  // The direct response from uploadImageToBlossom is the authoritative success path.
   const storageListener = (
     changes: { [key: string]: chrome.storage.StorageChange },
     areaName: string,
@@ -192,27 +183,18 @@ onMounted(async () => {
       if (statusChange) {
         const status = statusChange.newValue;
         if (isUploadStatus(status)) {
-          if (status.uploading) {
-            uploading.value = true;
-            emitStatus('uploading', true);
-          } else {
-            uploading.value = false;
-            emitStatus('uploading', false);
-            if (status.url) {
-              emitStatus('uploaded', status.url);
-              $q.notify({
-                type: 'positive',
-                message: t('profile.uploadSuccess'),
-              });
-            } else if (status.error) {
-              $q.notify({
-                type: 'negative',
-                message: status.error,
-              });
-            }
-            // Clear status after completion
-            void storageService.remove(BLOSSOM_UPLOAD_STATUS);
+          if (status.url) {
+            emitUploadedOnce(status.url);
+          } else if (status.error && !uploading.value) {
+            // Only show storage-sourced errors when we're not actively uploading
+            // (the direct call handles error notification for active uploads)
+            $q.notify({
+              type: 'negative',
+              message: status.error,
+            });
           }
+          // Clear status after processing
+          void storageService.remove(BLOSSOM_UPLOAD_STATUS);
         }
       }
     }

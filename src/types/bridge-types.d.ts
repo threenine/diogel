@@ -239,7 +239,7 @@ export interface BridgeResponseMap {
   'vault.isUnlocked': boolean;
   'permission.check': boolean;
   'permission.grant': boolean;
-  'blossom.upload': { uploading?: boolean; url?: string | null; sha256?: string; error?: string | null };
+  'blossom.upload': { success: true; url: string; sha256?: string } | { success: false; error: string };
   'ping': string;
   'vault.getData': { success: boolean; vaultData?: VaultData | null; error?: string };
   'vault.setData': { success: boolean; error?: string };
