@@ -2,7 +2,7 @@
  * Type-safe bridge communication between content script and background
  */
 
-export * from './bridge-types';
+export * from './bridge-types.d';
 export * from './index.d';
 
 // Union of all requests

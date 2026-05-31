@@ -27,6 +27,7 @@ export default {
     noActiveAccountDesc: 'Please select or create an account in the Accounts tab.',
     profileName: 'Profile Name',
     editAccount: 'Edit Account',
+    editDashboardCaption: 'Review account details and export a secure backup when needed.',
     exportAccount: 'Export Account',
     exportChoosePassword: 'Choose a password and file name',
     exportStarted: 'Export started. You will be prompted to save the file.',
@@ -45,9 +46,46 @@ export default {
     mainAccountReservedError: 'Alias "{name}" is reserved.',
     anonymous: 'Anonymous',
   },
+  keyManagement: {
+    title: 'Key Management',
+    importKey: 'Import Key',
+    addNewKey: 'Add New Key',
+    saveAlias: 'Update',
+    aliasSaved: 'Alias updated successfully.',
+    aliasSaveFailed: 'Failed to update alias.',
+    viewAction: 'View',
+    viewTitle: 'View Key',
+    viewCaption: 'Review and export this key. Only alias naming can be edited.',
+    importTitle: 'Import Key',
+    importCaption: 'Import an existing key from an nsec private key.',
+    addNewTitle: 'Add New Key',
+    addNewCaption: 'Generate and register a new key in your vault.',
+    keyNotFound: 'The selected key could not be found.',
+    securityWarning: {
+      title: 'Security Warning',
+      message: ` * Nostr keys control your identity.
+* Never share private keys or nsec values.
+* Only copy and share public npub values when needed.`,
+    },
+    table: {
+      name: 'Name',
+      publicKey: 'Public Key',
+      createdDate: 'Created Date',
+      unknownDate: 'Unknown',
+      action: 'Action',
+      copyPublicKeyAriaLabel: 'Copy public key for {alias}',
+      copyPublicKeyFailed: 'Failed to copy public key.',
+      noKeys: 'No keys are registered yet.',
+    },
+  },
   profile: {
     title: 'Profile',
+    dashboardCaption:
+      'Manage your active Nostr identity, profile metadata, relays, and key backups.',
+    editorTitle: 'Profile Details',
+    previewTitle: 'Profile Preview',
     imagesTitle: 'Images',
+    imagesSectionTitle: 'Profile Images',
     avatarTitle: 'Avatar',
     bannerTitle: 'Banner',
     keysTitle: 'Keys',
@@ -55,12 +93,35 @@ export default {
     name: 'Name',
     displayName: 'Display Name',
     about: 'About',
+    bio: 'Bio',
     picture: 'Picture URL',
     banner: 'Banner URL',
     website: 'Website',
     nip05: 'NIP-05 Identifier',
+    nip05Verify: 'Verify NIP-05',
+    nip05Verified: 'NIP-05 verified for this profile.',
+    nip05Malformed: 'Enter a valid NIP-05 identifier.',
+    nip05NetworkError: 'NIP-05 verification failed due to a network or response error.',
+    nip05InvalidResponse: 'NIP-05 endpoint returned an invalid response.',
+    nip05NotFound: 'NIP-05 identifier was not found on the domain.',
+    nip05PubkeyMismatch: 'NIP-05 identifier resolves to a different public key.',
+    nip05Mismatch: 'NIP-05 resolves to a different public key.',
+    nip05VerificationFailed: 'Unable to verify NIP-05 right now.',
     lud16: 'Lightning Address (LUD-16)',
-    save: 'Update Profile',
+    previewNoAbout: 'No bio has been added yet.',
+    previewNoDetails: 'No additional profile details are available yet.',
+    previewBot: 'Automated / bot account',
+    bot: 'Automated / bot account',
+    botCaption:
+      'Enable this if the profile is entirely or partly automated, such as a chatbot or newsfeed.',
+    birthday: 'Birthday',
+    birthdayYear: 'Year',
+    birthdayMonth: 'Month',
+    birthdayDay: 'Day',
+    birthdayYearInvalid: 'Enter a valid 4-digit year',
+    birthdayMonthInvalid: 'Month must be between 1 and 12',
+    birthdayDayInvalid: 'Day must be between 1 and 31',
+    save: 'Save',
     fetchError: 'Failed to fetch profile from relays',
     saveSuccess: 'Profile updated successfully',
     saveError: 'Failed to update profile',
@@ -74,6 +135,150 @@ export default {
     theme: 'Theme',
     themeCaption: 'Use light or dark mode',
     edit: 'edit',
+  },
+  dashboard: {
+    title: 'Dashboard',
+    caption: 'Monitor signing activity, keys, and relay status.',
+    widgets: {
+      common: {
+        locked: 'Vault is locked. Unlock to load dashboard data.',
+        noAccount: 'No active account selected yet.',
+        error: 'Unable to load widget data right now.',
+      },
+      approvedClients: {
+        title: 'Approved Clients',
+        caption: 'Unique websites approved for this account on this device.',
+      },
+      activeKeys: {
+        title: 'Active Keys',
+        ready: 'Number of keys currently available in your vault.',
+        action: 'Open Key Management',
+      },
+      connectedRelays: {
+        title: 'Connected Relays',
+        ready: 'Relays listed in your active account.',
+        unavailable:
+          'Relay list metadata (kind 10002) is unavailable for the active account. Open Relay Management to fetch or publish it.',
+        action: 'Open Relay Management',
+      },
+      recentActivity: {
+        title: 'Recent Activity',
+        ready: 'Latest approval and exception events recorded for your active account.',
+        empty:
+          'No approvals or exceptions yet. Open Event History to review activity as it appears.',
+        unknownKey: 'Unknown key',
+        columns: {
+          eventType: 'Event Type',
+          keyPubkey: 'Key/Pubkey',
+          time: 'Time',
+          status: 'Status',
+        },
+        eventType: {
+          extensionException: 'Extension exception',
+          kind: 'Kind {kind}',
+          kindWithName: 'Kind {kind}: {name}',
+          named: {
+            profile: 'Profile',
+            note: 'Note',
+            directMessage: 'Direct Msg',
+            longForm: 'Long Form',
+          },
+        },
+        status: {
+          success: 'SUCCESS',
+          error: 'ERROR',
+          rejected: 'REJECTED',
+        },
+      },
+      quickSign: {
+        title: 'Quick Publish',
+        caption:
+          'Choose a signing account, select a note type, add content and tags, then preview before signing and publishing.',
+        ready: 'Complete the form, review the preview, then sign and publish.',
+        account: 'Signing Account',
+        kind: 'Note Type',
+        textNoteKind: 'Text Note (Kind 1)',
+        longFormKind: 'Long Form (Kind 30023)',
+        content: 'Content',
+        contentHelpTextNote: 'Markdown content is allowed. Raw HTML is not acceptable.',
+        contentHelpLongForm: 'Markdown content is allowed. Raw HTML is not acceptable.',
+        tags: 'Tags',
+        addTag: 'Add tag',
+        tagType: 'Tag type',
+        tagValue: 'Tag value',
+        removeTag: 'Remove tag',
+        publishDestinationSummary:
+          'Relay Meta List destinations: {count} relay | Relay Meta List destinations: {count} relays',
+        noRelayMeta:
+          'No eligible relays found in this account’s kind 10002 Relay Meta List. Publish relay metadata first in Relay Management.',
+        preview: 'Preview',
+        previewTitle: 'Review before signing and publishing',
+        previewAccountAlias: 'Account alias:',
+        previewAccountNpub: 'Account npub:',
+        previewKind: 'Event kind:',
+        previewContent: 'Content preview:',
+        previewTagCount: 'Tag count: {count}',
+        previewRelays: 'Publish destinations:',
+        previewRelayCount: 'Relay count: {count}',
+        previewWarning:
+          'Approving this action will sign and publish this event to the relays listed above.',
+        previewTechnicalDetails: 'Technical details (JSON)',
+        backToEdit: 'Back to edit',
+        cancel: 'Cancel',
+        confirm: 'Sign and publish',
+        signPublishSuccess: 'Event signed and published successfully.',
+        signPublishPartialFailure:
+          'Event signed and published to some relays, but failed on others.',
+        signFailure: 'Failed to sign event.',
+        states: {
+          locked: 'Vault is locked. Unlock your vault before quick signing.',
+          noAccount: 'No active account is selected. Choose an account first.',
+          invalidAccount: 'Selected account is unavailable. Choose a valid account.',
+          noRelay:
+            'No eligible account relays are selected. Choose at least one relay from account kind 10002 metadata.',
+          error: 'Unable to prepare quick sign right now.',
+        },
+      },
+    },
+  },
+  navigation: {
+    dashboard: {
+      label: 'Dashboard',
+      caption: 'Overview and quick shortcuts',
+    },
+    keys: {
+      label: 'Key Management',
+      caption: 'Securely manage your Nostr Identity keys and backups',
+    },
+    profile: {
+      label: 'Profile Management',
+      caption: 'Manage your profile details and media',
+    },
+    relays: {
+      label: 'Relay Management',
+      caption: 'Configure relay connections',
+    },
+    logs: {
+      label: 'Event History',
+      caption: 'Review approvals, signed activity, and exceptions',
+    },
+    settings: {
+      label: 'Settings',
+      caption: 'Configure extension preferences',
+    },
+    support: {
+      label: 'Support',
+      caption: 'Support link coming soon',
+    },
+    documentation: {
+      label: 'Documentation',
+      caption: 'Documentation link coming soon',
+    },
+    lock: {
+      label: 'Lock',
+      caption: 'Lock the vault immediately',
+    },
+    newSignature: 'New Signature',
   },
   settings: {
     vaultManagement: 'Vault Management',
@@ -91,6 +296,8 @@ export default {
     importParseError: 'Failed to parse backup file: ',
     exportDeny: 'Browser denied file download',
     title: 'Extension Settings',
+    dashboardCaption:
+      'Configure extension preferences, vault locking, Blossom uploads, and vault import/export.',
     export: 'Export',
     import: 'Import',
     autoLockOptions: {
@@ -140,13 +347,18 @@ export default {
     },
   },
   warning: {
-    exportKeys: 'Ensure you Export & Back up your keys',
-    backupNotice: 'If you lose them, you will lose access to your account and there is no way to recover them.',
+    icon: 'info',
+    title: 'important',
+    message: `Ensure you export and securely store your keys.
+      If you lose them, you will lose access to your account and there is no way to recover them.`,
+    exportKeys: 'Ensure you export and securely store your keys',
   },
   logs: {
-    title: 'Event Logs',
+    title: 'Event History',
+    dashboardCaption:
+      'Review approval and signed-event history, alongside extension exceptions, for the active account.',
     tabs: {
-      approvals: 'Approvals',
+      approvals: 'Approvals & Signed Events',
       exceptions: 'Exceptions',
     },
     columns: {
@@ -156,10 +368,10 @@ export default {
       message: 'Message',
     },
     refresh: 'Refresh',
-    noData: 'No logs found',
+    noData: 'No activity found',
   },
   footer: {
-    version: 'Version',
+    version: 'V',
   },
   errors: {
     notFound: 'Oops. Nothing here...',

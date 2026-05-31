@@ -3,10 +3,7 @@
     <div class="full-width q-pa-sm" style="max-width: 450px">
       <q-card bordered class="vault-card shadow-2" flat>
         <q-card-section class="flex flex-center q-pt-lg q-pb-none">
-          <q-img
-            src="../../src-bex/assets/images/login-banner.png"
-            style="max-width: 100%; width: 180px; border-radius: 8px"
-          />
+          <DiogelLogo size="xl" />
         </q-card-section>
 
         <q-card-section>
@@ -78,6 +75,7 @@
 import { onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useVault } from 'src/composables/useVault';
+import DiogelLogo from 'components/DiogelLogo/Index.vue';
 
 const {
   vaultStore,
@@ -87,6 +85,7 @@ const {
   loginError,
   handleCreate,
   handleUnlock,
+  getPostLoginRouteName,
 } = useVault();
 
 const router = useRouter();
@@ -99,7 +98,7 @@ onMounted(async () => {
   await vaultStore.checkVaultStatus();
 
   if (vaultStore.isUnlocked && (route.path === '/login' || route.name === 'login')) {
-    await router.push({ name: 'home' });
+    await router.push({ name: getPostLoginRouteName() });
   }
 });
 
@@ -111,7 +110,7 @@ watch(
       if (redirect) {
         void router.push({ path: redirect, query: route.query });
       } else {
-        void router.push({ name: 'home' });
+        void router.push({ name: getPostLoginRouteName() });
       }
     }
   },

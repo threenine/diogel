@@ -1,5 +1,5 @@
 import { db } from './database';
-import { ErrorCode } from 'src/types/error-codes';
+import { ErrorCode } from 'src/types/error-codes.d';
 import { LogLevel, logService } from './log-service';
 import type { BridgeAction, BridgeRequestMap, BridgeResponsePayload, VaultData } from 'src/types/bridge';
 

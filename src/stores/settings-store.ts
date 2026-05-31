@@ -22,6 +22,13 @@ const useSettingsStore = defineStore('settings', {
   }),
 
   actions: {
+    async getFallbackRelays(): Promise<string[]> {
+      if (this.fallbackRelays.length === 0) {
+        await this.getSettings();
+      }
+      return this.fallbackRelays;
+    },
+
     async getSettings(): Promise<void> {
       const result = await storageService.getMultiple([
         BLOSSOM_SERVER,
@@ -79,12 +86,13 @@ const useSettingsStore = defineStore('settings', {
         if (areaName === 'local') {
           if (BLOSSOM_SERVER in changes) {
             const newValue = changes[BLOSSOM_SERVER].newValue;
-            if (newValue) {
+            if (typeof newValue === 'string' && newValue.length > 0) {
               this.blossomServer = newValue;
             }
           }
           if (DARK_MODE in changes) {
-            this.darkMode = changes[DARK_MODE].newValue;
+            const newValue = changes[DARK_MODE].newValue;
+            this.darkMode = typeof newValue === 'boolean' ? newValue : Boolean(newValue);
           }
           if (VAULT_AUTO_LOCK_MINUTES in changes) {
             const newValue = Number(changes[VAULT_AUTO_LOCK_MINUTES].newValue);

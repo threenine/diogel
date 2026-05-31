@@ -14,7 +14,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/login',
-    component: () => import('layouts/ExtensionLayout.vue'),
+    component: () => import('layouts/LoginLayout.vue'),
     children: [
       {
         path: '',
@@ -24,8 +24,19 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/dashboard',
+    component: () => import('layouts/DashboardLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'dashboard',
+        component: () => import('pages/DashboardPage.vue'),
+      },
+    ],
+  },
+  {
     path: '/settings',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('layouts/DashboardLayout.vue'),
     children: [
       {
         path: '',
@@ -36,7 +47,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/profile',
-    component: () => import('layouts/MainLayout.vue'),
+    component: () => import('layouts/DashboardLayout.vue'),
     children: [
       {
         path: '',
@@ -46,38 +57,73 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
-    path: '/logs',
-    component: () => import('layouts/MainLayout.vue'),
+    path: '/relays',
+    component: () => import('layouts/DashboardLayout.vue'),
     children: [
       {
         path: '',
-        name: 'logs',
+        name: 'relays',
+        component: () => import('pages/RelayManagementPage.vue'),
+      },
+    ],
+  },
+  {
+    path: '/keys',
+    component: () => import('layouts/DashboardLayout.vue'),
+    children: [
+      {
+        path: 'import',
+        name: 'import-key',
+        component: () => import('pages/ImportKeyPage.vue'),
+      },
+      {
+        path: 'new',
+        name: 'add-new-key',
+        component: () => import('pages/AddNewKeyPage.vue'),
+      },
+      {
+        path: ':alias',
+        name: 'view-key',
+        component: () => import('pages/ViewKeyPage.vue'),
+        props: true,
+      },
+      {
+        path: '',
+        name: 'keys',
+        component: () => import('pages/KeyManagementPage.vue'),
+      },
+    ],
+  },
+  {
+    path: '/event-history',
+    component: () => import('layouts/DashboardLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'event-history',
         component: () => import('pages/ViewLogs.vue'),
       },
     ],
   },
   {
+    path: '/logs',
+    redirect: { name: 'event-history' },
+  },
+  {
     path: '/edit-account/:alias?',
-    component: () => import('layouts/MainLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'edit-account',
-        component: () => import('pages/EditAccount.vue'),
-        props: true,
-      },
-    ],
+    redirect: (to) => {
+      const alias = typeof to.params.alias === 'string' ? to.params.alias : undefined;
+      if (alias) {
+        return { name: 'view-key', params: { alias } };
+      }
+
+      return { name: 'keys' };
+    },
   },
   {
     path: '/create-account',
-    component: () => import('layouts/ExtensionLayout.vue'),
-    children: [
-      {
-        path: '',
-        name: 'create-account',
-        component: () => import('pages/CreateAccount.vue'),
-      },
-    ],
+    name: 'create-account',
+    redirect: { name: 'add-new-key' },
   },
   {
     path: '/',

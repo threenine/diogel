@@ -6,7 +6,7 @@ import { storageService } from 'src/services/storage-service';
 import { checkPermission } from 'app/src-bex/handlers/permission-handler';
 import { resetAutoLockTimer } from 'app/src-bex/services/auto-lock';
 import { finalizeEvent } from 'nostr-tools';
-import { ErrorCode } from 'src/types/error-codes';
+import { ErrorCode } from 'src/types/error-codes.d';
 
 // Mock dependencies
 vi.mock('app/src-bex/vault', () => ({

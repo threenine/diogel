@@ -39,6 +39,15 @@ management.
 
 The project has been bootstrapped with Quasar Framework. [Learn More](https://quasar.dev/introduction-to-quasar)
 
+#### Icon generation (BEX)
+
+- Use the project-local IconGenie CLI (installed in `devDependencies`):
+  - `npm install`
+  - `npm run icons:bex`
+- This avoids version drift with globally installed `@quasar/icongenie` binaries.
+- Use the project Node version before generating icons:
+  - `nvm use`
+
 ### Deployment
 
 Detailed instructions for setting up GitHub Secrets and publishing to the Chrome Web Store can be found in [DEPLOYMENT.md](./DEPLOYMENT.md).

@@ -3,8 +3,8 @@ import { useI18n } from 'vue-i18n';
 import { exportVault, importVault } from 'src/services/vault-service';
 import { useQuasar, exportFile } from 'quasar';
 import { useRouter } from 'vue-router';
-import type { ErrorCode } from 'src/types/error-codes';
-import { formatErrorForUser } from 'src/types/error-codes';
+import type { ErrorCode } from 'src/types/error-codes.d';
+import { formatErrorForUser } from 'src/types/error-codes.d';
 
 export function useVaultManagement() {
   const { t } = useI18n();

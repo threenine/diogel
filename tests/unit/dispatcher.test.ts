@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { dispatchMessage } from 'app/src-bex/dispatcher';
 import { handleRelayBrowserList, handleRelayBrowserGetStatus } from 'app/src-bex/handlers/relay-browser-handler';
 import { handleVaultUnlock } from 'app/src-bex/handlers/vault-handler';
+import { handleBlossomUpload } from 'app/src-bex/handlers/blossom-handler';
 import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 import { createBridgeRequest } from 'src/types/bridge';
 import type { VaultData } from 'src/types/bridge';
@@ -133,5 +134,53 @@ describe('Dispatcher', () => {
   it('should return null for unknown message type', async () => {
     const result = await dispatchMessage('unknown.action' as never, { id: 'test', action: 'unknown.action' } as never);
     expect(result).toBeNull();
+  });
+
+  it('should route blossom.upload to handler and return success response', async () => {
+    vi.mocked(handleBlossomUpload).mockResolvedValue({
+      success: true,
+      data: 'https://blossom.example.com/image.png',
+    });
+
+    const result = await dispatchMessage('blossom.upload', {
+      id: 'test-1',
+      action: 'blossom.upload',
+      base64Data: 'iVBORw...',
+      fileType: 'image/png',
+      blossomServer: 'https://blossom.example.com',
+    });
+
+    expect(result).toEqual({
+      success: true,
+      url: 'https://blossom.example.com/image.png',
+    });
+    expect(handleBlossomUpload).toHaveBeenCalledWith(
+      expect.objectContaining({
+        base64Data: 'iVBORw...',
+        fileType: 'image/png',
+        blossomServer: 'https://blossom.example.com',
+      }),
+      expect.any(String),
+    );
+  });
+
+  it('should route blossom.upload and return error response on handler failure', async () => {
+    vi.mocked(handleBlossomUpload).mockResolvedValue({
+      success: false,
+      error: 'No active account found',
+    });
+
+    const result = await dispatchMessage('blossom.upload', {
+      id: 'test-2',
+      action: 'blossom.upload',
+      base64Data: 'abc',
+      fileType: 'image/jpeg',
+      blossomServer: 'https://blossom.example.com',
+    });
+
+    expect(result).toEqual({
+      success: false,
+      error: 'No active account found',
+    });
   });
 });

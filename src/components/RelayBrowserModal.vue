@@ -2,7 +2,7 @@
 import { ref, watch, onMounted, computed, onBeforeUnmount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { logService, LogLevel } from 'src/services/log-service';
-import type { RelayCatalogEntry } from 'src/types/relay';
+import type { RelayCatalogEntry } from '../types/relay';
 import { listRelayCatalog, refreshRelayCatalog, getRelayDiscoveryStatus } from 'src/services/relay-service';
 import { filterRelays } from 'src/utils/relay-filters';
 

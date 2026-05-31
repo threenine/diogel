@@ -46,7 +46,7 @@ export function useAccounts() {
     if (v === oldV) return;
 
     if (v === CREATE_VALUE) {
-      router.push({ name: 'create-account' }).catch(() => {});
+      router.push({ name: 'add-new-key' }).catch(() => {});
     } else if (v && v !== accountStore.activeKey) {
       await accountStore.setActiveKey(v);
 
@@ -58,11 +58,12 @@ export function useAccounts() {
         '/logs',
         '/popup',
         '/login',
-        '/create-account',
         '/approve',
       ];
       const isManagementPath =
-        managementPaths.includes(currentPath) || currentPath.startsWith('/edit-account');
+        managementPaths.includes(currentPath) ||
+        currentPath.startsWith('/edit-account') ||
+        currentPath.startsWith('/keys');
 
       if (!isManagementPath) {
         router.push({ path: '/' }).catch(() => {});
