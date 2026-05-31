@@ -119,7 +119,6 @@ async function uploadImage(file: File) {
       return;
     }
 
-    // We use the settings store to get the blossom server
     const useSettingsStore = (await import('../stores/settings-store')).default;
     const settingsStore = useSettingsStore();
     await settingsStore.getSettings();
@@ -135,7 +134,12 @@ async function uploadImage(file: File) {
       },
     });
 
-    // Success notification is handled by the storage listener
+    // The BEX send resolves once the background handler completes.
+    // The storage listener handles success/error notifications,
+    // but we must always clear the uploading state here to avoid
+    // a stuck spinner if the storage change event is missed.
+    uploading.value = false;
+    emitStatus('uploading', false);
   } catch (error: unknown) {
     console.error('Error uploading image:', error);
     let errorMessage = t('profile.uploadError');
