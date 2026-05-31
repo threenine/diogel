@@ -86,7 +86,7 @@ describe('RecentActivityCard.vue', () => {
 
   const mockSummary: DashboardSummary = {
     state: 'ready',
-    signedEvents: 0,
+    approvedClients: 0,
     activeKeys: 1,
     connectedRelays: 0,
     connectedRelaysState: 'unavailable',
@@ -132,7 +132,7 @@ describe('RecentActivityCard.vue', () => {
   it('shows fallback time and semantic status classes', async () => {
     const customSummary: DashboardSummary = {
       state: 'ready',
-      signedEvents: 0,
+      approvedClients: 0,
       activeKeys: 1,
       connectedRelays: 0,
       connectedRelaysState: 'unavailable',

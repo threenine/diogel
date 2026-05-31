@@ -133,7 +133,7 @@ interface DataActivityRow {
 
 export interface DashboardSummary {
   state: DashboardDataState;
-  signedEvents: number;
+  approvedClients: number;
   activeKeys: number;
   connectedRelays: number;
   connectedRelaysState: ConnectedRelaysDataState;

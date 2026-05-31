@@ -4,7 +4,7 @@ import ActiveKeysCard from 'src/components/dashboard/ActiveKeysCard.vue';
 import ConnectedRelaysCard from 'src/components/dashboard/ConnectedRelaysCard.vue';
 import QuickSignCard from 'src/components/dashboard/QuickSignCard.vue';
 import RecentActivityCard from 'src/components/dashboard/RecentActivityCard.vue';
-import TotalSignedEventsCard from 'src/components/dashboard/TotalSignedEventsCard.vue';
+import ApprovedClientsCard from 'src/components/dashboard/ApprovedClientsCard.vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { getDashboardSummary } from 'src/services/dashboard-service';
@@ -55,8 +55,8 @@ function openEventHistory() {
     </section>
 
     <section class="dashboard-widget-grid">
-      <div class="dashboard-widget-grid__item dashboard-widget-grid__item--total-signed">
-        <TotalSignedEventsCard :summary="summary" :loading="loading" :error="error" />
+      <div class="dashboard-widget-grid__item dashboard-widget-grid__item--approved-clients">
+        <ApprovedClientsCard :summary="summary" :loading="loading" :error="error" />
       </div>
       <div class="dashboard-widget-grid__item dashboard-widget-grid__item--active-keys">
         <ActiveKeysCard
@@ -96,7 +96,7 @@ function openEventHistory() {
   gap: 16px;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-areas:
-    'totalSigned activeKeys connectedRelays'
+    'approvedClients activeKeys connectedRelays'
     'recentActivity recentActivity quickSign';
   align-items: start;
 }
@@ -105,8 +105,8 @@ function openEventHistory() {
   min-width: 0;
 }
 
-.dashboard-widget-grid__item--total-signed {
-  grid-area: totalSigned;
+.dashboard-widget-grid__item--approved-clients {
+  grid-area: approvedClients;
 }
 
 .dashboard-widget-grid__item--active-keys {
@@ -129,7 +129,7 @@ function openEventHistory() {
   .dashboard-widget-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-areas:
-      'totalSigned activeKeys'
+      'approvedClients activeKeys'
       'connectedRelays connectedRelays'
       'recentActivity recentActivity'
       'quickSign quickSign';
@@ -140,7 +140,7 @@ function openEventHistory() {
   .dashboard-widget-grid {
     grid-template-columns: minmax(0, 1fr);
     grid-template-areas:
-      'totalSigned'
+      'approvedClients'
       'activeKeys'
       'connectedRelays'
       'recentActivity'

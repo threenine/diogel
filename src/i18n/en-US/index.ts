@@ -145,9 +145,9 @@ export default {
         noAccount: 'No active account selected yet.',
         error: 'Unable to load widget data right now.',
       },
-      totalSignedEvents: {
-        title: 'Total Signed Events',
-        ready: 'Total approvals recorded for your active account.',
+      approvedClients: {
+        title: 'Approved Clients',
+        caption: 'Unique websites approved for this account on this device.',
       },
       activeKeys: {
         title: 'Active Keys',

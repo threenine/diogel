@@ -8,6 +8,7 @@ import useSettingsStore from 'src/stores/settings-store';
 import type { Event } from 'nostr-tools';
 import { isVaultUnlocked } from './vault-service';
 import { useEventService } from 'src/composables/useEventService';
+import { db } from './database';
 import type { DashboardSummary } from 'src/types';
 
 export type DashboardActivityType = 'approval' | 'exception' | 'event';
@@ -75,42 +76,26 @@ export async function getActiveKeyCount(): Promise<number> {
 }
 
 /**
- * Returns an approximation of signed events count using approval logs for the active account.
+ * Returns the number of distinct hostnames that have approval log entries
+ * for the active Diogel account on this local install.
  *
- * Limitation: this is not a canonical signed-event total. It only reflects approvals recorded
- * locally by this app and can miss activity from other clients or historical events from before
- * logging was enabled.
+ * This metric is deterministic, stable, and does not query Nostr relays.
  */
-export async function getSignedEventCountForActiveKey(): Promise<number> {
-
+export async function getApprovedClientCountForActiveKey(): Promise<number> {
   const activeAccount = await getActiveAccountAlias();
   if (!activeAccount) {
     return 0;
   }
 
-  const keys = await get();
-  const activeKey = keys[activeAccount];
-  if (!activeKey?.id) {
-    return 0;
-  }
+  const approvals = await db.approvals.where('account').equals(activeAccount).toArray();
 
-  const settingsStore = useSettingsStore();
-  const relays = await settingsStore.getFallbackRelays();
+  const hostnames = new Set(
+    approvals
+      .map((approval) => approval.hostname.trim().toLowerCase())
+      .filter((hostname) => hostname.length > 0),
+  );
 
-  if (relays.length === 0) {
-    return 0;
-  }
-
-  const filter = {
-    authors: [activeKey.id],
-  };
-  const { getEvents, close } = useEventService(relays);
-  try {
-    const events = await getEvents(filter);
-    return events.length;
-  } finally {
-    close();
-  }
+  return hostnames.size;
 }
 
 export async function getConnectedRelayCountForActiveKey(): Promise<number> {
@@ -215,7 +200,7 @@ export async function getDashboardSummary(activityLimit = 50): Promise<Dashboard
   if (state !== 'ready') {
     return {
       state,
-      signedEvents: 0,
+      approvedClients: 0,
       activeKeys,
       connectedRelays: 0,
       connectedRelaysState: 'unavailable',
@@ -223,15 +208,15 @@ export async function getDashboardSummary(activityLimit = 50): Promise<Dashboard
     };
   }
 
-  const [signedEvents, connectedRelaysSummary, recentActivity] = await Promise.all([
-    getSignedEventCountForActiveKey(),
+  const [approvedClients, connectedRelaysSummary, recentActivity] = await Promise.all([
+    getApprovedClientCountForActiveKey(),
     getConnectedRelaySummaryForActiveKey(),
     getRecentEventsFromRelays(activityLimit),
   ]);
 
   return {
     state,
-    signedEvents,
+    approvedClients,
     activeKeys,
     connectedRelays: connectedRelaysSummary.count,
     connectedRelaysState: connectedRelaysSummary.state,

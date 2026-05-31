@@ -139,23 +139,62 @@ describe('dashboard-service', () => {
     await expect(dashboardService.getActiveKeyCount()).resolves.toBe(2);
   });
 
-  it('returns 0 signed events when no active account', async () => {
+  it('returns 0 approved clients when no active account', async () => {
     vi.mocked(dexieStorage.getActive).mockResolvedValue(undefined);
 
-    await expect(dashboardService.getSignedEventCountForActiveKey()).resolves.toBe(0);
+    await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(0);
   });
 
-  it('counts signed events from relays for active account', async () => {
+  it('counts unique approved hostnames for active account', async () => {
     vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
-    vi.mocked(dexieStorage.get).mockResolvedValue({
-      alpha: { id: 'pubkey-alpha', alias: 'alpha', account: { privkey: 'redacted' }, createdAt: '2026-01-01' },
-    });
+    approvalsToArrayMock.mockResolvedValue([
+      { id: 1, dateTime: '2026-01-01', eventKind: 1, hostname: 'example.com', account: 'alpha' },
+      { id: 2, dateTime: '2026-01-02', eventKind: 1, hostname: 'example.com', account: 'alpha' },
+      { id: 3, dateTime: '2026-01-03', eventKind: 1, hostname: 'app.example.com', account: 'alpha' },
+    ]);
 
-    getEventsMock.mockResolvedValue([{ id: 'evt-1' }, { id: 'evt-2' }]);
+    await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(2);
+  });
 
-    await expect(dashboardService.getSignedEventCountForActiveKey()).resolves.toBe(2);
-    expect(getEventsMock).toHaveBeenCalledWith({ authors: ['pubkey-alpha'] });
-    expect(closeMock).toHaveBeenCalled();
+  it('normalizes hostname case and whitespace', async () => {
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+    approvalsToArrayMock.mockResolvedValue([
+      { id: 1, dateTime: '2026-01-01', eventKind: 1, hostname: 'Example.com', account: 'alpha' },
+      { id: 2, dateTime: '2026-01-02', eventKind: 1, hostname: ' example.com ', account: 'alpha' },
+    ]);
+
+    await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(1);
+  });
+
+  it('ignores blank hostnames', async () => {
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+    approvalsToArrayMock.mockResolvedValue([
+      { id: 1, dateTime: '2026-01-01', eventKind: 1, hostname: '', account: 'alpha' },
+      { id: 2, dateTime: '2026-01-02', eventKind: 1, hostname: '   ', account: 'alpha' },
+      { id: 3, dateTime: '2026-01-03', eventKind: 1, hostname: 'client.example', account: 'alpha' },
+    ]);
+
+    await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(1);
+  });
+
+  it('scopes approved clients by active account', async () => {
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+    approvalsToArrayMock.mockResolvedValue([
+      { id: 1, dateTime: '2026-01-01', eventKind: 1, hostname: 'only-alpha.com', account: 'alpha' },
+    ]);
+
+    await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(1);
+  });
+
+  it('does not call relay event service for approved client metric', async () => {
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+    approvalsToArrayMock.mockResolvedValue([
+      { id: 1, dateTime: '2026-01-01', eventKind: 1, hostname: 'site.com', account: 'alpha' },
+    ]);
+
+    await dashboardService.getApprovedClientCountForActiveKey();
+
+    expect(useEventService).not.toHaveBeenCalled();
   });
 
   it('returns 0 connected relays when no active account', async () => {
