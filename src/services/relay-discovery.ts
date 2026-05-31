@@ -1,5 +1,12 @@
 import { SimplePool, type Event } from 'nostr-tools';
 import { normalizeRelayUrl } from './relay-url';
+import useSettingsStore from 'src/stores/settings-store';
+
+export interface RelayListEntry {
+  url: string;
+  read: boolean;
+  write: boolean;
+}
 
 /**
  * Normalizes and deduplicates a list of relay URLs.
@@ -24,17 +31,66 @@ export function normalizeAndDeduplicateRelays(urls: string[]): string[] {
  * @returns Array of raw relay URL strings extracted from the event
  */
 export function parseRelayListEvent(event: Event): string[] {
+  return parseRelayListEntries(event).map((entry) => entry.url);
+}
+
+export function parseRelayListEntries(event: Event): RelayListEntry[] {
   if (!event || typeof event !== 'object') return [];
   if (event.kind !== 10002) return [];
   if (!Array.isArray(event.tags)) return [];
 
-  const urls: string[] = [];
+  const entries: RelayListEntry[] = [];
   for (const tag of event.tags) {
     if (Array.isArray(tag) && tag[0] === 'r' && typeof tag[1] === 'string') {
-      urls.push(tag[1]);
+      const marker = tag[2];
+      entries.push({
+        url: tag[1],
+        read: !marker || marker === 'read',
+        write: !marker || marker === 'write',
+      });
     }
   }
-  return urls;
+  return entries;
+}
+
+export function extractWritePreferredRelayUrls(event: Event): string[] {
+  const entries = parseRelayListEntries(event);
+  const writeUrls = entries
+    .filter((entry) => entry.write)
+    .map((entry) => entry.url);
+
+  if (writeUrls.length > 0) {
+    return normalizeAndDeduplicateRelays(writeUrls);
+  }
+
+  return normalizeAndDeduplicateRelays(entries.map((entry) => entry.url));
+}
+
+/**
+ * Fetches the kind 10002 relay list event for a given pubkey using fallback relays.
+ * @param pubkey The public key to fetch the relay list for
+ * @returns The kind 10002 event or null if not found
+ */
+export async function fetchAccountRelayListEvent(pubkey: string): Promise<Event | null> {
+  const settingsStore = useSettingsStore();
+  const relays = await settingsStore.getFallbackRelays();
+
+  if (relays.length === 0) {
+    return null;
+  }
+
+  const relayMetadataPool = new SimplePool();
+  try {
+    const event = await relayMetadataPool.get(relays, {
+      kinds: [10002],
+      authors: [pubkey],
+    });
+    return event;
+  } catch {
+    return null;
+  } finally {
+    relayMetadataPool.close(relays);
+  }
 }
 
 export interface DiscoveryResult {

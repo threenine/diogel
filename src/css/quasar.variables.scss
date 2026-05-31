@@ -36,9 +36,14 @@ $dark-header: #353e43;
 .body--light {
   // Surfaces & text
   --page-bg: #f6f8fb;
+  --surface-soft: #eef2f7;
   --text-color: #0b1220;
   --text-muted: #64748b; // slate-500
   --border-color: rgba(0, 0, 0, 0.12);
+
+  // Dashboard surfaces
+  --dashboard-sidebar-bg: #f3f6fb;
+  --dashboard-accent-bg: #fff3e9;
 
   // App chrome (header/toolbars)
   --header-bg: $light-header; // deep blue header background
@@ -49,14 +54,22 @@ $dark-header: #353e43;
 
   // Cards
   --card-bg: #ffffff;
+  --card-elevated-bg: #ffffff;
+  --dashboard-border: rgba(15, 23, 42, 0.08);
+  --dashboard-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
 .body--dark {
   // Surfaces & text
   --page-bg: #121212; // equals $dark-page
+  --surface-soft: #1a1f26;
   --text-color: rgba(255, 255, 255, 0.87);
   --text-muted: #94a3b8; // slate-400
   --border-color: rgba(255, 255, 255, 0.16);
+
+  // Dashboard surfaces
+  --dashboard-sidebar-bg: #171b21;
+  --dashboard-accent-bg: #40220f;
 
   // App chrome (header/toolbars)
   --header-bg: $dark-header;
@@ -67,4 +80,7 @@ $dark-header: #353e43;
 
   // Cards
   --card-bg: #1d1d1d;
+  --card-elevated-bg: #222831;
+  --dashboard-border: rgba(255, 255, 255, 0.12);
+  --dashboard-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
 }

@@ -10,8 +10,8 @@
         <p class="text-grey-6">{{ $t('account.noAccountDesc') }}</p>
         <q-btn
           class="q-mt-md diogel-btn-primary"
-          label="Create Account"
-          to="/create-account"
+          :label="$t('keyManagement.addNewKey')"
+          :to="{ name: 'add-new-key' }"
         />
       </div>
     </div>

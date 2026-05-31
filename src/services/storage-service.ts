@@ -40,7 +40,7 @@ class StorageServiceImpl implements StorageService {
   };
 
   getMultiple = async (keys: string[], area: StorageArea = 'local'): Promise<Record<string, unknown>> => {
-    return (await this.getArea(area).get(keys)) as Record<string, unknown>;
+    return await this.getArea(area).get(keys);
   };
 
   set = async (key: string, value: unknown, area: StorageArea = 'local'): Promise<void> => {

@@ -297,7 +297,10 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
         `www/index.html#/login?redirect=/approve?origin=${encodeURIComponent(origin)}&kind=${eventKind}`,
       );
       const win = await chrome.windows.create({ url: loginUrl, type: 'popup', width: 450, height: 700, focused: true });
-      const windowId = win.id;
+      const windowId = win?.id;
+      if (windowId === undefined) {
+        return false;
+      }
 
       return new Promise<boolean>((resolve) => {
         const checkStatus = setInterval(() => {
@@ -385,6 +388,9 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
 
   try {
     const win = await chrome.windows.create({ url, type: 'popup', width: 450, height: 700, focused: true });
+    if (win?.id === undefined) {
+      throw new Error('Failed to open approval window');
+    }
     windowId = win.id;
   } catch (error: unknown) {
     const pendingApproval = getApprovalPromise();

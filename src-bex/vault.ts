@@ -7,7 +7,7 @@ import {
 import { db } from 'src/services/database';
 import { LogLevel, logService } from 'src/services/log-service';
 import { storageService, VAULT_UNLOCKED } from 'src/services/storage-service';
-import { ErrorCode } from 'src/types/error-codes';
+import { ErrorCode } from 'src/types/error-codes.d';
 
 let vaultKey: CryptoKey | null = null;
 let vaultSalt: Uint8Array | null = null;

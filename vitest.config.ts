@@ -18,6 +18,8 @@ export default defineConfig({
     alias: {
       'src': fileURLToPath(new URL('./src', import.meta.url)),
       'src/*': fileURLToPath(new URL('./src/*', import.meta.url)),
+      'components': fileURLToPath(new URL('./src/components', import.meta.url)),
+      'components/*': fileURLToPath(new URL('./src/components/*', import.meta.url)),
       'app': fileURLToPath(new URL('./', import.meta.url)),
       'app/*': fileURLToPath(new URL('./*', import.meta.url)),
       'src-bex': fileURLToPath(new URL('./src-bex', import.meta.url)),

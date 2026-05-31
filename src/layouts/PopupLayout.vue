@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import PopupHeader from 'components/PopupHeader.vue';
+import DiogelLogo from 'components/DiogelLogo/Index.vue';
 </script>
 
 <template>
@@ -7,7 +8,7 @@ import PopupHeader from 'components/PopupHeader.vue';
     <!-- Header -->
     <div class="popup-header">
       <div class="app-brand">
-        <img src="/images/diogel.svg" alt="Diogel" class="app-logo" />
+        <DiogelLogo size="lg" />
         <span class="app-name">Diogel</span>
       </div>
       <div class="header-actions">
