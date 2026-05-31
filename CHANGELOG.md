@@ -1,5 +1,146 @@
 # Changelog
 
+## v0.0.20
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.19...v0.0.20)
+
+### 🚀 Enhancements
+
+- Add new dashboard-specific CSS variables for light and dark themes ([f21d458](https://github.com/threenine/diogel/commit/f21d458))
+- Enhance `DashboardLayout` with responsive drawer and improved styles ([a8ac6bb](https://github.com/threenine/diogel/commit/a8ac6bb))
+- Add shared CSS primitives for dashboard components ([07cb0c9](https://github.com/threenine/diogel/commit/07cb0c9))
+- Implement initial `DashboardPage` with responsive widget placeholders and route integration ([55ad092](https://github.com/threenine/diogel/commit/55ad092))
+- Add route aliases and navigation updates for improved ProfilePage UX ([1fbc214](https://github.com/threenine/diogel/commit/1fbc214))
+- Create dedicated KeyManagementPage and update navigation ([eca34bb](https://github.com/threenine/diogel/commit/eca34bb))
+- Create dedicated RelayManagementPage and update navigation ([5fa600b](https://github.com/threenine/diogel/commit/5fa600b))
+- Add navigation logic for dashboard widgets and improve active key handling ([3efcbd2](https://github.com/threenine/diogel/commit/3efcbd2))
+- Add unit tests and implementation for `dashboard-service` ([a1391e8](https://github.com/threenine/diogel/commit/a1391e8))
+- Add dashboard widgets for Active Keys, Connected Relays, Recent Activity, and Total Signed Events ([0aa24be](https://github.com/threenine/diogel/commit/0aa24be))
+- Enhance Recent Activity widget with improved activity details and styling ([9fb54da](https://github.com/threenine/diogel/commit/9fb54da))
+- Enhance Recent Activity widget with improved activity details and styling ([13c3435](https://github.com/threenine/diogel/commit/13c3435))
+- Add Quick Sign feature with preview and signing functionality ([b5ee3a3](https://github.com/threenine/diogel/commit/b5ee3a3))
+- Enhance Connected Relays widget and improve dashboard-service ([4dbd4d0](https://github.com/threenine/diogel/commit/4dbd4d0))
+- Add utility links, new signature action, and update dashboard layout ([1878fb2](https://github.com/threenine/diogel/commit/1878fb2))
+- Revamp Quick Sign feature with broader kind support, relay integration, and enhanced UX ([5d73203](https://github.com/threenine/diogel/commit/5d73203))
+- Refine Quick Sign relay handling and UI enhancements ([a45d8a4](https://github.com/threenine/diogel/commit/a45d8a4))
+- Enhance relay discovery logic and unit tests ([61d0751](https://github.com/threenine/diogel/commit/61d0751))
+- Improve Quick Sign UX with structured input, tags, and kind-specific validation ([dc37edd](https://github.com/threenine/diogel/commit/dc37edd))
+- Enhance Quick Sign UX and testing with relay publishing improvements ([bee0fab](https://github.com/threenine/diogel/commit/bee0fab))
+- Enhance Quick Sign with direct signing, relay handling, and improved error messaging ([c15e494](https://github.com/threenine/diogel/commit/c15e494))
+- Add account alias and pubkey to recent activity tracking ([7057b8e](https://github.com/threenine/diogel/commit/7057b8e))
+- Enhance activity icon resolution and status styles in RecentActivityCard ([5f07198](https://github.com/threenine/diogel/commit/5f07198))
+- Introduce key management features with import, generation, and view functionality ([db0f474](https://github.com/threenine/diogel/commit/db0f474))
+- Enhance i18n support for key management pages ([512a40c](https://github.com/threenine/diogel/commit/512a40c))
+- Update i18n key for quick sign title to "Quick Publish" ([0c5a1e1](https://github.com/threenine/diogel/commit/0c5a1e1))
+- Improve alias input layout and update save button label ([21632c1](https://github.com/threenine/diogel/commit/21632c1))
+- Update `DashboardFooter` styles and improve main navigation consistency ([1ffccc9](https://github.com/threenine/diogel/commit/1ffccc9))
+- Add "rejected" status support for recent activity ([3559dbf](https://github.com/threenine/diogel/commit/3559dbf))
+- Enhance date formatting fallback and update status styles ([c8f4bce](https://github.com/threenine/diogel/commit/c8f4bce))
+- Update i18n key captions and adjust layout styles ([ef09784](https://github.com/threenine/diogel/commit/ef09784))
+- Add security warning to `KeyManagementPage` and improve key management UX ([901d716](https://github.com/threenine/diogel/commit/901d716))
+- Enhance date handling in `KeyManagementTable` and add unit test ([2f5cc7b](https://github.com/threenine/diogel/commit/2f5cc7b))
+- Improve `KeyManagementTable` public key display and add unit tests ([a4bedc2](https://github.com/threenine/diogel/commit/a4bedc2))
+- Integrate `SecurityWarning` component into `ViewKeyPage` ([f7bd85c](https://github.com/threenine/diogel/commit/f7bd85c))
+- Add `bot` flag and `birthday` properties to `NostrProfile` type ([90f34f6](https://github.com/threenine/diogel/commit/90f34f6))
+- Update ProfileEditor with `bot` toggle and `birthday` input fields ([375311e](https://github.com/threenine/diogel/commit/375311e))
+- Add validation for `birthday` fields in ProfileEditor ([b0f4796](https://github.com/threenine/diogel/commit/b0f4796))
+- Add NIP-05 verification support to ProfileEditor ([de0062b](https://github.com/threenine/diogel/commit/de0062b))
+- Add unit tests for ProfileEditor and ProfilePage components ([5d4c7a5](https://github.com/threenine/diogel/commit/5d4c7a5))
+- Add `xl` size to DiogelLogo and update VaultLogin design ([d34502d](https://github.com/threenine/diogel/commit/d34502d))
+- Add LoginLayout and update routing for login page ([3eaec22](https://github.com/threenine/diogel/commit/3eaec22))
+- Introduce `ExtensionNavigation` component and streamline navigation logic ([0788a7c](https://github.com/threenine/diogel/commit/0788a7c))
+- Add `useEventService` composable for handling Nostr event subscription ([a496ba7](https://github.com/threenine/diogel/commit/a496ba7))
+- Add new relay URL to `RELAY_SEEDS` list ([a7c7ee1](https://github.com/threenine/diogel/commit/a7c7ee1))
+- Fetch signed event count via relay subscription ([16a5f52](https://github.com/threenine/diogel/commit/16a5f52))
+- Add `Kind` enum and `ListKinds` array to define event types ([6c0f4d6](https://github.com/threenine/diogel/commit/6c0f4d6))
+- Replace local activity logs with relay-based event retrieval ([46c8024](https://github.com/threenine/diogel/commit/46c8024))
+- Create ApprovedClientsCard component for dashboard widget ([c6e775c](https://github.com/threenine/diogel/commit/c6e775c))
+- Add Blossom upload service and integrate with ImageUploader ([0508278](https://github.com/threenine/diogel/commit/0508278))
+
+### 🩹 Fixes
+
+- Update i18n strings and format adjustment in ActiveKeysCard template ([1e5b32e](https://github.com/threenine/diogel/commit/1e5b32e))
+- Adjust RecentActivityCard to fetch 9 items instead of 4 for dashboard summary ([146bf57](https://github.com/threenine/diogel/commit/146bf57))
+- Improve readability of security warning message in en-US i18n ([2e23eac](https://github.com/threenine/diogel/commit/2e23eac))
+- Update en-US i18n key for save button text ([39232e6](https://github.com/threenine/diogel/commit/39232e6))
+- Update ProfilePreview banner image fit from "cover" to "contain" for better rendering ([c0dcd7b](https://github.com/threenine/diogel/commit/c0dcd7b))
+- Update support and documentation links in DashboardNavigation ([b4ab618](https://github.com/threenine/diogel/commit/b4ab618))
+
+### 💅 Refactors
+
+- Replace MainLayout with DashboardLayout and update routes ([780d790](https://github.com/threenine/diogel/commit/780d790))
+- Replace MainLayoutHeader with DashboardHeader and improve dashboard styles ([9c37ff9](https://github.com/threenine/diogel/commit/9c37ff9))
+- Replace `MainNavigation` with `DashboardNavigation` and enhance navigation functionality ([d681fe2](https://github.com/threenine/diogel/commit/d681fe2))
+- Update `ProfilePage` layout and styles for dashboard consistency ([665533b](https://github.com/threenine/diogel/commit/665533b))
+- Update `ExtensionSettings` layout and styles for dashboard alignment ([24e2a99](https://github.com/threenine/diogel/commit/24e2a99))
+- Update `ViewLogs` layout and styles for dashboard alignment ([f40ccce](https://github.com/threenine/diogel/commit/f40ccce))
+- Update `EditAccount` layout and styles for dashboard alignment ([530f5f0](https://github.com/threenine/diogel/commit/530f5f0))
+- Update `app.scss` for dashboard style consistency ([562817f](https://github.com/threenine/diogel/commit/562817f))
+- Update dashboard captions for improved clarity and consistency ([a8d79df](https://github.com/threenine/diogel/commit/a8d79df))
+- Rename `message` column to `hostname` in `ViewLogs` table configuration ([77b63b5](https://github.com/threenine/diogel/commit/77b63b5))
+- Enhance key hydration and log fetching logic in `EditAccount` and `ViewLogs` ([4c174d1](https://github.com/threenine/diogel/commit/4c174d1))
+- Simplify `ProfilePage` tab panel structure and cleanup redundant card nesting ([0798264](https://github.com/threenine/diogel/commit/0798264))
+- Enhance dashboard styles and improve responsive behavior ([ce92c90](https://github.com/threenine/diogel/commit/ce92c90))
+- Rename `logs` route and related references to `event-history` ([c6361d6](https://github.com/threenine/diogel/commit/c6361d6))
+- Improve dashboard grid layout with responsive design updates ([8d5f90c](https://github.com/threenine/diogel/commit/8d5f90c))
+- Update Quick Sign service, validation logic, and tests ([d7f9d4b](https://github.com/threenine/diogel/commit/d7f9d4b))
+- Simplify dashboard card templates by removing unused badges and captions, and adjust icon sizes for consistency ([969b027](https://github.com/threenine/diogel/commit/969b027))
+- Update RecentActivityCard status i18n keys and enhance responsive table layout ([df1e27f](https://github.com/threenine/diogel/commit/df1e27f))
+- Remove unused `statusText` computed property from dashboard cards ([c6f3ed7](https://github.com/threenine/diogel/commit/c6f3ed7))
+- Update `/create-account` route to redirect to `add-new-key` and adjust references ([e0607ec](https://github.com/threenine/diogel/commit/e0607ec))
+- Rename `MainLayoutFooter` to `DashboardFooter` and update references ([e008cd2](https://github.com/threenine/diogel/commit/e008cd2))
+- Restructure public key cell layout in `KeyManagementTable` ([95c83bc](https://github.com/threenine/diogel/commit/95c83bc))
+- Extract `SecurityWarning` component and update key management styles ([0af0763](https://github.com/threenine/diogel/commit/0af0763))
+- Update `DiogelLogo` across components with consistent `lg` size ([40c42e2](https://github.com/threenine/diogel/commit/40c42e2))
+- Move navigation-related types to a dedicated file for reuse ([44764cb](https://github.com/threenine/diogel/commit/44764cb))
+- Adjust type exports and paths for bridge modules ([7499d69](https://github.com/threenine/diogel/commit/7499d69))
+- Update type imports and extensions for consistency across modules ([28102a3](https://github.com/threenine/diogel/commit/28102a3))
+- Move `env.d.ts` to `types` directory for better file organization ([7073549](https://github.com/threenine/diogel/commit/7073549))
+- Update type imports for consistency across navigation modules ([7a90d62](https://github.com/threenine/diogel/commit/7a90d62))
+- Rename `Kind.d.ts` to `kind.d.ts` for consistency ([5ae0f55](https://github.com/threenine/diogel/commit/5ae0f55))
+- Enhance event deduplication in `getEvents` and adjust activity limit in `getDashboardSummary` ([7adf578](https://github.com/threenine/diogel/commit/7adf578))
+- Replace local state with props in dashboard widgets for consistency ([9fe4c68](https://github.com/threenine/diogel/commit/9fe4c68))
+- Centralize fallback relay handling and replace inline logic with reusable methods ([9dc83f4](https://github.com/threenine/diogel/commit/9dc83f4))
+- Move `DashboardSummary` type definition to `src/types` for improved modularity ([245b88b](https://github.com/threenine/diogel/commit/245b88b))
+- Remove database updates for account renaming in `dexie-storage` ([32c9f5f](https://github.com/threenine/diogel/commit/32c9f5f))
+- Migrate account alias updates and enhance relay handling in tests ([4b6b74a](https://github.com/threenine/diogel/commit/4b6b74a))
+- Replace "Total Signed Events" with "Approved Clients" metric ([bf83584](https://github.com/threenine/diogel/commit/bf83584))
+- Remove redundant delay logic in Blossom upload handler ([4dd27d4](https://github.com/threenine/diogel/commit/4dd27d4))
+- Reorder imports, adjust type definitions, and update icon size in dashboard components ([bad7426](https://github.com/threenine/diogel/commit/bad7426))
+- Improve Blossom upload handler to ensure consistent spinner state ([aad6c19](https://github.com/threenine/diogel/commit/aad6c19))
+
+### 📖 Documentation
+
+- Add visual review checklist for Package H dashboard work ([0850284](https://github.com/threenine/diogel/commit/0850284))
+- Add dashboard shortcomings review with gate results and limitations summary ([e39fc4e](https://github.com/threenine/diogel/commit/e39fc4e))
+
+### 🏡 Chore
+
+- Remove obsolete dashboard UI specs (`dashboard-ui.md`) ([563a063](https://github.com/threenine/diogel/commit/563a063))
+- Remove pnpm lock file to clean up dependency management ([c73b955](https://github.com/threenine/diogel/commit/c73b955))
+- Remove unused `APP_VERSION` variable from `DashboardFooter` component ([ae7a1b9](https://github.com/threenine/diogel/commit/ae7a1b9))
+- Update localization strings and improve key clarity, adjust ProfileView UI to include key export link ([375bc7d](https://github.com/threenine/diogel/commit/375bc7d))
+- Temporarily comment out unused new signature button in DashboardNavigation footer ([e1767de](https://github.com/threenine/diogel/commit/e1767de))
+- Remove Diogel-related assets and dependencies ([b6e57cf](https://github.com/threenine/diogel/commit/b6e57cf))
+- Remove `pnpm-lock.yaml` file to clean up obsolete dependencies ([685f721](https://github.com/threenine/diogel/commit/685f721))
+- Remove `DiogelLogo` usage from ExtensionWindowHeader ([8d12e45](https://github.com/threenine/diogel/commit/8d12e45))
+
+### ✅ Tests
+
+- Improve dashboard and quick sign service unit tests ([859d6e0](https://github.com/threenine/diogel/commit/859d6e0))
+- Expand unit tests for validateQuickSignContent with markdown and HTML scenarios ([068ac80](https://github.com/threenine/diogel/commit/068ac80))
+- Add unit tests for RecentActivityCard and dashboard service enhancements ([e6a0650](https://github.com/threenine/diogel/commit/e6a0650))
+- Add unit tests for `renameAlias` in `dexie-storage` service ([ca9484e](https://github.com/threenine/diogel/commit/ca9484e))
+- Add unit tests for `ImportKeyForm` component ([62feabb](https://github.com/threenine/diogel/commit/62feabb))
+- Add unit tests for `GenerateKeyForm` component and improve validation logic ([41a4bd2](https://github.com/threenine/diogel/commit/41a4bd2))
+- Add unit tests for `KeyManagementTable` component ([0f70497](https://github.com/threenine/diogel/commit/0f70497))
+- Extend `KeyManagementPage` tests to cover key actions and table rendering ([5cc79aa](https://github.com/threenine/diogel/commit/5cc79aa))
+- Add unit tests for ApprovedClientsCard and improve service test coverage ([b949ff7](https://github.com/threenine/diogel/commit/b949ff7))
+
+### ❤️ Contributors
+
+- Gary Woodfine <annex-storage-slip@duck.com>
+
 ## v0.0.19
 
 [compare changes](https://github.com/threenine/diogel/compare/0.0.18-3690444...v0.0.19)
