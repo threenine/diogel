@@ -79,6 +79,11 @@ export async function getActiveKeyCount(): Promise<number> {
  * This metric is deterministic, stable, and does not query Nostr relays.
  */
 export async function getApprovedClientCountForActiveKey(): Promise<number> {
+  const unlocked = await isVaultUnlocked();
+  if (!unlocked) {
+    return 0;
+  }
+
   const activeAccount = await getActiveAccountAlias();
   if (!activeAccount) {
     return 0;

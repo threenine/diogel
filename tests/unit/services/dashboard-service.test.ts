@@ -14,7 +14,9 @@ vi.mock('src/services/vault-service', () => ({
   isVaultUnlocked: vi.fn(),
 }));
 
-const { approvalsToArrayMock, exceptionsToArrayMock } = vi.hoisted(() => ({
+const { approvalsWhereMock, approvalsEqualsMock, approvalsToArrayMock, exceptionsToArrayMock } = vi.hoisted(() => ({
+  approvalsWhereMock: vi.fn(),
+  approvalsEqualsMock: vi.fn(),
   approvalsToArrayMock: vi.fn(),
   exceptionsToArrayMock: vi.fn(),
 }));
@@ -40,8 +42,8 @@ const {
 vi.mock('src/services/database', () => ({
   db: {
     approvals: {
-      where: () => ({
-        equals: () => ({
+      where: approvalsWhereMock.mockReturnValue({
+        equals: approvalsEqualsMock.mockReturnValue({
           toArray: approvalsToArrayMock,
         }),
       }),
@@ -104,6 +106,11 @@ describe('dashboard-service', () => {
     });
 
     approvalsToArrayMock.mockResolvedValue([]);
+    approvalsWhereMock.mockReturnValue({
+      equals: approvalsEqualsMock.mockReturnValue({
+        toArray: approvalsToArrayMock,
+      }),
+    });
     exceptionsToArrayMock.mockResolvedValue([]);
     relayMetadataGetMock.mockReset();
     relayMetadataGetMock.mockResolvedValue(undefined);
@@ -184,6 +191,8 @@ describe('dashboard-service', () => {
     ]);
 
     await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(1);
+    expect(approvalsWhereMock).toHaveBeenCalledWith('account');
+    expect(approvalsEqualsMock).toHaveBeenCalledWith('alpha');
   });
 
   it('does not call relay event service for approved client metric', async () => {
@@ -195,6 +204,37 @@ describe('dashboard-service', () => {
     await dashboardService.getApprovedClientCountForActiveKey();
 
     expect(useEventService).not.toHaveBeenCalled();
+  });
+
+  it('returns 0 approved clients when vault is locked', async () => {
+    vi.mocked(vaultService.isVaultUnlocked).mockResolvedValue(false);
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+
+    await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(0);
+    expect(approvalsWhereMock).not.toHaveBeenCalled();
+  });
+
+  it('returns approvedClients in dashboard summary instead of signedEvents', async () => {
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
+    vi.mocked(dexieStorage.get).mockResolvedValue({
+      alpha: {
+        id: 'pubkey-alpha',
+        alias: 'alpha',
+        account: { privkey: 'redacted' },
+        createdAt: '2026-01-01',
+      },
+    });
+
+    approvalsToArrayMock.mockResolvedValue([
+      { id: 1, dateTime: '2026-01-01', eventKind: 1, hostname: 'client.example', account: 'alpha' },
+    ]);
+    fetchAccountRelayListEventMock.mockResolvedValue(null);
+    getEventsMock.mockResolvedValue([]);
+
+    const summary = await dashboardService.getDashboardSummary(5);
+
+    expect(summary.approvedClients).toBe(1);
+    expect('signedEvents' in summary).toBe(false);
   });
 
   it('returns 0 connected relays when no active account', async () => {
