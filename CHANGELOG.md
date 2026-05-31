@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.0.21
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.20...v0.0.21)
+
+### 🏡 Chore
+
+- **dependencies:** Update package-lock.json to reflect dependency changes for v0.0.20 upgrade ([64b366f](https://github.com/threenine/diogel/commit/64b366f))
+
+### ❤️ Contributors
+
+- Gary Woodfine <gary.woodfine@threenine.co.uk>
+
 ## v0.0.20
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.19...v0.0.20)
