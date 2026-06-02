@@ -1,9 +1,5 @@
 <template>
-  <img
-    :src="logoSrc"
-    alt="Diogel"
-    :class="['diogel-logo', sizeClass]"
-  />
+  <img :src="logoSrc" alt="Diogel" :class="['diogel-logo', sizeClass]" />
 </template>
 
 <script lang="ts" setup>
@@ -23,11 +19,11 @@ const props = withDefaults(
 
 const $q = useQuasar();
 
-const logoSrc = computed(() =>
-  $q.dark.isActive
-    ? 'images/dark/diogel.svg'
-    : 'images/light/diogel.svg',
-);
+const logoSrc = computed(() => {
+  const path = $q.dark.isActive ? 'www/images/dark/diogel.svg' : 'www/images/light/diogel.svg';
+
+  return chrome.runtime?.getURL(path) ?? path.replace(/^www\//, '');
+});
 
 const sizeClass = computed(() => `diogel-logo--${props.size}`);
 </script>
