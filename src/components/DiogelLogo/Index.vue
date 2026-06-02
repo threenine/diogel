@@ -1,14 +1,12 @@
 <template>
-  <img
-    :src="logoSrc"
-    alt="Diogel"
-    :class="['diogel-logo', sizeClass]"
-  />
+  <img :src="logoSrc" alt="Diogel" :class="['diogel-logo', sizeClass]" />
 </template>
 
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { useQuasar } from 'quasar';
+import darkLogoUrl from 'src/assets/images/dark/diogel.svg';
+import lightLogoUrl from 'src/assets/images/light/diogel.svg';
 
 defineOptions({ name: 'DiogelLogo' });
 
@@ -23,12 +21,7 @@ const props = withDefaults(
 
 const $q = useQuasar();
 
-const logoSrc = computed(() =>
-  $q.dark.isActive
-    ? '/images/dark/diogel.svg'
-    : '/images/light/diogel.svg',
-);
-
+const logoSrc = computed(() => ($q.dark.isActive ? darkLogoUrl : lightLogoUrl));
 const sizeClass = computed(() => `diogel-logo--${props.size}`);
 </script>
 

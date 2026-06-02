@@ -41,7 +41,12 @@ function onUploading(status: boolean) {
       <p class="text-h7 text-orange-5">{{ t('profile.avatarTitle') }}</p>
     </q-card-section>
     <q-card-section class="flex flex-center">
-      <ImagePreview :is-avatar="true" :name="name" :size="size" :url="modelValue" />
+      <ImagePreview
+        :is-avatar="true"
+        :name="name"
+        :size="size"
+        :url="modelValue"
+      />
     </q-card-section>
     <q-card-actions align="center" class="q-gutter-sm">
       <ImageUploader
