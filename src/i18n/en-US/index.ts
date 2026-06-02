@@ -63,8 +63,7 @@ export default {
     keyNotFound: 'The selected key could not be found.',
     securityWarning: {
       title: 'Security Warning',
-      message: ` * Nostr keys control your identity.
-* Never share private keys or nsec values.
+      message: ` * Nostr keys control your identity. Never share private keys or nsec values.
 * Only copy and share public npub values when needed.`,
     },
     table: {
