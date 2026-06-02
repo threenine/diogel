@@ -25,8 +25,8 @@ const $q = useQuasar();
 
 const logoSrc = computed(() =>
   $q.dark.isActive
-    ? '/images/dark/diogel.svg'
-    : '/images/light/diogel.svg',
+    ? 'images/dark/diogel.svg'
+    : 'images/light/diogel.svg',
 );
 
 const sizeClass = computed(() => `diogel-logo--${props.size}`);
