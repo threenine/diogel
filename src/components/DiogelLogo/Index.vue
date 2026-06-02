@@ -19,10 +19,16 @@ const props = withDefaults(
 
 const $q = useQuasar();
 
+function getExtensionAssetUrl(path: string): string {
+  const runtime = globalThis.chrome?.runtime;
+
+  return runtime?.getURL ? runtime.getURL(path) : path.replace(/^www\//, '/');
+}
+
 const logoSrc = computed(() => {
   const path = $q.dark.isActive ? 'www/images/dark/diogel.svg' : 'www/images/light/diogel.svg';
 
-  return chrome.runtime?.getURL(path) ?? path.replace(/^www\//, '');
+  return getExtensionAssetUrl(path);
 });
 
 const sizeClass = computed(() => `diogel-logo--${props.size}`);
