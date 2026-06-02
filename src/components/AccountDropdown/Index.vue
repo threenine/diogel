@@ -24,15 +24,12 @@
     <template #option="scope">
       <q-item class="no-wrap" v-bind="scope.itemProps">
         <q-item-section avatar>
-          <q-avatar
-            v-if="scope.opt.value !== createAccountValue"
-            size="32px"
-            color="primary"
-            text-color="white"
-            icon="person"
-          >
-            <q-img v-if="scope.opt.avatarUrl" :src="scope.opt.avatarUrl" />
-          </q-avatar>
+          <template v-if="scope.opt.value !== createAccountValue">
+            <q-avatar v-if="scope.opt.avatarUrl" size="32px">
+              <q-img :src="scope.opt.avatarUrl" />
+            </q-avatar>
+            <q-avatar v-else size="32px" color="primary" text-color="white" icon="person" />
+          </template>
           <q-icon v-else name="add_circle" color="primary" />
         </q-item-section>
         <q-item-section>
@@ -46,15 +43,12 @@
     <!-- Selected item chip/input rendering -->
     <template #selected-item="scope">
       <div class="row items-center no-wrap q-gutter-xs">
-        <q-avatar
-          v-if="scope.opt.value !== createAccountValue"
-          size="24px"
-          color="primary"
-          text-color="white"
-          icon="person"
-        >
-          <q-img v-if="scope.opt.avatarUrl" :src="scope.opt.avatarUrl" />
-        </q-avatar>
+        <template v-if="scope.opt.value !== createAccountValue">
+          <q-avatar v-if="scope.opt.avatarUrl" size="24px">
+            <q-img :src="scope.opt.avatarUrl" />
+          </q-avatar>
+          <q-avatar v-else size="24px" color="primary" text-color="white" icon="person" />
+        </template>
         <q-icon v-else name="add_circle" size="18px" color="primary" />
         <span class="text-body text-no-wrap">
           {{ scope.opt.value === createAccountValue ? t('account.create') : scope.opt.label }}
