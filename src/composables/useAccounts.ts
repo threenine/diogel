@@ -1,24 +1,38 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import useAccountStore from 'src/stores/account-store';
-import type { DropdownItem } from 'src/types';
+import type { DropdownItem, StoredKey } from 'src/types';
 import { useI18n } from 'vue-i18n';
+import { profileService } from 'src/services/profile-service';
+
+export interface AccountDropdownItem extends DropdownItem<string> {
+  avatarUrl?: string;
+  pubkey?: string;
+}
 
 export function useAccounts() {
   const accountStore = useAccountStore();
   const router = useRouter();
   const { t } = useI18n();
   const model = ref<string | null>(null);
+  const avatarUrls = ref<Record<string, string>>({});
 
   const CREATE_VALUE = 'create-account';
 
-  const items = computed<DropdownItem[]>(() => {
-    const fromStore: DropdownItem[] = Array.from(accountStore.storedKeys)
-      .filter((key) => key.alias !== 'Main Account')
-      .map((key) => ({
+  const accountKeys = computed<StoredKey[]>(() =>
+    Array.from(accountStore.storedKeys).filter((key) => key.alias !== 'Main Account'),
+  );
+
+  const items = computed<AccountDropdownItem[]>(() => {
+    const fromStore: AccountDropdownItem[] = accountKeys.value.map((key) => {
+      const avatarUrl = avatarUrls.value[key.id];
+      return {
         label: key.alias,
         value: key.alias,
-      }));
+        pubkey: key.id,
+        ...(avatarUrl ? { avatarUrl } : {}),
+      };
+    });
 
     return [
       ...fromStore,
@@ -29,8 +43,34 @@ export function useAccounts() {
     ];
   });
 
-  onMounted(async () => {
+  async function loadAccountAvatars(): Promise<void> {
+    const avatarEntries = await Promise.all(
+      accountKeys.value.map(async (key): Promise<[string, string] | null> => {
+        const profile = await profileService.fetchProfile(key.id);
+        const picture = profile?.picture?.trim();
+        return picture ? [key.id, picture] : null;
+      }),
+    );
+
+    avatarUrls.value = avatarEntries.reduce<Record<string, string>>((acc, entry) => {
+      if (entry) {
+        const [pubkey, avatarUrl] = entry;
+        acc[pubkey] = avatarUrl;
+      }
+      return acc;
+    }, {});
+  }
+
+  async function refreshAccounts(): Promise<void> {
     await accountStore.getKeys();
+  }
+
+  watch(accountKeys, () => {
+    void loadAccountAvatars();
+  });
+
+  onMounted(async () => {
+    await refreshAccounts();
     model.value = accountStore.activeKey ?? null;
     accountStore.listenToStorageChanges();
   });
