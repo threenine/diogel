@@ -1,5 +1,31 @@
 # Changelog
 
+## v0.0.22
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.21...v0.0.22)
+
+### 🚀 Enhancements
+
+- Show account avatars in dropdown ([bfb3c88](https://github.com/threenine/diogel/commit/bfb3c88))
+
+### 🩹 Fixes
+
+- Avoid overlapping account avatar fallback ([b753f5f](https://github.com/threenine/diogel/commit/b753f5f))
+- Resolve logo asset in extension popup ([0ffec4f](https://github.com/threenine/diogel/commit/0ffec4f))
+- Guard extension logo asset resolution ([4c8d7c5](https://github.com/threenine/diogel/commit/4c8d7c5))
+- Inline Diogel logo svg ([d354acd](https://github.com/threenine/diogel/commit/d354acd))
+- Bundle theme logo image assets ([189fa8d](https://github.com/threenine/diogel/commit/189fa8d))
+
+### 🏡 Chore
+
+- **docs:** Remove outdated documentation files ([9c84038](https://github.com/threenine/diogel/commit/9c84038))
+- **manifest:** Update web_accessible_resources and fix logo path handling ([72b31ea](https://github.com/threenine/diogel/commit/72b31ea))
+
+### ❤️ Contributors
+
+- Dave <support@threenine.co.uk>
+- Gary Woodfine <gary.woodfine@threenine.co.uk>
+
 ## v0.0.21
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.20...v0.0.21)
