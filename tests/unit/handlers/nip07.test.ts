@@ -179,6 +179,30 @@ describe('Nip07Handler', () => {
       }
     });
 
+    it('should sign an explicitly approved one-shot request without stored permission', async () => {
+      vi.mocked(isVaultUnlocked).mockReturnValue(true);
+      vi.mocked(storageService['get']).mockResolvedValue('test-alias');
+      vi.mocked(getVaultData).mockResolvedValue({
+        success: true,
+        vaultData: {
+          accounts: [mockAccount],
+        },
+      });
+      const signedEvent = { ...mockEvent, id: 'event-id', sig: 'event-sig', pubkey: 'test-pubkey' };
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      vi.mocked(finalizeEvent).mockReturnValue(signedEvent as any);
+
+      const result = await handleSignEvent(
+        { event: { ...mockEvent } as UnsignedEvent },
+        mockOrigin,
+        { skipPermissionCheck: true },
+      );
+
+      expect(result.success).toBe(true);
+      expect(checkPermission).not.toHaveBeenCalled();
+      expect(finalizeEvent).toHaveBeenCalled();
+    });
+
     it('should return error when signing fails', async () => {
       vi.mocked(isVaultUnlocked).mockReturnValue(true);
       vi.mocked(checkPermission).mockResolvedValue({ granted: true });

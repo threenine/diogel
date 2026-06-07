@@ -480,7 +480,7 @@ bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => (
       }
       throw new BackgroundBridgeError('PERMISSION_DENIED', 'User rejected the request');
     }
-    const result = await handleSignEvent({ event }, origin);
+    const result = await handleSignEvent({ event }, origin, { skipPermissionCheck: true });
     if (!result.success) {
       throw new BackgroundBridgeError(
         result.error === 'Vault is locked'
