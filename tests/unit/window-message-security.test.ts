@@ -1,5 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { MESSAGE_TYPE_REQUEST } from 'app/src-bex/constants';
+import {
+  handleDiogelWindowMessage,
+  type WindowMessageBridge,
+} from 'app/src-bex/window-message-handler';
 import {
   getCurrentWindowOrigin,
   isDiogelWindowMessage,
@@ -8,10 +13,11 @@ import {
 
 const providerSource = readFileSync('src-bex/nostr-provider.js', 'utf8');
 const contentScriptSource = readFileSync('src-bex/content-script.ts', 'utf8');
+const windowMessageHandlerSource = readFileSync('src-bex/window-message-handler.ts', 'utf8');
 
 describe('postMessage target origin hardening (Static)', () => {
   it('does not use wildcard or empty target origins in BEX source', () => {
-    const source = `${providerSource}\n${contentScriptSource}`;
+    const source = `${providerSource}\n${contentScriptSource}\n${windowMessageHandlerSource}`;
 
     // Negative match for postMessage(..., '*') or postMessage(..., "*")
     expect(source).not.toMatch(/postMessage\s*\([\s\S]*?,\s*['"]\*['"]\s*\)/);
@@ -55,3 +61,66 @@ describe('window-message-security helpers', () => {
     expect(isDiogelWindowMessage({ id: 123, type: 'diogel-request' })).toBe(false);
   });
 });
+
+const createBridge = (result: unknown = 'bridge-result'): WindowMessageBridge => ({
+  isConnected: true,
+  connectToBackground: vi.fn(async () => undefined),
+  send: vi.fn(async () => result),
+});
+
+const createRequestEvent = (origin: string): MessageEvent<unknown> =>
+  new MessageEvent('message', {
+    data: {
+      id: 'request-1',
+      type: MESSAGE_TYPE_REQUEST,
+      method: 'getPublicKey',
+      payload: {},
+    },
+    origin,
+    source: window,
+  });
+
+describe('handleDiogelWindowMessage', () => {
+  it('sends same-origin requests to the bridge and posts the response to the page origin', async () => {
+    const bridge = createBridge('pubkey-result');
+    const postMessage = vi.fn<(message: unknown, targetOrigin: string) => void>();
+
+    await handleDiogelWindowMessage(createRequestEvent(window.location.origin), {
+      bridge,
+      postMessage,
+    });
+
+    expect(bridge.send).toHaveBeenCalledTimes(1);
+    expect(bridge.send).toHaveBeenCalledWith({
+      event: 'nostr.getPublicKey',
+      to: 'background',
+      payload: {
+        origin: window.location.origin,
+      },
+    });
+    expect(postMessage).toHaveBeenCalledTimes(1);
+    expect(postMessage).toHaveBeenCalledWith(
+      {
+        id: 'request-1',
+        response: true,
+        result: 'pubkey-result',
+      },
+      window.location.origin,
+    );
+  });
+
+  it('ignores cross-origin requests without posting or calling the bridge', async () => {
+    const bridge = createBridge('pubkey-result');
+    const postMessage = vi.fn<(message: unknown, targetOrigin: string) => void>();
+
+    await handleDiogelWindowMessage(createRequestEvent('https://malicious.example'), {
+      bridge,
+      postMessage,
+    });
+
+    expect(bridge.connectToBackground).not.toHaveBeenCalled();
+    expect(bridge.send).not.toHaveBeenCalled();
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+});
+
