@@ -294,7 +294,7 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
   if (!isUnlockedStatus.success || !isUnlockedStatus.data) {
     try {
       const loginUrl = chrome.runtime.getURL(
-        `www/index.html#/login?redirect=/approve?origin=${encodeURIComponent(origin)}&kind=${eventKind}`,
+        `www/index.html#/login?redirect=/approve&origin=${encodeURIComponent(origin)}&kind=${eventKind}&approvalVaultLocked=true`,
       );
       const win = await chrome.windows.create({ url: loginUrl, type: 'popup', width: 450, height: 700, focused: true });
       const windowId = win?.id;
