@@ -13,6 +13,38 @@ const route = useRoute();
 const origin = ref('');
 const faviconUrl = ref('');
 const rememberChoice = ref('once');
+const kindType = ref('Unknown request');
+const requestTypeLabel = ref('Signer request');
+const contentDescription = ref('');
+
+const requestTypeLabels: Record<string, string> = {
+  get_public_key: 'Public key request',
+  get_relays: 'Relay list request',
+  sign_event: 'Sign event request',
+  nip04_encrypt: 'NIP-04 encryption request',
+  nip04_decrypt: 'NIP-04 decryption request',
+};
+
+const nostrKindLabels: Record<number, string> = {
+  0: 'Profile metadata',
+  1: 'Text note',
+  3: 'Contact list',
+  4: 'Encrypted direct message',
+  5: 'Event deletion',
+  6: 'Repost',
+  7: 'Reaction',
+  40: 'Channel creation',
+  41: 'Channel metadata',
+  42: 'Channel message',
+  44: 'Channel mute user',
+  1063: 'File metadata',
+  1984: 'Reporting',
+  9734: 'Zap request',
+  9735: 'Zap receipt',
+  10002: 'Relay list metadata',
+  22242: 'Client authentication',
+  30023: 'Long-form content',
+};
 
 const rememberOptions = [
   { label: t('approval.remember.options.once'), value: 'once' },
@@ -20,8 +52,29 @@ const rememberOptions = [
   { label: t('approval.remember.options.always'), value: 'always' },
 ];
 
+const getQueryString = (value: unknown): string | undefined => {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value) && typeof value[0] === 'string') return value[0];
+  return undefined;
+};
+
+const getKindTypeLabel = (kindValue?: string): string => {
+  const kind = Number(kindValue);
+  if (!Number.isInteger(kind) || kind < 0) {
+    return 'No Nostr event kind';
+  }
+
+  const label = nostrKindLabels[kind] ?? 'Custom Nostr event';
+  return `${label} (${kind})`;
+};
+
 onMounted(() => {
   origin.value = (route.query.origin as string) || 'Unknown';
+  const requestType = getQueryString(route.query.requestType) ?? '';
+  requestTypeLabel.value = requestTypeLabels[requestType] ?? 'Signer request';
+  kindType.value = getKindTypeLabel(getQueryString(route.query.kind));
+  contentDescription.value = getQueryString(route.query.contentDescription) ?? '';
+
   logService.log(LogLevel.DEBUG, 'SignerApproval mounted, origin:', { origin: origin.value });
 
   if (origin.value !== 'Unknown') {
@@ -105,6 +158,23 @@ async function reject() {
           </div>
         </div>
         <p>{{ t('approval.description') }}</p>
+
+        <q-separator class="q-my-md" />
+
+        <div class="approval-details q-gutter-sm">
+          <div>
+            <div class="text-caption text-grey-7">Request Type</div>
+            <div class="text-body2 text-weight-medium">{{ requestTypeLabel }}</div>
+          </div>
+          <div>
+            <div class="text-caption text-grey-7">Kind Type</div>
+            <div class="text-body2 text-weight-medium">{{ kindType }}</div>
+          </div>
+          <div v-if="contentDescription">
+            <div class="text-caption text-grey-7">Content Description</div>
+            <div class="content-description text-body2">{{ contentDescription }}</div>
+          </div>
+        </div>
 
         <div class="q-mt-lg q-px-sm">
           <div class="text-caption text-grey-7 q-mb-sm">

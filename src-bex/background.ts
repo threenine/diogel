@@ -286,16 +286,57 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;
 });
 
-async function requestApproval(origin: string, eventKind: number): Promise<boolean> {
+interface ApprovalRequestDetails {
+  requestType: string;
+  contentDescription?: string;
+}
+
+const trimApprovalContentDescription = (content?: string): string | undefined => {
+  const normalized = content?.replace(/\s+/g, ' ').trim();
+  if (!normalized) return undefined;
+  return normalized.length > 240 ? `${normalized.slice(0, 237)}...` : normalized;
+};
+
+const buildApprovalUrl = (
+  path: 'approve' | 'login',
+  origin: string,
+  eventKind: number,
+  details: ApprovalRequestDetails,
+  approvalVaultLocked = false,
+): string => {
+  const query = new URLSearchParams({
+    origin,
+    kind: String(eventKind),
+    requestType: details.requestType,
+  });
+
+  if (details.contentDescription) {
+    query.set('contentDescription', details.contentDescription);
+  }
+
+  if (path === 'login') {
+    query.set('redirect', '/approve');
+  }
+
+  if (approvalVaultLocked) {
+    query.set('approvalVaultLocked', 'true');
+  }
+
+  return chrome.runtime.getURL(`www/index.html#/${path}?${query.toString()}`);
+};
+
+async function requestApproval(
+  origin: string,
+  eventKind: number,
+  details: ApprovalRequestDetails,
+): Promise<boolean> {
   const permission = await checkPermission(origin, eventKind);
   if (permission.granted) return true;
 
   const isUnlockedStatus = await handleVaultIsUnlocked({}, '');
   if (!isUnlockedStatus.success || !isUnlockedStatus.data) {
     try {
-      const loginUrl = chrome.runtime.getURL(
-        `www/index.html#/login?redirect=/approve&origin=${encodeURIComponent(origin)}&kind=${eventKind}&approvalVaultLocked=true`,
-      );
+      const loginUrl = buildApprovalUrl('login', origin, eventKind, details, true);
       const win = await chrome.windows.create({ url: loginUrl, type: 'popup', width: 450, height: 700, focused: true });
       const windowId = win?.id;
       if (windowId === undefined) {
@@ -308,7 +349,7 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
             if (status.success && status.data) {
               clearInterval(checkStatus);
               chrome.windows.onRemoved.removeListener(onRemoved);
-              void requestApproval(origin, eventKind).then(resolve);
+              void requestApproval(origin, eventKind, details).then(resolve);
             }
           });
         }, 1000);
@@ -329,7 +370,7 @@ async function requestApproval(origin: string, eventKind: number): Promise<boole
 
   if (approvalPromise) throw new Error('Another approval request is already pending');
 
-  const url = chrome.runtime.getURL(`www/index.html#/approve?origin=${encodeURIComponent(origin)}&kind=${eventKind}`);
+  const url = buildApprovalUrl('approve', origin, eventKind, details);
   let windowId: number | undefined;
 
   const promise = new Promise<ApprovalResponse>((resolve, reject) => {
@@ -414,7 +455,7 @@ bridge.on('nostr.getPublicKey', ({ payload: { origin } }) => (
     }
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('get_public_key', getHostname(origin), activeStoredKey?.alias);
-    const approved = await requestApproval(origin, -1);
+    const approved = await requestApproval(origin, -1, { requestType: 'get_public_key' });
     if (!approved) {
       throw new BackgroundBridgeError('PERMISSION_DENIED', 'User rejected the request');
     }
@@ -427,7 +468,11 @@ bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => (
     void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
-    const approved = await requestApproval(origin, event.kind);
+    const contentDescription = trimApprovalContentDescription(event.content);
+    const approvalDetails: ApprovalRequestDetails = contentDescription
+      ? { requestType: 'sign_event', contentDescription }
+      : { requestType: 'sign_event' };
+    const approved = await requestApproval(origin, event.kind, approvalDetails);
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
       if (!unlockedStatus.success || !unlockedStatus.data) {
@@ -455,7 +500,7 @@ bridge.on('nostr.getRelays', ({ payload: { origin } }) => (
     void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
-    const approved = await requestApproval(origin, -1);
+    const approved = await requestApproval(origin, -1, { requestType: 'get_relays' });
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
       if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
@@ -470,7 +515,7 @@ bridge.on('nostr.nip04.encrypt', ({ payload }) => (
     void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_encrypt', getHostname(payload.origin), activeStoredKey?.alias);
-    const approved = await requestApproval(payload.origin, -1);
+    const approved = await requestApproval(payload.origin, -1, { requestType: 'nip04_encrypt' });
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
       if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
@@ -485,7 +530,7 @@ bridge.on('nostr.nip04.decrypt', ({ payload }) => (
     void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_decrypt', getHostname(payload.origin), activeStoredKey?.alias);
-    const approved = await requestApproval(payload.origin, -1);
+    const approved = await requestApproval(payload.origin, -1, { requestType: 'nip04_decrypt' });
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
       if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
