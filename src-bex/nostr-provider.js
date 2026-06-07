@@ -1,4 +1,6 @@
 const DEBUG = false; // Manually controlled as this script is injected into the page
+const getCurrentWindowOrigin = () => window.location.origin;
+const isSameWindowOrigin = (event) => event.origin === getCurrentWindowOrigin();
 
 const nostr = {
   name: 'Diogel',
@@ -35,6 +37,7 @@ const nostr = {
         const handler = (event) => {
           if (
             event.source === window &&
+            isSameWindowOrigin(event) &&
             event.data &&
             event.data.id === id &&
             event.data.response
@@ -58,7 +61,7 @@ const nostr = {
             method: type,
             payload,
           },
-          '*',
+          getCurrentWindowOrigin(),
         );
       });
     } catch (e) {
@@ -80,6 +83,7 @@ const nostr = {
         const handler = (event) => {
           if (
             event.source === window &&
+            isSameWindowOrigin(event) &&
             event.data &&
             event.data.id === id &&
             event.data.response
@@ -90,7 +94,7 @@ const nostr = {
           }
         };
         window.addEventListener('message', handler);
-        window.postMessage({ id, type: 'diogel-ping' }, '*');
+        window.postMessage({ id, type: 'diogel-ping' }, getCurrentWindowOrigin());
       });
     });
   },

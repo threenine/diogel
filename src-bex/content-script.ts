@@ -8,6 +8,12 @@
 import type { BridgeAction, BridgeRequestMap } from '../src/types/bridge';
 import { createBridge } from '#q-app/bex/content';
 import { MESSAGE_TYPE_PING, MESSAGE_TYPE_REQUEST } from './constants';
+import {
+  getCurrentWindowOrigin,
+  isDiogelWindowMessage,
+  isSameWindowOrigin,
+} from './window-message-security';
+
 const bridge = createBridge({ debug: false });
 /**
  * bridge.portName is 'content@<path>-<number>'
@@ -25,22 +31,6 @@ const warn = (message: string, context?: LogContext): void => {
 
 const error = (message: string, context?: LogContext): void => {
   console.error(message, context);
-};
-
-interface DiogelWindowMessage {
-  id: string;
-  type: string;
-  method?: string;
-  payload?: Record<string, unknown>;
-}
-
-const isDiogelWindowMessage = (value: unknown): value is DiogelWindowMessage => {
-  if (!value || typeof value !== 'object') {
-    return false;
-  }
-
-  const candidate = value as Record<string, unknown>;
-  return typeof candidate.id === 'string' && typeof candidate.type === 'string';
 };
 
 const injectProvider = () => {
@@ -74,22 +64,29 @@ async function handleWindowMessage(event: MessageEvent<unknown>): Promise<void> 
   const message = event.data;
   const validMessageTypes = new Set([MESSAGE_TYPE_REQUEST, MESSAGE_TYPE_PING]);
 
-  if (event.source !== window || !isDiogelWindowMessage(message) || !validMessageTypes.has(message.type)) {
+  if (
+    event.source !== window ||
+    !isSameWindowOrigin(event) ||
+    !isDiogelWindowMessage(message) ||
+    !validMessageTypes.has(message.type)
+  ) {
     return;
   }
 
+  const targetOrigin = getCurrentWindowOrigin();
+
   if (message.type === MESSAGE_TYPE_PING) {
-    window.postMessage({ id: message.id, response: true, result: 'pong' }, '*');
+    window.postMessage({ id: message.id, response: true, result: 'pong' }, targetOrigin);
     return;
   }
 
   const { id, method, payload } = message;
   if (method === 'ping') {
-    window.postMessage({ id, response: true, result: 'pong' }, '*');
+    window.postMessage({ id, response: true, result: 'pong' }, targetOrigin);
     return;
   }
 
-  const origin = window.location.origin;
+  const pageOrigin = getCurrentWindowOrigin();
 
   if (!bridge.isConnected) {
     warn('[BEX] Bridge is not connected, attempting to connect...');
@@ -105,7 +102,7 @@ async function handleWindowMessage(event: MessageEvent<unknown>): Promise<void> 
           response: true,
           error: `Bridge connection failed: ${connectError instanceof Error ? connectError.message : String(connectError)}`,
         },
-        '*',
+        targetOrigin,
       );
       return;
     }
@@ -115,7 +112,7 @@ async function handleWindowMessage(event: MessageEvent<unknown>): Promise<void> 
     const methodAction = `nostr.${method}` as BridgeAction;
     const bridgePayload = {
       ...(payload ?? {}),
-      origin,
+      origin: pageOrigin,
     } as Omit<BridgeRequestMap[BridgeAction], 'id' | 'action'>;
     const result = await bridge.send({
       event: methodAction,
@@ -128,7 +125,7 @@ async function handleWindowMessage(event: MessageEvent<unknown>): Promise<void> 
         response: true,
         result,
       },
-      '*',
+      targetOrigin,
     );
   } catch (bridgeError: unknown) {
     error('[BEX] Content script received error from background', {
@@ -141,7 +138,7 @@ async function handleWindowMessage(event: MessageEvent<unknown>): Promise<void> 
         response: true,
         error: bridgeError instanceof Error ? bridgeError.message : String(bridgeError),
       },
-      '*',
+      targetOrigin,
     );
   }
 }
