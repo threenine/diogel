@@ -1,5 +1,6 @@
 import type { BridgeAction, BridgeRequestMap } from '../src/types/bridge';
 import { MESSAGE_TYPE_PING, MESSAGE_TYPE_REQUEST } from './constants';
+import { normalizeErrorMessage } from './error-normalizer';
 import {
   getCurrentWindowOrigin,
   isDiogelWindowMessage,
@@ -61,14 +62,15 @@ export async function handleDiogelWindowMessage(
     try {
       await dependencies.bridge.connectToBackground();
     } catch (connectError: unknown) {
+      const errorMessage = normalizeErrorMessage(connectError);
       dependencies.error?.('[BEX] Failed to reconnect', {
-        error: connectError instanceof Error ? connectError.message : String(connectError),
+        error: errorMessage,
       });
       dependencies.postMessage(
         {
           id,
           response: true,
-          error: `Bridge connection failed: ${connectError instanceof Error ? connectError.message : String(connectError)}`,
+          error: `Bridge connection failed: ${errorMessage}`,
         },
         targetOrigin,
       );
@@ -96,15 +98,16 @@ export async function handleDiogelWindowMessage(
       targetOrigin,
     );
   } catch (bridgeError: unknown) {
+    const errorMessage = normalizeErrorMessage(bridgeError);
     dependencies.error?.('[BEX] Content script received error from background', {
       id,
-      error: bridgeError instanceof Error ? bridgeError.message : String(bridgeError),
+      error: errorMessage,
     });
     dependencies.postMessage(
       {
         id,
         response: true,
-        error: bridgeError instanceof Error ? bridgeError.message : String(bridgeError),
+        error: errorMessage,
       },
       targetOrigin,
     );

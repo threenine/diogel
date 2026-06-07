@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { MESSAGE_TYPE_REQUEST } from 'app/src-bex/constants';
+import { normalizeErrorMessage } from 'app/src-bex/error-normalizer';
 import {
   handleDiogelWindowMessage,
   type WindowMessageBridge,
@@ -121,6 +122,48 @@ describe('handleDiogelWindowMessage', () => {
     expect(bridge.connectToBackground).not.toHaveBeenCalled();
     expect(bridge.send).not.toHaveBeenCalled();
     expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it('posts readable messages for object-shaped bridge errors', async () => {
+    const bridge: WindowMessageBridge = {
+      isConnected: true,
+      connectToBackground: vi.fn(async () => undefined),
+      send: vi.fn(async () => {
+        throw { error: { message: 'Vault is locked. Open the extension to unlock.' } };
+      }),
+    };
+    const postMessage = vi.fn<(message: unknown, targetOrigin: string) => void>();
+
+    await handleDiogelWindowMessage(createRequestEvent(window.location.origin), {
+      bridge,
+      postMessage,
+    });
+
+    expect(postMessage).toHaveBeenCalledWith(
+      {
+        id: 'request-1',
+        response: true,
+        error: 'Vault is locked. Open the extension to unlock.',
+      },
+      window.location.origin,
+    );
+  });
+});
+
+describe('normalizeErrorMessage', () => {
+  it('extracts readable messages from object-shaped bridge errors', () => {
+    expect(normalizeErrorMessage({ message: 'Permission denied' })).toBe('Permission denied');
+    expect(normalizeErrorMessage({ error: 'Vault is locked' })).toBe('Vault is locked');
+    expect(normalizeErrorMessage({ error: { message: 'User rejected the request' } })).toBe(
+      'User rejected the request',
+    );
+  });
+});
+
+describe('provider error normalization source', () => {
+  it('normalizes provider errors before constructing Error instances', () => {
+    expect(providerSource).toContain('normalizeErrorMessage');
+    expect(providerSource).toContain('new Error(normalizeErrorMessage(event.data.error))');
   });
 });
 
