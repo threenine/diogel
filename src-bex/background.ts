@@ -108,6 +108,14 @@ declare module '@quasar/app-vite' {
       { pubkey: string; ciphertext: string; origin: string },
       BridgeResponsePayload<'nostr.nip04.decrypt'>,
     ];
+    'nostr.nip44.encrypt': [
+      { pubkey: string; plaintext: string; origin: string },
+      BridgeResponsePayload<'nostr.nip44.encrypt'>,
+    ];
+    'nostr.nip44.decrypt': [
+      { pubkey: string; ciphertext: string; origin: string },
+      BridgeResponsePayload<'nostr.nip44.decrypt'>,
+    ];
     'nostr.approval.respond': [{ approved: boolean; duration: string }, BridgeResponsePayload<'nostr.approval.respond'>];
     'vault.unlock': [{ password: string }, BridgeResponsePayload<'vault.unlock'>];
     'vault.lock': [undefined, BridgeResponsePayload<'vault.lock'>];
@@ -538,6 +546,36 @@ bridge.on('nostr.nip04.decrypt', ({ payload }) => (
     }
     return await dispatchMessage('nostr.nip04.decrypt', createBridgeRequest('nostr.nip04.decrypt', payload), payload.origin) ?? '';
   })() as unknown as BridgeResponsePayload<'nostr.nip04.decrypt'>
+));
+
+bridge.on('nostr.nip44.encrypt', ({ payload }) => (
+  (async () => {
+    void resetAutoLockTimer();
+    const activeStoredKey = await getActiveStoredKey();
+    void logService.logApproval('nip44_encrypt', getHostname(payload.origin), activeStoredKey?.alias);
+    const approved = await requestApproval(payload.origin, -1, { requestType: 'nip44_encrypt' });
+    if (!approved) {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
+      throw new Error('User rejected the request');
+    }
+    return await dispatchMessage('nostr.nip44.encrypt', createBridgeRequest('nostr.nip44.encrypt', payload), payload.origin) ?? '';
+  })() as unknown as BridgeResponsePayload<'nostr.nip44.encrypt'>
+));
+
+bridge.on('nostr.nip44.decrypt', ({ payload }) => (
+  (async () => {
+    void resetAutoLockTimer();
+    const activeStoredKey = await getActiveStoredKey();
+    void logService.logApproval('nip44_decrypt', getHostname(payload.origin), activeStoredKey?.alias);
+    const approved = await requestApproval(payload.origin, -1, { requestType: 'nip44_decrypt' });
+    if (!approved) {
+      const unlockedStatus = await handleVaultIsUnlocked({}, '');
+      if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
+      throw new Error('User rejected the request');
+    }
+    return await dispatchMessage('nostr.nip44.decrypt', createBridgeRequest('nostr.nip44.decrypt', payload), payload.origin) ?? '';
+  })() as unknown as BridgeResponsePayload<'nostr.nip44.decrypt'>
 ));
 
 bridge.on('blossom.upload', ({ payload }) => {

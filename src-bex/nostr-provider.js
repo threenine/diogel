@@ -39,6 +39,14 @@ const nostr = {
       return nostr.call('nip04.decrypt', { pubkey, ciphertext });
     },
   },
+  nip44: {
+    encrypt: async (pubkey, plaintext) => {
+      return nostr.call('nip44.encrypt', { pubkey, plaintext });
+    },
+    decrypt: async (pubkey, ciphertext) => {
+      return nostr.call('nip44.decrypt', { pubkey, ciphertext });
+    },
+  },
 
   // Internal call helper
   call: (type, payload) => {
@@ -125,7 +133,15 @@ window.dispatchEvent(
   new CustomEvent('nostr:registration', {
     detail: {
       name: 'Diogel',
-      methods: ['getPublicKey', 'signEvent', 'getRelays', 'nip04.encrypt', 'nip04.decrypt'],
+      methods: [
+        'getPublicKey',
+        'signEvent',
+        'getRelays',
+        'nip04.encrypt',
+        'nip04.decrypt',
+        'nip44.encrypt',
+        'nip44.decrypt',
+      ],
     },
   }),
 );

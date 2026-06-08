@@ -23,6 +23,8 @@ const requestTypeLabels: Record<string, string> = {
   sign_event: 'Sign event request',
   nip04_encrypt: 'NIP-04 encryption request',
   nip04_decrypt: 'NIP-04 decryption request',
+  nip44_encrypt: 'NIP-44 encryption request',
+  nip44_decrypt: 'NIP-44 decryption request',
 };
 
 const nostrKindLabels: Record<number, string> = {
