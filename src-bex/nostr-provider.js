@@ -1,4 +1,24 @@
 const DEBUG = false; // Manually controlled as this script is injected into the page
+const getCurrentWindowOrigin = () => window.location.origin;
+const isSameWindowOrigin = (event) => event.origin === getCurrentWindowOrigin();
+const normalizeErrorMessage = (error) => {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') {
+    if (typeof error.message === 'string') return error.message;
+    if (typeof error.error === 'string') return error.error;
+    if (error.error && typeof error.error === 'object' && typeof error.error.message === 'string') {
+      return error.error.message;
+    }
+    if (typeof error.code === 'string') return error.code;
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return 'Unknown error';
+    }
+  }
+  return String(error);
+};
 
 const nostr = {
   name: 'Diogel',
@@ -35,6 +55,7 @@ const nostr = {
         const handler = (event) => {
           if (
             event.source === window &&
+            isSameWindowOrigin(event) &&
             event.data &&
             event.data.id === id &&
             event.data.response
@@ -43,7 +64,7 @@ const nostr = {
             clearTimeout(timeout);
             window.removeEventListener('message', handler);
             if (event.data.error) {
-              reject(new Error(event.data.error));
+              reject(new Error(normalizeErrorMessage(event.data.error)));
             } else {
               resolve(event.data.result);
             }
@@ -58,7 +79,7 @@ const nostr = {
             method: type,
             payload,
           },
-          '*',
+          getCurrentWindowOrigin(),
         );
       });
     } catch (e) {
@@ -80,6 +101,7 @@ const nostr = {
         const handler = (event) => {
           if (
             event.source === window &&
+            isSameWindowOrigin(event) &&
             event.data &&
             event.data.id === id &&
             event.data.response
@@ -90,7 +112,7 @@ const nostr = {
           }
         };
         window.addEventListener('message', handler);
-        window.postMessage({ id, type: 'diogel-ping' }, '*');
+        window.postMessage({ id, type: 'diogel-ping' }, getCurrentWindowOrigin());
       });
     });
   },

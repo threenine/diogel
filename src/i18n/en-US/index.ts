@@ -57,7 +57,7 @@ export default {
     viewTitle: 'View Key',
     viewCaption: 'Review and export this key. Only alias naming can be edited.',
     importTitle: 'Import Key',
-    importCaption: 'Import an existing key from an nsec private key.',
+    importCaption: 'Import an existing key from an nsec private key. Your private key will not be stored on the server, it is stored in an encrypted vault within the browser.',
     addNewTitle: 'Add New Key',
     addNewCaption: 'Generate and register a new key in your vault.',
     keyNotFound: 'The selected key could not be found.',

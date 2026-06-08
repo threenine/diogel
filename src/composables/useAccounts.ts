@@ -65,6 +65,18 @@ export function useAccounts() {
     await accountStore.getKeys();
   }
 
+  function openKeyManagementInBrowser(): void {
+    const path = '/keys';
+
+    if (typeof chrome !== 'undefined' && chrome.runtime?.getURL && chrome.tabs?.create) {
+      const url = chrome.runtime.getURL(`www/index.html#${path}`);
+      void chrome.tabs.create({ url });
+      return;
+    }
+
+    router.push({ name: 'keys' }).catch(() => {});
+  }
+
   watch(accountKeys, () => {
     void loadAccountAvatars();
   });
@@ -86,8 +98,12 @@ export function useAccounts() {
     if (v === oldV) return;
 
     if (v === CREATE_VALUE) {
-      router.push({ name: 'add-new-key' }).catch(() => {});
-    } else if (v && v !== accountStore.activeKey) {
+      openKeyManagementInBrowser();
+      model.value = accountStore.activeKey ?? oldV ?? null;
+      return;
+    }
+
+    if (v && v !== accountStore.activeKey) {
       await accountStore.setActiveKey(v);
 
       const currentPath = router.currentRoute.value.path;
