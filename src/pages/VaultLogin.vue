@@ -16,6 +16,12 @@
           >
             Vault locked due to inactivity.
           </div>
+          <div
+            v-if="showApprovalVaultLockedMessage"
+            class="q-mt-sm text-center text-orange-8 text-weight-medium"
+          >
+            Vault is locked. Unlock your vault to approve the signer request.
+          </div>
         </q-card-section>
 
         <q-card-section v-if="!vaultStore.vaultExists">
@@ -72,8 +78,9 @@
 </template>
 
 <script lang="ts" setup>
-import { onMounted, watch } from 'vue';
+import { computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useQuasar } from 'quasar';
 import { useVault } from 'src/composables/useVault';
 import DiogelLogo from 'components/DiogelLogo/Index.vue';
 
@@ -90,12 +97,32 @@ const {
 
 const router = useRouter();
 const route = useRoute();
+const $q = useQuasar();
+
+const showApprovalVaultLockedMessage = computed(
+  () => vaultStore.vaultExists && route.query.approvalVaultLocked === 'true',
+);
+
+function notifyApprovalVaultLocked(): void {
+  if (!showApprovalVaultLockedMessage.value) {
+    return;
+  }
+
+  $q.notify({
+    type: 'warning',
+    message: 'Vault is locked. Unlock your vault to approve the signer request.',
+    position: 'top',
+    timeout: 6000,
+  });
+}
 
 onMounted(async () => {
   if (vaultStore.isLoading) {
     return; // App.vue will handle initial check and redirection
   }
   await vaultStore.checkVaultStatus();
+
+  notifyApprovalVaultLocked();
 
   if (vaultStore.isUnlocked && (route.path === '/login' || route.name === 'login')) {
     await router.push({ name: getPostLoginRouteName() });

@@ -52,7 +52,8 @@ export const handleGetPublicKey = logWrapper(async (
 
 export const handleSignEvent = logWrapper(async (
   payload: { event: UnsignedEvent },
-  origin: string
+  origin: string,
+  options: { skipPermissionCheck?: boolean } = {},
 ): Promise<HandlerResult<SignedEvent>> => {
   // Check vault
   if (!isVaultUnlocked()) {
@@ -60,9 +61,11 @@ export const handleSignEvent = logWrapper(async (
   }
 
   // Check permission
-  const permission = await checkPermission(origin, payload.event.kind);
-  if (!permission.granted) {
-    return { success: false, error: 'Permission denied', code: ErrorCode.PER_DENIED };
+  if (!options.skipPermissionCheck) {
+    const permission = await checkPermission(origin, payload.event.kind);
+    if (!permission.granted) {
+      return { success: false, error: 'Permission denied', code: ErrorCode.PER_DENIED };
+    }
   }
 
   // Get active account (includes privkey)
