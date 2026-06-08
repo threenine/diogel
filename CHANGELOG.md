@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.0.24
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.23...v0.0.24)
+
+### 🏡 Chore
+
+- **docs:** Remove NIP-44 implementation plan following feature completion ([2e3f2ed](https://github.com/threenine/diogel/commit/2e3f2ed))
+
+### ❤️ Contributors
+
+- Gary Woodfine <gary.woodfine@threenine.co.uk>
+
 ## v0.0.23
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.22...v0.0.23)
