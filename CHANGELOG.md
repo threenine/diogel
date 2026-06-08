@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.0.23
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.22...v0.0.23)
+
+### 🏡 Chore
+
+- Remove redundant blank lines in useNavigation.ts ([3411e12](https://github.com/threenine/diogel/commit/3411e12))
+- **security:** Enforce strict target origin for postMessage and improve window message validation ([0db8884](https://github.com/threenine/diogel/commit/0db8884))
+- **docs:** Update Diogel link and banner in README.md ([2e53b8b](https://github.com/threenine/diogel/commit/2e53b8b))
+- **ui:** Adjust spacing in AccountDropdown for better alignment ([3e823c2](https://github.com/threenine/diogel/commit/3e823c2))
+- **i18n:** Update import key caption with clarification on private key storage ([5b0d527](https://github.com/threenine/diogel/commit/5b0d527))
+
+### ❤️ Contributors
+
+- Gary Woodfine <gary.woodfine@threenine.co.uk>
+
 ## v0.0.22
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.21...v0.0.22)
