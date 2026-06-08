@@ -22,6 +22,7 @@ import {
 import { handleGetPublicKey, handleSignEvent } from './handlers/nip07';
 import { handleBlossomUpload } from './handlers/blossom-handler';
 import { handleNip04Encrypt, handleNip04Decrypt } from './handlers/nip04';
+import { handleNip44Encrypt, handleNip44Decrypt } from './handlers/nip44';
 import { handleRelayBrowserList, handleRelayBrowserGetStatus, handleRelayBrowserRefresh } from './handlers/relay-browser-handler';
 
 /**
@@ -73,6 +74,22 @@ export async function dispatchMessage<K extends BridgeAction>(
 
     case 'nostr.nip04.decrypt': {
       const result = await handleNip04Decrypt(payload as BridgeRequestMap['nostr.nip04.decrypt'], origin);
+      if (result.success) {
+        return result.data as BridgeResponsePayload<K>;
+      }
+      throw new Error(result.error);
+    }
+
+    case 'nostr.nip44.encrypt': {
+      const result = await handleNip44Encrypt(payload as BridgeRequestMap['nostr.nip44.encrypt'], origin);
+      if (result.success) {
+        return result.data as BridgeResponsePayload<K>;
+      }
+      throw new Error(result.error);
+    }
+
+    case 'nostr.nip44.decrypt': {
+      const result = await handleNip44Decrypt(payload as BridgeRequestMap['nostr.nip44.decrypt'], origin);
       if (result.success) {
         return result.data as BridgeResponsePayload<K>;
       }

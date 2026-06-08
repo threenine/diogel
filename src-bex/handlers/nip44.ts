@@ -1,15 +1,21 @@
-import { nip04 } from 'nostr-tools';
+import { nip44 } from 'nostr-tools';
 import type { HandlerResult } from '../types/background';
+import { resetAutoLockTimer } from '../services/auto-lock';
 import { getActiveSecretKey } from './active-key';
 
-export async function handleNip04Encrypt(
+export async function handleNip44Encrypt(
   payload: { pubkey: string; plaintext: string },
   _origin?: string,
 ): Promise<HandlerResult<string>> {
   void _origin;
+
   try {
     const secretKey = await getActiveSecretKey();
-    const ciphertext = nip04.encrypt(secretKey, payload.pubkey, payload.plaintext);
+    const conversationKey = nip44.getConversationKey(secretKey, payload.pubkey);
+    const ciphertext = nip44.encrypt(payload.plaintext, conversationKey);
+
+    void resetAutoLockTimer();
+
     return { success: true, data: ciphertext };
   } catch (error: unknown) {
     return {
@@ -19,14 +25,19 @@ export async function handleNip04Encrypt(
   }
 }
 
-export async function handleNip04Decrypt(
+export async function handleNip44Decrypt(
   payload: { pubkey: string; ciphertext: string },
   _origin?: string,
 ): Promise<HandlerResult<string>> {
   void _origin;
+
   try {
     const secretKey = await getActiveSecretKey();
-    const plaintext = nip04.decrypt(secretKey, payload.pubkey, payload.ciphertext);
+    const conversationKey = nip44.getConversationKey(secretKey, payload.pubkey);
+    const plaintext = nip44.decrypt(payload.ciphertext, conversationKey);
+
+    void resetAutoLockTimer();
+
     return { success: true, data: plaintext };
   } catch (error: unknown) {
     return {

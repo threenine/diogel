@@ -3,6 +3,7 @@ import { dispatchMessage } from 'app/src-bex/dispatcher';
 import { handleRelayBrowserList, handleRelayBrowserGetStatus } from 'app/src-bex/handlers/relay-browser-handler';
 import { handleVaultUnlock } from 'app/src-bex/handlers/vault-handler';
 import { handleBlossomUpload } from 'app/src-bex/handlers/blossom-handler';
+import { handleNip44Encrypt, handleNip44Decrypt } from 'app/src-bex/handlers/nip44';
 import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 import { createBridgeRequest } from 'src/types/bridge';
 import type { VaultData } from 'src/types/bridge';
@@ -39,6 +40,11 @@ vi.mock('app/src-bex/handlers/blossom-handler', () => ({
 vi.mock('app/src-bex/handlers/nip04', () => ({
   handleNip04Encrypt: vi.fn(),
   handleNip04Decrypt: vi.fn(),
+}));
+
+vi.mock('app/src-bex/handlers/nip44', () => ({
+  handleNip44Encrypt: vi.fn(),
+  handleNip44Decrypt: vi.fn(),
 }));
 
 vi.mock('app/src-bex/handlers/relay-browser-handler', () => ({
@@ -182,5 +188,45 @@ describe('Dispatcher', () => {
       success: false,
       error: 'No active account found',
     });
+  });
+
+  it('should route nostr.nip44.encrypt to handler', async () => {
+    vi.mocked(handleNip44Encrypt).mockResolvedValue({ success: true, data: 'nip44-ciphertext' });
+
+    const result = await dispatchMessage(
+      'nostr.nip44.encrypt',
+      createBridgeRequest('nostr.nip44.encrypt', {
+        origin: 'https://app.example',
+        pubkey: 'recipient-pubkey',
+        plaintext: 'hello',
+      }),
+      'https://app.example',
+    );
+
+    expect(result).toBe('nip44-ciphertext');
+    expect(handleNip44Encrypt).toHaveBeenCalledWith(
+      expect.objectContaining({ pubkey: 'recipient-pubkey', plaintext: 'hello' }),
+      'https://app.example',
+    );
+  });
+
+  it('should route nostr.nip44.decrypt to handler', async () => {
+    vi.mocked(handleNip44Decrypt).mockResolvedValue({ success: true, data: 'hello' });
+
+    const result = await dispatchMessage(
+      'nostr.nip44.decrypt',
+      createBridgeRequest('nostr.nip44.decrypt', {
+        origin: 'https://app.example',
+        pubkey: 'sender-pubkey',
+        ciphertext: 'nip44-ciphertext',
+      }),
+      'https://app.example',
+    );
+
+    expect(result).toBe('hello');
+    expect(handleNip44Decrypt).toHaveBeenCalledWith(
+      expect.objectContaining({ pubkey: 'sender-pubkey', ciphertext: 'nip44-ciphertext' }),
+      'https://app.example',
+    );
   });
 });
