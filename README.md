@@ -54,6 +54,15 @@ Detailed instructions for setting up GitHub Secrets and publishing to the Chrome
 
 ### Installation
 
+#### Chrome Web store
+
+- [Diogel - Chrome Web Store](https://chromewebstore.google.com/detail/diogel/inhkmeiabnknligdjngmoocohdonoboa)
+
+#### Firefox Add Ins
+
+- [Diogel - Firefox Add-Ons](https://addons.mozilla.org/en-US/firefox/addon/diogel/)
+
+#### Github Repository 
 To install a browser extension from the GitHub repository, follow these steps:
 
 1. Download the extension code
@@ -70,10 +79,6 @@ To install a browser extension from the GitHub repository, follow these steps:
    Click "Load unpacked", then navigate to the folder where you extracted the files. Select it and click "Open".
 
 The extension will now appear in your extensions list and be active.
-
-> [!WARNING]
-> Although extensions from GitHub are not vetted like those in the Chrome Web Store, they can access  
-> your browsing data, including passwords and personal information. Only install extensions from trusted sources.
 
 
 
