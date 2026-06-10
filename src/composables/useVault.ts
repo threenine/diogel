@@ -2,12 +2,7 @@ import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import useVaultStore from 'src/stores/vault-store';
-import type { StoredKey } from 'src/types/bridge';
-import * as nip06 from 'nostr-tools/nip06';
-import { getPublicKey } from 'nostr-tools';
-import { bytesToHex } from '@noble/hashes/utils';
 import { type ErrorCode, formatErrorForUser } from 'src/types/error-codes.d';
-import { LogLevel, logService } from 'src/services/log-service';
 
 type LoginContext = 'dashboard' | 'extension';
 type PostLoginRouteName = 'dashboard' | 'home';
@@ -66,30 +61,7 @@ export function useVault() {
     loading.value = true;
     loginError.value = '';
 
-    let initialAccount: StoredKey | undefined = undefined;
-    try {
-      const sk = nip06.privateKeyFromSeedWords(mnemonic.value, passphrase.value, 0);
-      const pk = getPublicKey(sk);
-      initialAccount = {
-        id: pk,
-        alias: 'Main Account',
-        createdAt: new Date().toISOString(),
-        account: {
-          privkey: bytesToHex(sk),
-        },
-      };
-    } catch (error: unknown) {
-      logService.log(LogLevel.ERROR, '[useVault] Failed to generate initial account', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-
-    const result = await vaultStore.create(
-      password.value,
-      mnemonic.value,
-      passphrase.value,
-      initialAccount,
-    );
+    const result = await vaultStore.create(password.value, mnemonic.value, passphrase.value);
     loading.value = false;
     if (result.success) {
       $q.notify({ type: 'positive', message: 'Vault created successfully' });

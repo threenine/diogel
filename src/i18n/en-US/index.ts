@@ -23,6 +23,9 @@ export default {
   account: {
     noAccounts: 'No active account selected',
     noAccountDesc: 'Please select or create an account to manage your profile.',
+    noAccountsAvailable: 'No accounts are currently available',
+    noAccountsAvailableDesc:
+      'Create an account from Key Management before using Diogel as a signer.',
     noActiveAccount: 'No active account',
     noActiveAccountDesc: 'Please select or create an account in the Accounts tab.',
     profileName: 'Profile Name',
