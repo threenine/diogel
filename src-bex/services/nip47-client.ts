@@ -108,17 +108,13 @@ export class Nip47Client {
   async sendRequest(connection: Nip47Connection, request: Nip47RpcRequest): Promise<Nip47RpcResponse> {
     const clientSecretBytes = hexToBytes(connection.clientSecret);
     const clientPubkey = getPublicKey(clientSecretBytes);
-    const requestId = crypto.randomUUID();
     const requestPayload = JSON.stringify({
-      id: requestId,
       method: request.method,
       params: request.params,
     });
     const encryptedContent = nip04.encrypt(clientSecretBytes, connection.walletServicePubkey, requestPayload);
 
     const since = Math.floor(Date.now() / 1000) - 10;
-    const pendingResponse = this.waitForResponse(connection, clientPubkey, requestId, since, clientSecretBytes);
-
     const event = finalizeEvent(
       {
         kind: NIP47_REQUEST_KIND,
@@ -128,6 +124,7 @@ export class Nip47Client {
       },
       clientSecretBytes,
     );
+    const pendingResponse = this.waitForResponse(connection, clientPubkey, event.id, since, clientSecretBytes);
 
     await Promise.any(this.pool.publish(connection.relays, event, { maxWait: 5000 }));
     return pendingResponse;
@@ -140,7 +137,7 @@ export class Nip47Client {
   private waitForResponse(
     connection: Nip47Connection,
     clientPubkey: string,
-    requestId: string,
+    requestEventId: string,
     since: number,
     clientSecretBytes: Uint8Array,
   ): Promise<Nip47RpcResponse> {
@@ -155,6 +152,7 @@ export class Nip47Client {
         {
           kinds: [NIP47_RESPONSE_KIND],
           authors: [connection.walletServicePubkey],
+          '#e': [requestEventId],
           '#p': [clientPubkey],
           since,
         },
@@ -162,11 +160,13 @@ export class Nip47Client {
           maxWait: 15000,
           onevent: (event: Event) => {
             try {
-              const decrypted = nip04.decrypt(clientSecretBytes, event.pubkey, event.content);
-              const responseRecord = parseJsonRecord(decrypted);
-              if (responseRecord.id !== requestId) {
+              const hasMatchingRequestTag = event.tags.some(
+                (tag) => tag[0] === 'e' && tag[1] === requestEventId,
+              );
+              if (!hasMatchingRequestTag) {
                 return;
               }
+              const decrypted = nip04.decrypt(clientSecretBytes, event.pubkey, event.content);
               clearTimeout(timeout);
               closer.close('nip47 response received');
               resolve(parseRpcResponse(decrypted));
