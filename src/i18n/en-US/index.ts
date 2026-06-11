@@ -260,6 +260,10 @@ export default {
       label: 'Relay Management',
       caption: 'Configure relay connections',
     },
+    walletConnections: {
+      label: 'Wallet Connections',
+      caption: 'Manage Nostr Wallet Connect links',
+    },
     logs: {
       label: 'Event History',
       caption: 'Review approvals, signed activity, and exceptions',

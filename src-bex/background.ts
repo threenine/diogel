@@ -141,6 +141,14 @@ declare module '@quasar/app-vite' {
     'relay.browser.list': [undefined, BridgeResponsePayload<'relay.browser.list'>];
     'relay.browser.getStatus': [undefined, BridgeResponsePayload<'relay.browser.getStatus'>];
     'relay.browser.refresh': [{ force?: boolean }, BridgeResponsePayload<'relay.browser.refresh'>];
+    'nip47.connections.list': [undefined, BridgeResponsePayload<'nip47.connections.list'>];
+    'nip47.connections.import': [
+      { uri: string; label?: string; identityId?: string },
+      BridgeResponsePayload<'nip47.connections.import'>,
+    ];
+    'nip47.connections.remove': [{ connectionId: string }, BridgeResponsePayload<'nip47.connections.remove'>];
+    'nip47.getInfo': [{ connectionId: string }, BridgeResponsePayload<'nip47.getInfo'>];
+    'nip47.getBalance': [{ connectionId: string }, BridgeResponsePayload<'nip47.getBalance'>];
   }
 }
 
@@ -254,6 +262,26 @@ bridge.on('vault.export', () => {
 
 bridge.on('vault.import', ({ payload }) => {
   return dispatchMessage('vault.import', createBridgeRequest('vault.import', payload), '') as unknown as BridgeResponsePayload<'vault.import'>;
+});
+
+bridge.on('nip47.connections.list', () => {
+  return dispatchMessage('nip47.connections.list', createBridgeRequest('nip47.connections.list', {}), '') as unknown as BridgeResponsePayload<'nip47.connections.list'>;
+});
+
+bridge.on('nip47.connections.import', ({ payload }) => {
+  return dispatchMessage('nip47.connections.import', createBridgeRequest('nip47.connections.import', payload), '') as unknown as BridgeResponsePayload<'nip47.connections.import'>;
+});
+
+bridge.on('nip47.connections.remove', ({ payload }) => {
+  return dispatchMessage('nip47.connections.remove', createBridgeRequest('nip47.connections.remove', payload), '') as unknown as BridgeResponsePayload<'nip47.connections.remove'>;
+});
+
+bridge.on('nip47.getInfo', ({ payload }) => {
+  return dispatchMessage('nip47.getInfo', createBridgeRequest('nip47.getInfo', payload), '') as unknown as BridgeResponsePayload<'nip47.getInfo'>;
+});
+
+bridge.on('nip47.getBalance', ({ payload }) => {
+  return dispatchMessage('nip47.getBalance', createBridgeRequest('nip47.getBalance', payload), '') as unknown as BridgeResponsePayload<'nip47.getBalance'>;
 });
 
 async function initialize(): Promise<void> {

@@ -1,5 +1,12 @@
 import type { StoredKey } from './index.d';
 import type { RelayCatalogEntry, RelayDiscoveryState } from './relay';
+import type {
+  ImportNip47ConnectionRequest,
+  Nip47BalanceResponse,
+  Nip47Connection,
+  Nip47ConnectionSummary,
+  Nip47InfoResponse,
+} from './nip47';
 
 /**
  * Common types shared between UI and Background/Content Script
@@ -49,6 +56,7 @@ export interface VaultData {
   mnemonic?: string;
   passphrase?: string;
   createdAt?: string;
+  nip47Connections?: Nip47Connection[];
 }
 
 // Bridge action types
@@ -77,7 +85,12 @@ export type BridgeAction =
   | 'nostr.approval.respond'
   | 'relay.browser.list'
   | 'relay.browser.getStatus'
-  | 'relay.browser.refresh';
+  | 'relay.browser.refresh'
+  | 'nip47.connections.list'
+  | 'nip47.connections.import'
+  | 'nip47.connections.remove'
+  | 'nip47.getInfo'
+  | 'nip47.getBalance';
 
 // Request/Response mapping
 export interface BridgeRequestMap {
@@ -224,6 +237,29 @@ export interface BridgeRequestMap {
     action: 'relay.browser.refresh';
     force?: boolean;
   };
+  'nip47.connections.list': {
+    id: string;
+    action: 'nip47.connections.list';
+  };
+  'nip47.connections.import': {
+    id: string;
+    action: 'nip47.connections.import';
+  } & ImportNip47ConnectionRequest;
+  'nip47.connections.remove': {
+    id: string;
+    action: 'nip47.connections.remove';
+    connectionId: string;
+  };
+  'nip47.getInfo': {
+    id: string;
+    action: 'nip47.getInfo';
+    connectionId: string;
+  };
+  'nip47.getBalance': {
+    id: string;
+    action: 'nip47.getBalance';
+    connectionId: string;
+  };
 }
 
 export interface BridgeResponseMap {
@@ -252,6 +288,11 @@ export interface BridgeResponseMap {
   'relay.browser.list': RelayCatalogEntry[];
   'relay.browser.getStatus': RelayDiscoveryState | null;
   'relay.browser.refresh': boolean | { success: false; error: string };
+  'nip47.connections.list': Nip47ConnectionSummary[];
+  'nip47.connections.import': Nip47ConnectionSummary | { success: false; error: string };
+  'nip47.connections.remove': boolean | { success: false; error: string };
+  'nip47.getInfo': Nip47InfoResponse | { success: false; error: string };
+  'nip47.getBalance': Nip47BalanceResponse | { success: false; error: string };
 }
 
 export type BridgeRequest<K extends BridgeAction> = BridgeRequestMap[K];
