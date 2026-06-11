@@ -68,6 +68,17 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/wallet-connections',
+    component: () => import('layouts/DashboardLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'wallet-connections',
+        component: () => import('pages/WalletConnectionsPage.vue'),
+      },
+    ],
+  },
+  {
     path: '/keys',
     component: () => import('layouts/DashboardLayout.vue'),
     children: [

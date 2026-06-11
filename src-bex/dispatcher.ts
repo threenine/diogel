@@ -24,6 +24,15 @@ import { handleBlossomUpload } from './handlers/blossom-handler';
 import { handleNip04Encrypt, handleNip04Decrypt } from './handlers/nip04';
 import { handleNip44Encrypt, handleNip44Decrypt } from './handlers/nip44';
 import { handleRelayBrowserList, handleRelayBrowserGetStatus, handleRelayBrowserRefresh } from './handlers/relay-browser-handler';
+import {
+  handleNip47ConnectionImport,
+  handleNip47ConnectionRemove,
+  handleNip47ConnectionsList,
+  handleNip47GetBalance,
+  handleNip47GetInfo,
+  handleNip47PayInvoice,
+  handleNip47PaymentHistoryList,
+} from './handlers/nip47';
 
 /**
  * Dispatches messages to the appropriate handlers.
@@ -212,6 +221,86 @@ export async function dispatchMessage<K extends BridgeAction>(
         return true as BridgeResponsePayload<K>;
       }
       return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+    }
+
+    case 'nip47.connections.list': {
+      const result = await handleNip47ConnectionsList();
+      if (result.success) {
+        return result.data as BridgeResponsePayload<K>;
+      }
+      return [] as unknown as BridgeResponsePayload<K>;
+    }
+
+    case 'nip47.connections.import': {
+      try {
+        const result = await handleNip47ConnectionImport(payload as BridgeRequestMap['nip47.connections.import']);
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'nip47.connections.remove': {
+      try {
+        const result = await handleNip47ConnectionRemove(payload as BridgeRequestMap['nip47.connections.remove']);
+        if (result.success) {
+          return true as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'nip47.getInfo': {
+      try {
+        const result = await handleNip47GetInfo(payload as BridgeRequestMap['nip47.getInfo']);
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'nip47.getBalance': {
+      try {
+        const result = await handleNip47GetBalance(payload as BridgeRequestMap['nip47.getBalance']);
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'nip47.payInvoice': {
+      try {
+        const result = await handleNip47PayInvoice(payload as BridgeRequestMap['nip47.payInvoice']);
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'nip47.payments.list': {
+      try {
+        const result = await handleNip47PaymentHistoryList();
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
     }
 
     default:
