@@ -429,10 +429,10 @@ onMounted(() => {
             placeholder="lnbc..."
           />
 
-          <q-card flat bordered class="q-pa-md bg-orange-1">
-            <div class="text-caption text-grey-8">Parsed amount</div>
+          <q-card flat bordered class="q-pa-md payment-review-card">
+            <div class="text-caption text-grey-7">Parsed amount</div>
             <div class="text-subtitle1 text-weight-bold">{{ parsedInvoiceAmount }}</div>
-            <div class="text-caption text-grey-8 q-mt-sm">Invoice preview</div>
+            <div class="text-caption text-grey-7 q-mt-sm">Invoice preview</div>
             <div class="text-body2 break-word">{{ shortInvoice(paymentInvoice) || 'No invoice entered' }}</div>
           </q-card>
 
@@ -473,5 +473,13 @@ onMounted(() => {
 
 .break-word {
   word-break: break-all;
+}
+
+.payment-review-card {
+  background: rgba(249, 115, 22, 0.12);
+}
+
+.body--dark .payment-review-card {
+  background: rgba(249, 115, 22, 0.18);
 }
 </style>
