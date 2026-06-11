@@ -31,6 +31,7 @@ import {
   handleNip47GetBalance,
   handleNip47GetInfo,
   handleNip47PayInvoice,
+  handleNip47PaymentHistoryList,
 } from './handlers/nip47';
 
 /**
@@ -281,6 +282,18 @@ export async function dispatchMessage<K extends BridgeAction>(
     case 'nip47.payInvoice': {
       try {
         const result = await handleNip47PayInvoice(payload as BridgeRequestMap['nip47.payInvoice']);
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'nip47.payments.list': {
+      try {
+        const result = await handleNip47PaymentHistoryList();
         if (result.success) {
           return result.data as BridgeResponsePayload<K>;
         }

@@ -16,6 +16,19 @@ export type Nip47Command =
   | 'settle_hold_invoice'
   | 'notifications';
 
+export interface Nip47PaymentHistoryEntry {
+  id: string;
+  connectionId: string;
+  connectionLabel: string;
+  paymentHash?: string;
+  invoicePreview: string;
+  amountMsat?: number;
+  feesPaidMsat?: number;
+  status: 'succeeded' | 'failed';
+  error?: string;
+  createdAt: string;
+}
+
 export interface Nip47Connection {
   id: string;
   label: string;
@@ -72,6 +85,7 @@ export interface Nip47PayInvoiceRequest {
 export interface Nip47PayInvoiceResponse {
   preimage: string;
   feesPaidMsat?: number;
+  paymentHash?: string;
   raw: Record<string, unknown>;
 }
 

@@ -5,6 +5,7 @@ import type {
   Nip47ConnectionSummary,
   Nip47InfoResponse,
   Nip47PayInvoiceResponse,
+  Nip47PaymentHistoryEntry,
 } from 'src/types/nip47';
 
 function isErrorResponse(value: unknown): value is { success: false; error: string } {
@@ -73,4 +74,10 @@ export async function payNip47Invoice(
     throw new Error('Invalid NIP-47 pay_invoice response');
   }
   return response;
+}
+
+export async function listNip47PaymentHistory(): Promise<Nip47PaymentHistoryEntry[]> {
+  const response = await sendBexMessage('nip47.payments.list');
+  throwIfError(response);
+  return Array.isArray(response) ? response : [];
 }

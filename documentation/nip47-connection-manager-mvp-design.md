@@ -102,6 +102,10 @@ Implemented constraints:
 - The user must tick an explicit acknowledgement checkbox.
 - The NIP-47 `pay_invoice` request is sent only after clicking **Approve and pay**.
 - The Pay button is disabled unless the wallet connection advertises `pay_invoice` in capabilities.
+- Successful and failed payment attempts are recorded in encrypted vault payment history.
+- Payment history is capped to the latest 100 attempts.
+- Payment history stores connection label, timestamp, status, invoice preview, parsed amount where possible, fees, short-checkable payment hash where returned, and error messages for failures.
+- Payment history does not expose the NWC secret or payment preimage in the UI.
 - No website/page-provider can trigger payment in this version.
 
 Manual payment test:
@@ -116,6 +120,8 @@ Manual payment test:
 8. Click **Approve and pay**.
 9. Confirm the invoice is settled in the receiving wallet.
 10. Confirm Diogel displays a payment success message and does not expose the preimage in the UI.
+11. Confirm the payment appears in Payment history as `succeeded`.
+12. Optionally test an invalid or expired invoice and confirm a `failed` history entry is recorded.
 
 Recommended first test amount: 1-10 sats.
 

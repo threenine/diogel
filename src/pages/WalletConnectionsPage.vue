@@ -5,10 +5,11 @@ import {
   getNip47Info,
   importNip47Connection,
   listNip47Connections,
+  listNip47PaymentHistory,
   payNip47Invoice,
   removeNip47Connection,
 } from 'src/services/nip47-service';
-import type { Nip47ConnectionSummary } from 'src/types/nip47';
+import type { Nip47ConnectionSummary, Nip47PaymentHistoryEntry } from 'src/types/nip47';
 
 const connections = ref<Nip47ConnectionSummary[]>([]);
 const nwcUri = ref('');
@@ -24,6 +25,8 @@ const paymentApprovalChecked = ref(false);
 const paymentDialogOpen = ref(false);
 const payingConnectionId = ref<string | null>(null);
 const lastPaymentPreimage = ref<string | null>(null);
+const paymentHistory = ref<Nip47PaymentHistoryEntry[]>([]);
+const historyLoading = ref(false);
 
 const hasConnections = computed(() => connections.value.length > 0);
 
@@ -79,11 +82,23 @@ function setError(error: unknown): void {
   successMessage.value = null;
 }
 
+async function refreshPaymentHistory(): Promise<void> {
+  historyLoading.value = true;
+  try {
+    paymentHistory.value = await listNip47PaymentHistory();
+  } catch (error: unknown) {
+    setError(error);
+  } finally {
+    historyLoading.value = false;
+  }
+}
+
 async function refreshConnections(): Promise<void> {
   loading.value = true;
   errorMessage.value = null;
   try {
     connections.value = await listNip47Connections();
+    await refreshPaymentHistory();
   } catch (error: unknown) {
     setError(error);
   } finally {
@@ -144,6 +159,10 @@ async function testBalance(connection: Nip47ConnectionSummary): Promise<void> {
   }
 }
 
+function formatTimestamp(value: string): string {
+  return new Date(value).toLocaleString();
+}
+
 function openPaymentDialog(connection: Nip47ConnectionSummary): void {
   selectedPaymentConnection.value = connection;
   paymentInvoice.value = '';
@@ -172,8 +191,10 @@ async function approvePayment(): Promise<void> {
       ? `Payment sent. Fees paid: ${formatMsat(payment.feesPaidMsat)}.`
       : 'Payment sent.';
     paymentDialogOpen.value = false;
+    await refreshPaymentHistory();
   } catch (error: unknown) {
     setError(error);
+    await refreshPaymentHistory();
   } finally {
     payingConnectionId.value = null;
   }
@@ -322,6 +343,56 @@ onMounted(() => {
                     @click="removeConnection(connection)"
                   />
                 </div>
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card>
+
+        <q-card flat bordered class="q-mt-lg">
+          <q-card-section class="row items-center justify-between">
+            <div>
+              <div class="text-h6">Payment history</div>
+              <div class="text-caption text-grey-7">
+                Stored inside the encrypted vault. Latest 100 payment attempts only.
+              </div>
+            </div>
+            <q-btn flat round icon="refresh" :loading="historyLoading" @click="refreshPaymentHistory" />
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section v-if="paymentHistory.length === 0" class="text-grey-7">
+            No payment attempts recorded yet.
+          </q-card-section>
+
+          <q-list v-else separator>
+            <q-item v-for="entry in paymentHistory" :key="entry.id" class="q-py-md">
+              <q-item-section>
+                <q-item-label class="row items-center q-gutter-sm">
+                  <q-badge
+                    :color="entry.status === 'succeeded' ? 'positive' : 'negative'"
+                    :label="entry.status"
+                  />
+                  <span class="text-weight-medium">{{ entry.connectionLabel }}</span>
+                </q-item-label>
+                <q-item-label caption>
+                  {{ formatTimestamp(entry.createdAt) }}
+                </q-item-label>
+                <q-item-label caption>
+                  Amount: {{ entry.amountMsat !== undefined ? formatMsat(entry.amountMsat) : 'unknown' }}
+                  <span v-if="entry.feesPaidMsat !== undefined">
+                    · Fees: {{ formatMsat(entry.feesPaidMsat) }}
+                  </span>
+                </q-item-label>
+                <q-item-label v-if="entry.paymentHash" caption>
+                  Payment hash: {{ shortHex(entry.paymentHash) }}
+                </q-item-label>
+                <q-item-label caption class="break-word">
+                  Invoice: {{ entry.invoicePreview }}
+                </q-item-label>
+                <q-item-label v-if="entry.error" caption class="text-negative break-word">
+                  Error: {{ entry.error }}
+                </q-item-label>
               </q-item-section>
             </q-item>
           </q-list>

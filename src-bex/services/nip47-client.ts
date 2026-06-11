@@ -130,6 +130,9 @@ export class Nip47Client {
       ...(typeof response.result?.fees_paid === 'number'
         ? { feesPaidMsat: response.result.fees_paid }
         : {}),
+      ...(typeof response.result?.payment_hash === 'string'
+        ? { paymentHash: response.result.payment_hash }
+        : {}),
       raw: response.result ?? {},
     };
   }
