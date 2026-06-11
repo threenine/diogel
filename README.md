@@ -8,6 +8,10 @@ routes requests through a background script, enforces per-origin approval rules,
 identity stored inside an encrypted local vault, and provides a Vue/Pinia UI for account, vault, and settings 
 management.
 
+## User Documentation
+
+- [Diogel User Guide](./documentation/diogel-user-guide.md) — detailed setup, feature, wallet, payment, security, and troubleshooting guide.
+
 **Key Features:**
 
 ##### Multiple Identity Management
