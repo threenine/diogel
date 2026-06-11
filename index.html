@@ -20,25 +20,6 @@
   </head>
   <body>
     <!-- quasar:entry-point -->
-    <script>
-      setTimeout(() => {
-        const entry = document.getElementById('q-app') || document.body;
-        if (entry.innerHTML.trim() === '' || entry.innerHTML.includes('quasar:entry-point')) {
-          console.error('App failed to mount within 10 seconds. Check console for errors.');
-          const div = document.createElement('div');
-          div.style.padding = '20px';
-          div.style.color = 'black';
-          div.style.background = 'white';
-          div.style.position = 'fixed';
-          div.style.top = '0';
-          div.style.left = '0';
-          div.style.width = '100%';
-          div.style.zIndex = '9999';
-          div.innerHTML =
-            '<h3>Failed to load Diogel</h3><p>Please check the background script logs or extension console for errors.</p>';
-          document.body.appendChild(div);
-        }
-      }, 10000);
-    </script>
+    <script src="/diogel-load-fallback.js"></script>
   </body>
 </html>

@@ -1,0 +1,35 @@
+import type { Nip47Connection, Nip47ConnectionSummary } from 'src/types/nip47';
+import type { VaultData } from 'src/types/bridge';
+
+export function summarizeNip47Connection(connection: Nip47Connection): Nip47ConnectionSummary {
+  const { clientSecret: _clientSecret, ...safeConnection } = connection;
+  void _clientSecret;
+  return {
+    ...safeConnection,
+    hasClientSecret: connection.clientSecret.length > 0,
+  };
+}
+
+export function listNip47Connections(vaultData?: VaultData | null): Nip47Connection[] {
+  return vaultData?.nip47Connections ?? [];
+}
+
+export function upsertNip47Connection(vaultData: VaultData, connection: Nip47Connection): VaultData {
+  const existing = listNip47Connections(vaultData);
+  const withoutConnection = existing.filter((item) => item.id !== connection.id);
+  return {
+    ...vaultData,
+    nip47Connections: [...withoutConnection, connection],
+  };
+}
+
+export function removeNip47Connection(vaultData: VaultData, connectionId: string): VaultData {
+  return {
+    ...vaultData,
+    nip47Connections: listNip47Connections(vaultData).filter((item) => item.id !== connectionId),
+  };
+}
+
+export function findNip47Connection(vaultData: VaultData, connectionId: string): Nip47Connection | undefined {
+  return listNip47Connections(vaultData).find((item) => item.id === connectionId);
+}
