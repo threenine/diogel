@@ -64,6 +64,17 @@ export interface Nip47BalanceResponse {
   raw: Record<string, unknown>;
 }
 
+export interface Nip47PayInvoiceRequest {
+  connectionId: string;
+  invoice: string;
+}
+
+export interface Nip47PayInvoiceResponse {
+  preimage: string;
+  feesPaidMsat?: number;
+  raw: Record<string, unknown>;
+}
+
 export interface Nip47RpcRequest {
   method: Nip47Command;
   params: Record<string, unknown>;

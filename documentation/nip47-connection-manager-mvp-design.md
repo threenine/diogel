@@ -89,24 +89,43 @@ Steps:
 13. Confirm connection list is unavailable until vault unlock.
 14. Remove the connection and confirm it no longer appears after refresh.
 
+## Payment approval extension
+
+The branch now includes an internal `pay_invoice` approval path.
+
+Implemented constraints:
+
+- Payment is initiated only from the Diogel Wallet Connections page.
+- The UI requires a pasted BOLT11 invoice.
+- The UI shows the selected wallet connection before payment.
+- The UI shows a basic parsed invoice amount from the BOLT11 prefix where available.
+- The user must tick an explicit acknowledgement checkbox.
+- The NIP-47 `pay_invoice` request is sent only after clicking **Approve and pay**.
+- The Pay button is disabled unless the wallet connection advertises `pay_invoice` in capabilities.
+- No website/page-provider can trigger payment in this version.
+
+Manual payment test:
+
+1. Import a known working NWC URI.
+2. Click **Info** and confirm `pay_invoice` appears in capabilities.
+3. Create a small-value Lightning invoice in a separate wallet.
+4. Click **Pay invoice** for the NWC connection.
+5. Paste the invoice.
+6. Confirm the parsed amount looks sane.
+7. Tick the explicit acknowledgement checkbox.
+8. Click **Approve and pay**.
+9. Confirm the invoice is settled in the receiving wallet.
+10. Confirm Diogel displays a payment success message and does not expose the preimage in the UI.
+
+Recommended first test amount: 1-10 sats.
+
 ## Explicit non-goals for this MVP
 
 - No `window.nostr.nip47` API.
 - No `window.diogel.wallet` API.
 - No WebLN provider.
-- No remembered site permissions.
-- No payment approval flow.
-- No `pay_invoice` UI.
+- No remembered site payment permissions.
+- No automatic payment.
+- No recurring budgets.
 - No transaction history UI.
 - No auto-connect from websites.
-
-## Next step after this MVP
-
-Add a dedicated payment approval design for `pay_invoice`, including:
-
-- origin display
-- wallet connection display
-- amount/memo/invoice details
-- explicit approval/rejection
-- no auto-pay by default
-- later optional budgets only after review

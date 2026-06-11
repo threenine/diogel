@@ -6,6 +6,8 @@ import type {
   Nip47Connection,
   Nip47ConnectionSummary,
   Nip47InfoResponse,
+  Nip47PayInvoiceRequest,
+  Nip47PayInvoiceResponse,
 } from './nip47';
 
 /**
@@ -90,7 +92,8 @@ export type BridgeAction =
   | 'nip47.connections.import'
   | 'nip47.connections.remove'
   | 'nip47.getInfo'
-  | 'nip47.getBalance';
+  | 'nip47.getBalance'
+  | 'nip47.payInvoice';
 
 // Request/Response mapping
 export interface BridgeRequestMap {
@@ -260,6 +263,10 @@ export interface BridgeRequestMap {
     action: 'nip47.getBalance';
     connectionId: string;
   };
+  'nip47.payInvoice': {
+    id: string;
+    action: 'nip47.payInvoice';
+  } & Nip47PayInvoiceRequest;
 }
 
 export interface BridgeResponseMap {
@@ -293,6 +300,7 @@ export interface BridgeResponseMap {
   'nip47.connections.remove': boolean | { success: false; error: string };
   'nip47.getInfo': Nip47InfoResponse | { success: false; error: string };
   'nip47.getBalance': Nip47BalanceResponse | { success: false; error: string };
+  'nip47.payInvoice': Nip47PayInvoiceResponse | { success: false; error: string };
 }
 
 export type BridgeRequest<K extends BridgeAction> = BridgeRequestMap[K];

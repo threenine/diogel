@@ -4,6 +4,7 @@ import type {
   Nip47BalanceResponse,
   Nip47ConnectionSummary,
   Nip47InfoResponse,
+  Nip47PayInvoiceResponse,
 } from 'src/types/nip47';
 
 function isErrorResponse(value: unknown): value is { success: false; error: string } {
@@ -58,6 +59,18 @@ export async function getNip47Balance(connectionId: string): Promise<Nip47Balanc
   throwIfError(response);
   if (!response || typeof response !== 'object' || !('balanceMsat' in response)) {
     throw new Error('Invalid NIP-47 balance response');
+  }
+  return response;
+}
+
+export async function payNip47Invoice(
+  connectionId: string,
+  invoice: string,
+): Promise<Nip47PayInvoiceResponse> {
+  const response = await sendBexMessage('nip47.payInvoice', { connectionId, invoice });
+  throwIfError(response);
+  if (!response || typeof response !== 'object' || !('preimage' in response)) {
+    throw new Error('Invalid NIP-47 pay_invoice response');
   }
   return response;
 }

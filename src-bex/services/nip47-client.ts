@@ -9,6 +9,7 @@ import {
   type Nip47Command,
   type Nip47Connection,
   type Nip47InfoResponse,
+  type Nip47PayInvoiceResponse,
   type Nip47RpcRequest,
   type Nip47RpcResponse,
 } from 'src/types/nip47';
@@ -101,6 +102,34 @@ export class Nip47Client {
 
     return {
       balanceMsat: balance,
+      raw: response.result ?? {},
+    };
+  }
+
+  async payInvoice(connection: Nip47Connection, invoice: string): Promise<Nip47PayInvoiceResponse> {
+    const trimmedInvoice = invoice.trim();
+    if (!trimmedInvoice) {
+      throw new Error('Lightning invoice is required');
+    }
+
+    const response = await this.sendRequest(connection, {
+      method: 'pay_invoice',
+      params: { invoice: trimmedInvoice },
+    });
+    if (response.error) {
+      throw new Error(`${response.error.code}: ${response.error.message}`);
+    }
+
+    const preimage = response.result?.preimage;
+    if (typeof preimage !== 'string' || !preimage) {
+      throw new Error('NIP-47 pay_invoice response did not include a preimage');
+    }
+
+    return {
+      preimage,
+      ...(typeof response.result?.fees_paid === 'number'
+        ? { feesPaidMsat: response.result.fees_paid }
+        : {}),
       raw: response.result ?? {},
     };
   }

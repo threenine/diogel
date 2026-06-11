@@ -7,6 +7,8 @@ import type {
   Nip47Connection,
   Nip47ConnectionSummary,
   Nip47InfoResponse,
+  Nip47PayInvoiceRequest,
+  Nip47PayInvoiceResponse,
 } from 'src/types/nip47';
 import type { VaultData } from 'src/types/bridge';
 import { parseNwcUri, buildNip47ConnectionId } from 'src/services/nip47-uri';
@@ -105,4 +107,22 @@ export async function handleNip47GetBalance(payload: { connectionId: string }): 
 
   const balance = await nip47Client.getBalance(connection);
   return { success: true, data: balance };
+}
+
+export async function handleNip47PayInvoice(
+  payload: Nip47PayInvoiceRequest,
+): Promise<HandlerResult<Nip47PayInvoiceResponse>> {
+  const vaultData = await requireUnlockedVaultData();
+  const connection = findNip47Connection(vaultData, payload.connectionId);
+  if (!connection) {
+    throw new Error('NIP-47 connection not found');
+  }
+
+  const invoice = payload.invoice.trim();
+  if (!invoice) {
+    throw new Error('Lightning invoice is required');
+  }
+
+  const payment = await nip47Client.payInvoice(connection, invoice);
+  return { success: true, data: payment };
 }

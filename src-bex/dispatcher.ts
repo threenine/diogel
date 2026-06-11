@@ -30,6 +30,7 @@ import {
   handleNip47ConnectionsList,
   handleNip47GetBalance,
   handleNip47GetInfo,
+  handleNip47PayInvoice,
 } from './handlers/nip47';
 
 /**
@@ -268,6 +269,18 @@ export async function dispatchMessage<K extends BridgeAction>(
     case 'nip47.getBalance': {
       try {
         const result = await handleNip47GetBalance(payload as BridgeRequestMap['nip47.getBalance']);
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'nip47.payInvoice': {
+      try {
+        const result = await handleNip47PayInvoice(payload as BridgeRequestMap['nip47.payInvoice']);
         if (result.success) {
           return result.data as BridgeResponsePayload<K>;
         }

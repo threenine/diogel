@@ -149,6 +149,10 @@ declare module '@quasar/app-vite' {
     'nip47.connections.remove': [{ connectionId: string }, BridgeResponsePayload<'nip47.connections.remove'>];
     'nip47.getInfo': [{ connectionId: string }, BridgeResponsePayload<'nip47.getInfo'>];
     'nip47.getBalance': [{ connectionId: string }, BridgeResponsePayload<'nip47.getBalance'>];
+    'nip47.payInvoice': [
+      { connectionId: string; invoice: string },
+      BridgeResponsePayload<'nip47.payInvoice'>,
+    ];
   }
 }
 
@@ -282,6 +286,10 @@ bridge.on('nip47.getInfo', ({ payload }) => {
 
 bridge.on('nip47.getBalance', ({ payload }) => {
   return dispatchMessage('nip47.getBalance', createBridgeRequest('nip47.getBalance', payload), '') as unknown as BridgeResponsePayload<'nip47.getBalance'>;
+});
+
+bridge.on('nip47.payInvoice', ({ payload }) => {
+  return dispatchMessage('nip47.payInvoice', createBridgeRequest('nip47.payInvoice', payload), '') as unknown as BridgeResponsePayload<'nip47.payInvoice'>;
 });
 
 async function initialize(): Promise<void> {

@@ -5,6 +5,7 @@ import {
   getNip47Info,
   importNip47Connection,
   listNip47Connections,
+  payNip47Invoice,
   removeNip47Connection,
 } from 'src/services/nip47-service';
 import type { Nip47ConnectionSummary } from 'src/types/nip47';
@@ -17,8 +18,16 @@ const testingConnectionId = ref<string | null>(null);
 const errorMessage = ref<string | null>(null);
 const successMessage = ref<string | null>(null);
 const balances = ref<Record<string, number>>({});
+const selectedPaymentConnection = ref<Nip47ConnectionSummary | null>(null);
+const paymentInvoice = ref('');
+const paymentApprovalChecked = ref(false);
+const paymentDialogOpen = ref(false);
+const payingConnectionId = ref<string | null>(null);
+const lastPaymentPreimage = ref<string | null>(null);
 
 const hasConnections = computed(() => connections.value.length > 0);
+
+const parsedInvoiceAmount = computed(() => parseBolt11Amount(paymentInvoice.value));
 
 function shortHex(value: string): string {
   if (value.length <= 16) return value;
@@ -28,6 +37,41 @@ function shortHex(value: string): string {
 function formatMsat(msat: number): string {
   const sats = msat / 1000;
   return `${sats.toLocaleString(undefined, { maximumFractionDigits: 3 })} sats`;
+}
+
+function parseBolt11Amount(invoice: string): string {
+  const normalized = invoice.trim().toLowerCase();
+  const match = /^ln(?:bc|tb|bcrt)(\d+[munp]?)?1/.exec(normalized);
+  const amount = match?.[1];
+  if (!amount) {
+    return 'Amount not encoded in invoice';
+  }
+
+  const suffix = amount.at(-1);
+  const hasSuffix = suffix === 'm' || suffix === 'u' || suffix === 'n' || suffix === 'p';
+  const numericPart = hasSuffix ? amount.slice(0, -1) : amount;
+  const value = Number(numericPart);
+  if (!Number.isFinite(value)) {
+    return 'Unable to parse invoice amount';
+  }
+
+  const sats = suffix === 'm'
+    ? value * 100_000
+    : suffix === 'u'
+      ? value * 100
+      : suffix === 'n'
+        ? value * 0.1
+        : suffix === 'p'
+          ? value * 0.0001
+          : value * 100_000_000;
+
+  return `${sats.toLocaleString(undefined, { maximumFractionDigits: 4 })} sats`;
+}
+
+function shortInvoice(invoice: string): string {
+  const normalized = invoice.trim();
+  if (normalized.length <= 42) return normalized;
+  return `${normalized.slice(0, 24)}…${normalized.slice(-12)}`;
 }
 
 function setError(error: unknown): void {
@@ -97,6 +141,41 @@ async function testBalance(connection: Nip47ConnectionSummary): Promise<void> {
     setError(error);
   } finally {
     testingConnectionId.value = null;
+  }
+}
+
+function openPaymentDialog(connection: Nip47ConnectionSummary): void {
+  selectedPaymentConnection.value = connection;
+  paymentInvoice.value = '';
+  paymentApprovalChecked.value = false;
+  lastPaymentPreimage.value = null;
+  errorMessage.value = null;
+  successMessage.value = null;
+  paymentDialogOpen.value = true;
+}
+
+async function approvePayment(): Promise<void> {
+  const connection = selectedPaymentConnection.value;
+  if (!connection) {
+    setError(new Error('No wallet connection selected'));
+    return;
+  }
+
+  payingConnectionId.value = connection.id;
+  errorMessage.value = null;
+  successMessage.value = null;
+  lastPaymentPreimage.value = null;
+  try {
+    const payment = await payNip47Invoice(connection.id, paymentInvoice.value);
+    lastPaymentPreimage.value = payment.preimage;
+    successMessage.value = payment.feesPaidMsat !== undefined
+      ? `Payment sent. Fees paid: ${formatMsat(payment.feesPaidMsat)}.`
+      : 'Payment sent.';
+    paymentDialogOpen.value = false;
+  } catch (error: unknown) {
+    setError(error);
+  } finally {
+    payingConnectionId.value = null;
   }
 }
 
@@ -225,6 +304,17 @@ onMounted(() => {
                   />
                   <q-btn
                     dense
+                    unelevated
+                    no-caps
+                    color="warning"
+                    text-color="black"
+                    label="Pay invoice"
+                    :disable="!connection.capabilities.includes('pay_invoice')"
+                    :loading="payingConnectionId === connection.id"
+                    @click="openPaymentDialog(connection)"
+                  />
+                  <q-btn
+                    dense
                     flat
                     no-caps
                     color="negative"
@@ -238,5 +328,79 @@ onMounted(() => {
         </q-card>
       </div>
     </div>
+
+    <q-dialog v-model="paymentDialogOpen" persistent>
+      <q-card class="payment-approval-card">
+        <q-card-section>
+          <div class="text-h6">Approve Lightning payment</div>
+          <p class="text-body2 text-grey-7 q-mb-none">
+            This sends real money through the selected NWC wallet connection. Review it carefully before approving.
+          </p>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section class="q-gutter-md">
+          <div v-if="selectedPaymentConnection">
+            <div class="text-caption text-grey-7">Wallet connection</div>
+            <div class="text-body1 text-weight-medium">{{ selectedPaymentConnection.label }}</div>
+            <div class="text-caption text-grey-7">
+              {{ selectedPaymentConnection.lud16 || shortHex(selectedPaymentConnection.walletServicePubkey) }}
+            </div>
+          </div>
+
+          <q-input
+            v-model="paymentInvoice"
+            outlined
+            type="textarea"
+            autogrow
+            label="BOLT11 invoice"
+            placeholder="lnbc..."
+          />
+
+          <q-card flat bordered class="q-pa-md bg-orange-1">
+            <div class="text-caption text-grey-8">Parsed amount</div>
+            <div class="text-subtitle1 text-weight-bold">{{ parsedInvoiceAmount }}</div>
+            <div class="text-caption text-grey-8 q-mt-sm">Invoice preview</div>
+            <div class="text-body2 break-word">{{ shortInvoice(paymentInvoice) || 'No invoice entered' }}</div>
+          </q-card>
+
+          <q-checkbox
+            v-model="paymentApprovalChecked"
+            color="negative"
+            label="I understand this will attempt to pay the invoice using this wallet connection."
+          />
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn
+            flat
+            no-caps
+            label="Cancel"
+            :disable="payingConnectionId !== null"
+            @click="paymentDialogOpen = false"
+          />
+          <q-btn
+            unelevated
+            no-caps
+            color="negative"
+            label="Approve and pay"
+            :loading="payingConnectionId !== null"
+            :disable="!paymentInvoice.trim() || !paymentApprovalChecked"
+            @click="approvePayment"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
+
+<style scoped>
+.payment-approval-card {
+  width: min(560px, 92vw);
+}
+
+.break-word {
+  word-break: break-all;
+}
+</style>
