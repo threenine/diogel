@@ -11,6 +11,7 @@ management.
 ## User Documentation
 
 - [Diogel User Guide](./documentation/diogel-user-guide.md) — detailed setup, feature, wallet, payment, security, and troubleshooting guide.
+- [Menu Section Guides](./documentation/user-guide/index.md) — focused guides for Dashboard, Key Management, Profile Management, Relay Management, Wallet Connections, Event History, and Settings.
 
 **Key Features:**
 

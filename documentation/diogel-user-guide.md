@@ -4,6 +4,16 @@ Diogel is a browser extension for managing Nostr identities, signing Nostr event
 
 This guide explains what Diogel does, how to set it up, and how to use its main features safely.
 
+For deeper menu-specific documentation, see the [Diogel User Documentation index](./user-guide/index.md):
+
+- [Dashboard](./user-guide/dashboard.md)
+- [Key Management](./user-guide/key-management.md)
+- [Profile Management](./user-guide/profile-management.md)
+- [Relay Management](./user-guide/relay-management.md)
+- [Wallet Connections](./user-guide/wallet-connections.md)
+- [Event History](./user-guide/event-history.md)
+- [Settings](./user-guide/settings.md)
+
 ## Contents
 
 1. [What Diogel is](#what-diogel-is)
