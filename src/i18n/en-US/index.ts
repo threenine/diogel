@@ -258,7 +258,7 @@ export default {
     },
     relays: {
       label: 'Relay Management',
-      caption: 'Configure relay connections',
+      caption: 'Configure & store your preferred relay settings',
     },
     logs: {
       label: 'Event History',
