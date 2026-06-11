@@ -83,7 +83,7 @@ export default {
   profile: {
     title: 'Profile',
     dashboardCaption:
-      'Manage your active Nostr identity, profile metadata, relays, and key backups.',
+      'Manage your active Nostr identity, profile metadata.',
     editorTitle: 'Profile Details',
     previewTitle: 'Profile Preview',
     imagesTitle: 'Images',
