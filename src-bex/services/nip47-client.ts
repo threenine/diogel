@@ -1,4 +1,4 @@
-import { finalizeEvent, getPublicKey, SimplePool, nip44 } from 'nostr-tools';
+import { finalizeEvent, getPublicKey, SimplePool, nip04 } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
 import type { Event } from 'nostr-tools';
 import {
@@ -108,19 +108,16 @@ export class Nip47Client {
   async sendRequest(connection: Nip47Connection, request: Nip47RpcRequest): Promise<Nip47RpcResponse> {
     const clientSecretBytes = hexToBytes(connection.clientSecret);
     const clientPubkey = getPublicKey(clientSecretBytes);
-    const conversationKey = nip44.v2.utils.getConversationKey(clientSecretBytes, connection.walletServicePubkey);
     const requestId = crypto.randomUUID();
-    const encryptedContent = nip44.v2.encrypt(
-      JSON.stringify({
-        id: requestId,
-        method: request.method,
-        params: request.params,
-      }),
-      conversationKey,
-    );
+    const requestPayload = JSON.stringify({
+      id: requestId,
+      method: request.method,
+      params: request.params,
+    });
+    const encryptedContent = nip04.encrypt(clientSecretBytes, connection.walletServicePubkey, requestPayload);
 
     const since = Math.floor(Date.now() / 1000) - 10;
-    const pendingResponse = this.waitForResponse(connection, clientPubkey, requestId, since, conversationKey);
+    const pendingResponse = this.waitForResponse(connection, clientPubkey, requestId, since, clientSecretBytes);
 
     const event = finalizeEvent(
       {
@@ -145,7 +142,7 @@ export class Nip47Client {
     clientPubkey: string,
     requestId: string,
     since: number,
-    conversationKey: Uint8Array,
+    clientSecretBytes: Uint8Array,
   ): Promise<Nip47RpcResponse> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -165,7 +162,7 @@ export class Nip47Client {
           maxWait: 15000,
           onevent: (event: Event) => {
             try {
-              const decrypted = nip44.v2.decrypt(event.content, conversationKey);
+              const decrypted = nip04.decrypt(clientSecretBytes, event.pubkey, event.content);
               const responseRecord = parseJsonRecord(decrypted);
               if (responseRecord.id !== requestId) {
                 return;

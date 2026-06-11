@@ -61,7 +61,7 @@ Implemented:
 - Fetch wallet info event kind `13194`.
 - Send encrypted request kind `23194`.
 - Wait for encrypted response kind `23195`.
-- Use NIP-44 v2 conversation keys.
+- Use NIP-04 request/response encryption for widest current NWC wallet compatibility.
 - Publish request to any configured relay that accepts it.
 
 ## Manual test plan
