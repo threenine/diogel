@@ -9,6 +9,19 @@ import {
 
 type LogContext = Record<string, unknown>;
 
+// Methods the injected window.nostr provider is permitted to invoke from page context.
+// Anything outside this set (e.g. internal bridge events such as
+// 'approval.respond') must never be reachable via postMessage from the page.
+const ALLOWED_PAGE_METHODS = new Set<string>([
+  'getPublicKey',
+  'signEvent',
+  'getRelays',
+  'nip04.encrypt',
+  'nip04.decrypt',
+  'nip44.encrypt',
+  'nip44.decrypt',
+]);
+
 export interface WindowMessageBridge {
   isConnected: boolean;
   connectToBackground: () => Promise<void>;
@@ -52,6 +65,19 @@ export async function handleDiogelWindowMessage(
   const { id, method, payload } = message;
   if (method === 'ping') {
     dependencies.postMessage({ id, response: true, result: 'pong' }, targetOrigin);
+    return;
+  }
+
+  if (!method || !ALLOWED_PAGE_METHODS.has(method)) {
+    dependencies.warn?.('[BEX] Rejected disallowed window.nostr method', { method });
+    dependencies.postMessage(
+      {
+        id,
+        response: true,
+        error: `Unsupported method: ${method}`,
+      },
+      targetOrigin,
+    );
     return;
   }
 
