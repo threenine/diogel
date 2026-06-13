@@ -261,11 +261,11 @@ export default {
       caption: 'Configure relay connections',
     },
     contacts: {
-      label: 'Contacts',
+      label: 'Contact Management',
       caption: 'Browse and edit your NIP-02 follow list',
     },
     walletConnections: {
-      label: 'Wallet Connections',
+      label: 'Wallet Management',
       caption: 'Manage Nostr Wallet Connect links',
     },
     logs: {
