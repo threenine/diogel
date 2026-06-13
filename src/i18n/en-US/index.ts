@@ -336,7 +336,7 @@ export default {
     addTitle: 'Add Contact',
     editTitle: 'Edit Contact',
     searchLabel: 'Name, npub, or NIP-05',
-    searchHint: 'Search by profile name, npub, hex pubkey, or name@example.com',
+    searchHint: 'Search by profile name, npub, hex pubkey, or NIP-05 identifier',
     search: 'Search',
     select: 'Select',
     searchRequired: 'Enter a name, npub, or NIP-05 identifier to search.',
