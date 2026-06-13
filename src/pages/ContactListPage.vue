@@ -283,9 +283,10 @@ onMounted(async () => {
       <q-list v-else-if="sortedContacts.length > 0" separator>
         <q-item v-for="contact in sortedContacts" :key="contact.pubkey" class="contacts-page__contact">
           <q-item-section avatar>
-            <q-avatar color="primary" text-color="white" icon="person">
-              <img v-if="getProfile(contact)?.picture" :src="getProfile(contact)?.picture" alt="" />
+            <q-avatar v-if="getProfile(contact)?.picture">
+              <img :src="getProfile(contact)?.picture" alt="" />
             </q-avatar>
+            <q-avatar v-else color="primary" text-color="white" icon="person" />
           </q-item-section>
           <q-item-section>
             <q-item-label>{{ getDisplayName(contact) }}</q-item-label>
