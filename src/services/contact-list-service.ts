@@ -7,12 +7,14 @@ import type {
   ContactListPublishResult,
   ContactListState,
   ContactListRelayPublishResult,
+  ContactProfile,
   Nip02Contact,
 } from 'src/types/contact-list';
 import useSettingsStore from 'src/stores/settings-store';
 import { normalizeRelayUrl } from 'src/services/relay-url';
 
 const CONTACT_LIST_KIND = 3;
+const PROFILE_METADATA_KIND = 0;
 const HEX_PUBKEY_PATTERN = /^[0-9a-f]{64}$/i;
 const pool = new SimplePool();
 
@@ -41,6 +43,72 @@ export function normalizePubkey(input: string): string | null {
 
 export function formatContactNpub(pubkey: string): string {
   return nip19.npubEncode(pubkey);
+}
+
+function getStringField(value: Record<string, unknown>, field: string): string {
+  const fieldValue = value[field];
+  return typeof fieldValue === 'string' ? fieldValue.trim() : '';
+}
+
+export function parseContactProfile(event: NostrEvent): ContactProfile | null {
+  try {
+    const parsed = JSON.parse(event.content) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return null;
+    }
+
+    const profile = parsed as Record<string, unknown>;
+
+    return {
+      pubkey: event.pubkey,
+      name: getStringField(profile, 'name'),
+      displayName: getStringField(profile, 'display_name'),
+      picture: getStringField(profile, 'picture'),
+      nip05: getStringField(profile, 'nip05'),
+      updatedAt: event.created_at,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function getContactDisplayName(contact: Nip02Contact, profile?: ContactProfile): string {
+  return profile?.displayName || profile?.name || contact.petname || formatContactNpub(contact.pubkey);
+}
+
+export async function fetchContactProfiles(pubkeys: string[]): Promise<Record<string, ContactProfile>> {
+  const uniquePubkeys = Array.from(new Set(pubkeys.filter((pubkey) => HEX_PUBKEY_PATTERN.test(pubkey))));
+  if (uniquePubkeys.length === 0) {
+    return {};
+  }
+
+  const settingsStore = useSettingsStore();
+  const relays = await settingsStore.getFallbackRelays();
+  const events = await pool.querySync(
+    relays,
+    {
+      authors: uniquePubkeys,
+      kinds: [PROFILE_METADATA_KIND],
+      limit: uniquePubkeys.length,
+    },
+    { maxWait: 5000 },
+  );
+
+  const profiles: Record<string, ContactProfile> = {};
+
+  for (const event of events) {
+    const profile = parseContactProfile(event);
+    if (!profile) {
+      continue;
+    }
+
+    const existing = profiles[profile.pubkey];
+    if (!existing || profile.updatedAt > existing.updatedAt) {
+      profiles[profile.pubkey] = profile;
+    }
+  }
+
+  return profiles;
 }
 
 export function parseContactTags(tags: string[][]): Nip02Contact[] {

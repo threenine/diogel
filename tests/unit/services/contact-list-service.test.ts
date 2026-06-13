@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { nip19 } from 'nostr-tools';
+import type { Event as NostrEvent } from 'nostr-tools';
 import {
   buildContactListTags,
+  getContactDisplayName,
   normalizePubkey,
+  parseContactProfile,
   parseContactTags,
   validateContactInput,
 } from 'src/services/contact-list-service';
@@ -11,6 +14,18 @@ import type { Nip02Contact } from 'src/types/contact-list';
 const pubkeyOne = '0'.repeat(63) + '1';
 const pubkeyTwo = '0'.repeat(63) + '2';
 const pubkeyThree = '0'.repeat(63) + '3';
+
+function createMetadataEvent(pubkey: string, content: string, createdAt = 100): NostrEvent {
+  return {
+    id: '1'.repeat(64),
+    sig: '2'.repeat(128),
+    kind: 0,
+    tags: [],
+    content,
+    pubkey,
+    created_at: createdAt,
+  };
+}
 
 describe('contact-list-service', () => {
   describe('normalizePubkey', () => {
@@ -69,6 +84,78 @@ describe('contact-list-service', () => {
         ['p', pubkeyOne, 'wss://relay.one', 'alice'],
         ['p', pubkeyTwo, '', ''],
       ]);
+    });
+  });
+
+  describe('parseContactProfile', () => {
+    it('parses supported Nostr profile metadata fields', () => {
+      const profile = parseContactProfile(
+        createMetadataEvent(
+          pubkeyOne,
+          JSON.stringify({
+            name: 'alice',
+            display_name: 'Alice Example',
+            picture: 'https://example.com/alice.png',
+            nip05: 'alice@example.com',
+          }),
+          123,
+        ),
+      );
+
+      expect(profile).toEqual({
+        pubkey: pubkeyOne,
+        name: 'alice',
+        displayName: 'Alice Example',
+        picture: 'https://example.com/alice.png',
+        nip05: 'alice@example.com',
+        updatedAt: 123,
+      });
+    });
+
+    it('returns null for invalid profile metadata JSON', () => {
+      expect(parseContactProfile(createMetadataEvent(pubkeyOne, '{broken'))).toBeNull();
+    });
+
+    it('ignores non-string profile metadata fields', () => {
+      const profile = parseContactProfile(
+        createMetadataEvent(pubkeyOne, JSON.stringify({ name: 123, display_name: 'Alice' })),
+      );
+
+      expect(profile?.name).toBe('');
+      expect(profile?.displayName).toBe('Alice');
+    });
+  });
+
+  describe('getContactDisplayName', () => {
+    const contact: Nip02Contact = { pubkey: pubkeyOne, relayUrl: '', petname: 'local alice' };
+
+    it('prefers profile display name over name and petname', () => {
+      expect(
+        getContactDisplayName(contact, {
+          pubkey: pubkeyOne,
+          name: 'alice',
+          displayName: 'Alice Example',
+          picture: '',
+          nip05: '',
+          updatedAt: 100,
+        }),
+      ).toBe('Alice Example');
+    });
+
+    it('falls back to profile name then petname then npub', () => {
+      expect(
+        getContactDisplayName(contact, {
+          pubkey: pubkeyOne,
+          name: 'alice',
+          displayName: '',
+          picture: '',
+          nip05: '',
+          updatedAt: 100,
+        }),
+      ).toBe('alice');
+
+      expect(getContactDisplayName(contact)).toBe('local alice');
+      expect(getContactDisplayName({ pubkey: pubkeyOne, relayUrl: '', petname: '' })).toBe(nip19.npubEncode(pubkeyOne));
     });
   });
 

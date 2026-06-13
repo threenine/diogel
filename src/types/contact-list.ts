@@ -6,6 +6,15 @@ export interface Nip02Contact {
   petname: string;
 }
 
+export interface ContactProfile {
+  pubkey: string;
+  name: string;
+  displayName: string;
+  picture: string;
+  nip05: string;
+  updatedAt: number;
+}
+
 export interface ContactListState {
   accountAlias: string;
   pubkey: string;

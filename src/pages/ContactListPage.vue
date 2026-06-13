@@ -3,11 +3,13 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
 import useAccountStore from 'src/stores/account-store';
-import type { Nip02Contact } from 'src/types/contact-list';
+import type { ContactProfile, Nip02Contact } from 'src/types/contact-list';
 import type { StoredKey } from 'src/types';
 import {
   fetchContactList,
+  fetchContactProfiles,
   formatContactNpub,
+  getContactDisplayName,
   publishContactList,
   validateContactInput,
 } from 'src/services/contact-list-service';
@@ -17,10 +19,12 @@ const $q = useQuasar();
 const accountStore = useAccountStore();
 
 const contacts = ref<Nip02Contact[]>([]);
+const profiles = ref<Record<string, ContactProfile>>({});
 const sourceEventId = ref<string | undefined>();
 const sourceCreatedAt = ref<number | undefined>();
 const loading = ref(false);
 const publishing = ref(false);
+const loadingProfiles = ref(false);
 const errorMessage = ref('');
 const dirty = ref(false);
 const dialogOpen = ref(false);
@@ -52,6 +56,44 @@ const sourceSummary = computed(() => {
     date: new Date(sourceCreatedAt.value * 1000).toLocaleString(),
   });
 });
+
+function getProfile(contact: Nip02Contact): ContactProfile | undefined {
+  return profiles.value[contact.pubkey];
+}
+
+function getDisplayName(contact: Nip02Contact): string {
+  return getContactDisplayName(contact, getProfile(contact));
+}
+
+function getContactSubtitle(contact: Nip02Contact): string {
+  const profile = getProfile(contact);
+  if (profile?.nip05) {
+    return profile.nip05;
+  }
+
+  if (contact.petname && (profile?.displayName || profile?.name)) {
+    return contact.petname;
+  }
+
+  return formatContactNpub(contact.pubkey);
+}
+
+async function enrichProfiles() {
+  const pubkeys = contacts.value.map((contact) => contact.pubkey);
+  if (pubkeys.length === 0) {
+    profiles.value = {};
+    return;
+  }
+
+  loadingProfiles.value = true;
+  try {
+    profiles.value = await fetchContactProfiles(pubkeys);
+  } catch {
+    profiles.value = {};
+  } finally {
+    loadingProfiles.value = false;
+  }
+}
 
 function resetForm() {
   editingPubkey.value = undefined;
@@ -89,6 +131,7 @@ async function loadContacts() {
     sourceEventId.value = state.sourceEventId;
     sourceCreatedAt.value = state.sourceCreatedAt;
     dirty.value = false;
+    await enrichProfiles();
   } catch (error: unknown) {
     errorMessage.value = error instanceof Error ? error.message : String(error);
   } finally {
@@ -119,12 +162,16 @@ function saveContact() {
   }
 
   dirty.value = true;
+  void enrichProfiles();
   dialogOpen.value = false;
   resetForm();
 }
 
 function removeContact(contact: Nip02Contact) {
   contacts.value = contacts.value.filter((item) => item.pubkey !== contact.pubkey);
+  const nextProfiles = { ...profiles.value };
+  delete nextProfiles[contact.pubkey];
+  profiles.value = nextProfiles;
   dirty.value = true;
 }
 
@@ -219,6 +266,9 @@ onMounted(async () => {
       <q-card-section class="contacts-page__toolbar">
         <div class="text-subtitle1">
           {{ t('contacts.count', { count: contacts.length }) }}
+          <span v-if="loadingProfiles" class="text-caption text-grey-7 q-ml-sm">
+            {{ t('contacts.loadingProfiles') }}
+          </span>
         </div>
         <q-btn icon="person_add" color="primary" :label="t('contacts.add')" @click="openAddDialog" />
       </q-card-section>
@@ -233,10 +283,13 @@ onMounted(async () => {
       <q-list v-else-if="sortedContacts.length > 0" separator>
         <q-item v-for="contact in sortedContacts" :key="contact.pubkey" class="contacts-page__contact">
           <q-item-section avatar>
-            <q-avatar color="primary" text-color="white" icon="person" />
+            <q-avatar color="primary" text-color="white" icon="person">
+              <img v-if="getProfile(contact)?.picture" :src="getProfile(contact)?.picture" alt="" />
+            </q-avatar>
           </q-item-section>
           <q-item-section>
-            <q-item-label>{{ contact.petname || t('contacts.unnamed') }}</q-item-label>
+            <q-item-label>{{ getDisplayName(contact) }}</q-item-label>
+            <q-item-label caption>{{ getContactSubtitle(contact) }}</q-item-label>
             <q-item-label caption class="contacts-page__pubkey">
               {{ formatContactNpub(contact.pubkey) }}
             </q-item-label>

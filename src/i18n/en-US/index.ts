@@ -325,6 +325,7 @@ export default {
     remove: 'Remove contact',
     save: 'Save Contact',
     loading: 'Loading contacts from relays...',
+    loadingProfiles: 'Loading profiles...',
     count: '{count} contact | {count} contacts',
     emptyTitle: 'No contacts found',
     emptyCaption: 'Add a contact, then publish the updated follow list to relays.',
