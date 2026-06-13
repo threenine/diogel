@@ -115,7 +115,7 @@ function resetForm() {
 
 function openAddDialog() {
   resetForm();
-  dialogOpen.value = true;
+  dialogOpen.value = !dialogOpen.value;
 }
 
 async function runContactSearch() {
@@ -185,6 +185,11 @@ function selectSearchResult(result: ContactSearchResult) {
   }
 
   dirty.value = true;
+  dialogOpen.value = false;
+  resetForm();
+}
+
+function closeAddContactForm() {
   dialogOpen.value = false;
   resetForm();
 }
@@ -297,6 +302,58 @@ onMounted(async () => {
         </div>
       </q-card-section>
 
+      <q-slide-transition>
+        <q-card-section v-if="dialogOpen" class="contacts-page__add-panel q-gutter-md">
+          <div class="text-h6">{{ t('contacts.addTitle') }}</div>
+          <div class="contacts-page__search-row">
+            <q-input
+              v-model="searchQuery"
+              class="contacts-page__search-input"
+              outlined
+              :label="t('contacts.searchLabel')"
+              :hint="t('contacts.searchHint')"
+              @keyup.enter="runContactSearch"
+            />
+            <q-btn
+              color="primary"
+              icon="search"
+              :label="t('contacts.search')"
+              :loading="searchingContacts"
+              @click="runContactSearch"
+            />
+            <q-btn flat :label="t('account.cancel')" @click="closeAddContactForm" />
+          </div>
+
+          <q-banner v-if="formError" class="bg-red-1 text-red-10" rounded>{{ formError }}</q-banner>
+
+          <q-list v-if="searchResults.length > 0" bordered separator class="contacts-page__search-results">
+            <q-item
+              v-for="result in searchResults"
+              :key="result.pubkey"
+              clickable
+              @click="selectSearchResult(result)"
+            >
+              <q-item-section avatar>
+                <q-avatar v-if="result.profile?.picture">
+                  <img :src="result.profile.picture" alt="" />
+                </q-avatar>
+                <q-avatar v-else color="primary" text-color="white" icon="person" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ getSearchResultName(result) }}</q-item-label>
+                <q-item-label caption>{{ getSearchResultSubtitle(result) }}</q-item-label>
+                <q-item-label caption class="contacts-page__pubkey">
+                  {{ formatContactNpub(result.pubkey) }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn flat dense color="primary" :label="t('contacts.select')" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+      </q-slide-transition>
+
       <q-separator />
 
       <q-card-section v-if="loading" class="text-center q-pa-xl">
@@ -342,67 +399,6 @@ onMounted(async () => {
       </q-card-section>
     </q-card>
 
-    <q-dialog v-model="dialogOpen">
-      <q-card class="contacts-page__dialog">
-        <q-card-section>
-          <div class="text-h6">
-            {{ t('contacts.addTitle') }}
-          </div>
-        </q-card-section>
-
-        <q-card-section class="q-gutter-md">
-          <div class="contacts-page__search-row">
-            <q-input
-              v-model="searchQuery"
-              class="contacts-page__search-input"
-              outlined
-              :label="t('contacts.searchLabel')"
-              :hint="t('contacts.searchHint')"
-              @keyup.enter="runContactSearch"
-            />
-            <q-btn
-              color="primary"
-              icon="search"
-              :label="t('contacts.search')"
-              :loading="searchingContacts"
-              @click="runContactSearch"
-            />
-          </div>
-
-          <q-banner v-if="formError" class="bg-red-1 text-red-10" rounded>{{ formError }}</q-banner>
-
-          <q-list v-if="searchResults.length > 0" bordered separator class="contacts-page__search-results">
-            <q-item
-              v-for="result in searchResults"
-              :key="result.pubkey"
-              clickable
-              @click="selectSearchResult(result)"
-            >
-              <q-item-section avatar>
-                <q-avatar v-if="result.profile?.picture">
-                  <img :src="result.profile.picture" alt="" />
-                </q-avatar>
-                <q-avatar v-else color="primary" text-color="white" icon="person" />
-              </q-item-section>
-              <q-item-section>
-                <q-item-label>{{ getSearchResultName(result) }}</q-item-label>
-                <q-item-label caption>{{ getSearchResultSubtitle(result) }}</q-item-label>
-                <q-item-label caption class="contacts-page__pubkey">
-                  {{ formatContactNpub(result.pubkey) }}
-                </q-item-label>
-              </q-item-section>
-              <q-item-section side>
-                <q-btn flat dense color="primary" :label="t('contacts.select')" />
-              </q-item-section>
-            </q-item>
-          </q-list>
-        </q-card-section>
-
-        <q-card-actions align="right">
-          <q-btn v-close-popup flat :label="t('account.cancel')" />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
   </q-page>
 </template>
 
@@ -447,6 +443,10 @@ onMounted(async () => {
   overflow: hidden;
 }
 
+.contacts-page__add-panel {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
 .contacts-page__pubkey {
   word-break: break-all;
 }
@@ -454,10 +454,6 @@ onMounted(async () => {
 :global(.contacts-page__bio-tooltip) {
   max-width: 22rem;
   white-space: normal;
-}
-
-.contacts-page__dialog {
-  width: min(42rem, 92vw);
 }
 
 @media (max-width: 700px) {
