@@ -18,6 +18,7 @@ import { parseNip05Identifier } from 'src/services/nip05-service';
 const CONTACT_LIST_KIND = 3;
 const PROFILE_METADATA_KIND = 0;
 const HEX_PUBKEY_PATTERN = /^[0-9a-f]{64}$/i;
+const PROFILE_SEARCH_RELAYS = ['wss://purplepag.es', 'wss://relay.nostr.band', 'wss://search.nos.today'];
 const pool = new SimplePool();
 
 function getAccountPubkey(storedKey: StoredKey): string {
@@ -79,17 +80,6 @@ export function getContactDisplayName(contact: Nip02Contact, profile?: ContactPr
   return profile?.displayName || profile?.name || contact.petname || formatContactNpub(contact.pubkey);
 }
 
-function isContactProfileMatch(profile: ContactProfile, query: string): boolean {
-  const normalizedQuery = query.trim().toLowerCase();
-  if (!normalizedQuery) {
-    return false;
-  }
-
-  return [profile.displayName, profile.name, profile.nip05]
-    .filter((field) => field.length > 0)
-    .some((field) => field.toLowerCase().includes(normalizedQuery));
-}
-
 function mergeSearchResult(
   results: Map<string, ContactSearchResult>,
   result: ContactSearchResult,
@@ -141,7 +131,7 @@ export async function searchContacts(query: string): Promise<ContactSearchResult
   }
 
   const settingsStore = useSettingsStore();
-  const relays = await settingsStore.getFallbackRelays();
+  const relays = Array.from(new Set([...(await settingsStore.getFallbackRelays()), ...PROFILE_SEARCH_RELAYS]));
   const results = new Map<string, ContactSearchResult>();
   const directPubkey = normalizePubkey(trimmedQuery);
 
@@ -206,14 +196,12 @@ export async function searchContacts(query: string): Promise<ContactSearchResult
       continue;
     }
 
-    if (results.has(profile.pubkey) || isContactProfileMatch(profile, trimmedQuery)) {
-      mergeSearchResult(results, {
-        pubkey: profile.pubkey,
-        relayUrl: '',
-        profile,
-        matchType: 'profile-search',
-      });
-    }
+    mergeSearchResult(results, {
+      pubkey: profile.pubkey,
+      relayUrl: '',
+      profile,
+      matchType: 'profile-search',
+    });
   }
 
   return Array.from(results.values()).sort((left, right) => {

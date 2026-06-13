@@ -98,4 +98,34 @@ describe('searchContacts', () => {
       },
     });
   });
+
+  it('uses configured relays plus known profile search relays', async () => {
+    querySyncMock.mockResolvedValueOnce([]);
+
+    await searchContacts('bob');
+
+    expect(querySyncMock).toHaveBeenCalledWith(
+      ['wss://relay.test', 'wss://purplepag.es', 'wss://relay.nostr.band', 'wss://search.nos.today'],
+      {
+        kinds: [0],
+        search: 'bob',
+        limit: 20,
+      },
+      { maxWait: 5000 },
+    );
+  });
+
+  it('trusts relay search results even when the local metadata fields do not include the query text', async () => {
+    querySyncMock.mockResolvedValueOnce([
+      createMetadataEvent(pubkeyTwo, {
+        name: 'somebody',
+        display_name: 'A Fuzzy Search Result',
+      }),
+    ]);
+
+    const results = await searchContacts('bob');
+
+    expect(results).toHaveLength(1);
+    expect(results[0]?.pubkey).toBe(pubkeyTwo);
+  });
 });
