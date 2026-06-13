@@ -18,7 +18,6 @@ import { parseNip05Identifier } from 'src/services/nip05-service';
 const CONTACT_LIST_KIND = 3;
 const PROFILE_METADATA_KIND = 0;
 const HEX_PUBKEY_PATTERN = /^[0-9a-f]{64}$/i;
-const PROFILE_SEARCH_RELAYS = ['wss://purplepag.es', 'wss://relay.nostr.band', 'wss://search.nos.today'];
 const pool = new SimplePool();
 
 function getAccountPubkey(storedKey: StoredKey): string {
@@ -131,7 +130,7 @@ export async function searchContacts(query: string): Promise<ContactSearchResult
   }
 
   const settingsStore = useSettingsStore();
-  const relays = Array.from(new Set([...(await settingsStore.getFallbackRelays()), ...PROFILE_SEARCH_RELAYS]));
+  const relays = await settingsStore.getProfileSearchRelays();
   const results = new Map<string, ContactSearchResult>();
   const directPubkey = normalizePubkey(trimmedQuery);
 

@@ -291,6 +291,13 @@ export default {
     newSignature: 'New Signature',
   },
   settings: {
+    profileSearchRelays: 'Profile Search Relays',
+    profileSearchRelaysCaption:
+      'Relays used when searching for Nostr profiles by name, npub, hex pubkey, or NIP-05 identifier.',
+    profileSearchRelayUrl: 'Profile search relay URL',
+    addProfileSearchRelay: 'Add Relay',
+    editProfileSearchRelay: 'Edit profile search relay',
+    removeProfileSearchRelay: 'Remove profile search relay',
     vaultManagement: 'Vault Management',
     exportVault: 'Export Vault',
     exportVaultCaption: 'Download an encrypted backup of your entire vault.',

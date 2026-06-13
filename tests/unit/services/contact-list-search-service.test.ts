@@ -21,6 +21,7 @@ vi.mock('nostr-tools', async (importActual) => {
 vi.mock('src/stores/settings-store', () => ({
   default: () => ({
     getFallbackRelays: vi.fn(() => Promise.resolve(['wss://relay.test'])),
+    getProfileSearchRelays: vi.fn(() => Promise.resolve(['wss://profile-search.test'])),
   }),
 }));
 
@@ -99,13 +100,13 @@ describe('searchContacts', () => {
     });
   });
 
-  it('uses configured relays plus known profile search relays', async () => {
+  it('uses configured profile search relays', async () => {
     querySyncMock.mockResolvedValueOnce([]);
 
     await searchContacts('bob');
 
     expect(querySyncMock).toHaveBeenCalledWith(
-      ['wss://relay.test', 'wss://purplepag.es', 'wss://relay.nostr.band', 'wss://search.nos.today'],
+      ['wss://profile-search.test'],
       {
         kinds: [0],
         search: 'bob',

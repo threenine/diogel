@@ -1,12 +1,16 @@
 <script lang="ts" setup>
-import { onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import ThemeSwitch from '../components/ThemeSwitch/Index.vue';
 import useSettingsStore from '../stores/settings-store';
 import { useI18n } from 'vue-i18n';
+import { useQuasar } from 'quasar';
 import { useVaultManagement } from 'src/composables/useVaultManagement';
+import { normalizeRelayUrl } from 'src/services/relay-url';
 
 const { t } = useI18n();
+const $q = useQuasar();
 const settingsStore = useSettingsStore();
+const profileSearchRelayInput = ref('');
 
 const { fileInput, handleExportVault, triggerImport, handleFileImport } =
   useVaultManagement();
@@ -14,6 +18,29 @@ const { fileInput, handleExportVault, triggerImport, handleFileImport } =
 onMounted(async () => {
   await settingsStore.getSettings();
 });
+
+async function addProfileSearchRelay() {
+  const normalized = normalizeRelayUrl(profileSearchRelayInput.value);
+  if (!normalized.valid || !normalized.url) {
+    $q.notify({ type: 'negative', message: normalized.error ?? t('relays.invalidUrl') });
+    return;
+  }
+
+  await settingsStore.addProfileSearchRelay(normalized.url);
+  profileSearchRelayInput.value = '';
+}
+
+async function updateProfileSearchRelay(index: number, value: string | number | null) {
+  const normalized = normalizeRelayUrl(String(value ?? ''));
+  if (!normalized.valid || !normalized.url) {
+    $q.notify({ type: 'negative', message: normalized.error ?? t('relays.invalidUrl') });
+    return;
+  }
+
+  const nextRelays = [...settingsStore.profileSearchRelays];
+  nextRelays[index] = normalized.url;
+  await settingsStore.setProfileSearchRelays(nextRelays);
+}
 </script>
 
 <template>
@@ -87,6 +114,53 @@ onMounted(async () => {
       <q-separator />
 
       <q-card-section>
+        <h2 class="text-subtitle1 q-mb-md">{{ t('settings.profileSearchRelays') }}</h2>
+        <p class="text-caption text-grey-7 q-mb-md">{{ t('settings.profileSearchRelaysCaption') }}</p>
+        <q-list bordered separator>
+          <q-item v-for="(relay, index) in settingsStore.profileSearchRelays" :key="relay">
+            <q-item-section>
+              <q-input
+                dense
+                outlined
+                :model-value="relay"
+                :aria-label="t('settings.editProfileSearchRelay')"
+                @change="updateProfileSearchRelay(index, $event)"
+              />
+            </q-item-section>
+            <q-item-section side>
+              <q-btn
+                flat
+                round
+                dense
+                color="negative"
+                icon="delete"
+                :aria-label="t('settings.removeProfileSearchRelay')"
+                @click="settingsStore.removeProfileSearchRelay(relay)"
+              />
+            </q-item-section>
+          </q-item>
+        </q-list>
+        <div class="extension-settings-page__relay-add q-mt-md">
+          <q-input
+            v-model="profileSearchRelayInput"
+            class="extension-settings-page__relay-input"
+            dense
+            outlined
+            :label="t('settings.profileSearchRelayUrl')"
+            @keyup.enter="addProfileSearchRelay"
+          />
+          <q-btn
+            color="primary"
+            icon="add"
+            :label="t('settings.addProfileSearchRelay')"
+            @click="addProfileSearchRelay"
+          />
+        </div>
+      </q-card-section>
+
+      <q-separator />
+
+      <q-card-section>
         <h2 class="text-subtitle1 q-mb-md">{{ t('settings.vaultManagement') }}</h2>
         <q-list>
           <q-item>
@@ -138,5 +212,25 @@ onMounted(async () => {
 
 .extension-settings-page__card {
   overflow: hidden;
+}
+
+.extension-settings-page__relay-add {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.extension-settings-page__relay-input {
+  flex: 1;
+}
+
+@media (max-width: 700px) {
+  .extension-settings-page__relay-add {
+    flex-direction: column;
+  }
+
+  .extension-settings-page__relay-input {
+    width: 100%;
+  }
 }
 </style>
