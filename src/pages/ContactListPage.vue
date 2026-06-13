@@ -28,7 +28,6 @@ const loadingProfiles = ref(false);
 const errorMessage = ref('');
 const dirty = ref(false);
 const dialogOpen = ref(false);
-const editingPubkey = ref<string | undefined>();
 const pubkeyInput = ref('');
 const relayUrlInput = ref('');
 const petnameInput = ref('');
@@ -100,7 +99,6 @@ async function enrichProfiles() {
 }
 
 function resetForm() {
-  editingPubkey.value = undefined;
   pubkeyInput.value = '';
   relayUrlInput.value = '';
   petnameInput.value = '';
@@ -109,15 +107,6 @@ function resetForm() {
 
 function openAddDialog() {
   resetForm();
-  dialogOpen.value = true;
-}
-
-function openEditDialog(contact: Nip02Contact) {
-  editingPubkey.value = contact.pubkey;
-  pubkeyInput.value = contact.pubkey;
-  relayUrlInput.value = contact.relayUrl;
-  petnameInput.value = contact.petname;
-  formError.value = '';
   dialogOpen.value = true;
 }
 
@@ -149,7 +138,6 @@ function saveContact() {
     relayUrlInput.value,
     petnameInput.value,
     contacts.value,
-    editingPubkey.value,
   );
 
   if (!result.valid || !result.contact) {
@@ -157,13 +145,7 @@ function saveContact() {
     return;
   }
 
-  if (editingPubkey.value) {
-    contacts.value = contacts.value.map((contact) =>
-      contact.pubkey === editingPubkey.value ? result.contact as Nip02Contact : contact,
-    );
-  } else {
-    contacts.value = [...contacts.value, result.contact];
-  }
+  contacts.value = [...contacts.value, result.contact];
 
   dirty.value = true;
   void enrichProfiles();
@@ -220,23 +202,6 @@ onMounted(async () => {
         <h1 class="dashboard-hero-title">{{ t('contacts.title') }}</h1>
         <p class="dashboard-hero-caption">{{ t('contacts.dashboardCaption') }}</p>
       </div>
-      <div v-if="activeStoredKey" class="contacts-page__actions">
-        <q-btn
-          flat
-          icon="refresh"
-          :label="t('contacts.refresh')"
-          :loading="loading"
-          @click="loadContacts"
-        />
-        <q-btn
-          class="diogel-btn-primary"
-          icon="publish"
-          :disable="!dirty || publishing"
-          :label="t('contacts.publish')"
-          :loading="publishing"
-          @click="publishChanges"
-        />
-      </div>
     </section>
 
     <q-card v-if="!activeStoredKey" class="dashboard-card contacts-page__card">
@@ -268,13 +233,32 @@ onMounted(async () => {
       </q-banner>
 
       <q-card-section class="contacts-page__toolbar">
-        <div class="text-subtitle1">
-          {{ t('contacts.count', { count: contacts.length }) }}
-          <span v-if="loadingProfiles" class="text-caption text-grey-7 q-ml-sm">
-            {{ t('contacts.loadingProfiles') }}
-          </span>
+        <div class="contacts-page__count-actions">
+          <div class="text-subtitle1">
+            {{ t('contacts.count', { count: contacts.length }) }}
+            <span v-if="loadingProfiles" class="text-caption text-grey-7 q-ml-sm">
+              {{ t('contacts.loadingProfiles') }}
+            </span>
+          </div>
+          <q-btn
+            flat
+            icon="refresh"
+            :label="t('contacts.refresh')"
+            :loading="loading"
+            @click="loadContacts"
+          />
         </div>
-        <q-btn icon="person_add" color="primary" :label="t('contacts.add')" @click="openAddDialog" />
+        <div class="contacts-page__actions">
+          <q-btn icon="person_add" color="primary" :label="t('contacts.add')" @click="openAddDialog" />
+          <q-btn
+            class="diogel-btn-primary"
+            icon="publish"
+            :disable="!dirty || publishing"
+            :label="t('contacts.publish')"
+            :loading="publishing"
+            @click="publishChanges"
+          />
+        </div>
       </q-card-section>
 
       <q-separator />
@@ -309,7 +293,6 @@ onMounted(async () => {
           </q-item-section>
           <q-item-section side>
             <div class="contacts-page__row-actions">
-              <q-btn flat round dense icon="edit" :aria-label="t('contacts.edit')" @click="openEditDialog(contact)" />
               <q-btn flat round dense color="negative" icon="delete" :aria-label="t('contacts.remove')" @click="removeContact(contact)" />
             </div>
           </q-item-section>
@@ -327,12 +310,12 @@ onMounted(async () => {
       <q-card class="contacts-page__dialog">
         <q-card-section>
           <div class="text-h6">
-            {{ editingPubkey ? t('contacts.editTitle') : t('contacts.addTitle') }}
+            {{ t('contacts.addTitle') }}
           </div>
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
-          <q-input v-model="pubkeyInput" outlined :label="t('contacts.pubkey')" :disable="!!editingPubkey" />
+          <q-input v-model="pubkeyInput" outlined :label="t('contacts.pubkey')" />
           <q-input v-model="relayUrlInput" outlined :label="t('contacts.relayUrl')" />
           <q-input v-model="petnameInput" outlined :label="t('contacts.petname')" />
           <q-banner v-if="formError" class="bg-red-1 text-red-10" rounded>{{ formError }}</q-banner>
@@ -362,8 +345,10 @@ onMounted(async () => {
 }
 
 .contacts-page__actions,
+.contacts-page__count-actions,
 .contacts-page__row-actions {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
 }
 
