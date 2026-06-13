@@ -7,6 +7,7 @@ type NavigationRouteName =
   | 'add-new-key'
   | 'profile'
   | 'relays'
+  | 'contacts'
   | 'wallet-connections'
   | 'settings'
   | 'event-history'
@@ -21,7 +22,15 @@ interface NavigationTarget {
 }
 
 interface NavigationItem {
-  id: 'dashboard' | 'keys' | 'profile' | 'relays' | 'wallet-connections' | 'event-history' | 'settings';
+  id:
+    | 'dashboard'
+    | 'keys'
+    | 'profile'
+    | 'relays'
+    | 'contacts'
+    | 'wallet-connections'
+    | 'event-history'
+    | 'settings';
   icon: string;
   label: string;
   caption: string;

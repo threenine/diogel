@@ -67,6 +67,14 @@ export function useNavigation(): UseNavigationResult {
       isActive: () => routeName.value === 'relays',
     },
     {
+      id: 'contacts',
+      icon: 'contacts',
+      label: t('navigation.contacts.label'),
+      caption: t('navigation.contacts.caption'),
+      target: { name: 'contacts' },
+      isActive: () => routeName.value === 'contacts',
+    },
+    {
       id: 'wallet-connections',
       icon: 'account_balance_wallet',
       label: t('navigation.walletConnections.label'),
