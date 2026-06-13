@@ -24,7 +24,7 @@ export function useNavigation(): UseNavigationResult {
       icon: 'description',
       label: t('navigation.documentation.label'),
       caption: t('navigation.documentation.caption'),
-      href: 'https://diogel.io/docs',
+      href: 'https://diogel.io/docs/porwr',
     },
   ]);
 
