@@ -95,6 +95,7 @@ describe('contact-list-service', () => {
           JSON.stringify({
             name: 'alice',
             display_name: 'Alice Example',
+            about: 'Builder of useful Nostr things.',
             picture: 'https://example.com/alice.png',
             nip05: 'alice@example.com',
           }),
@@ -106,6 +107,7 @@ describe('contact-list-service', () => {
         pubkey: pubkeyOne,
         name: 'alice',
         displayName: 'Alice Example',
+        about: 'Builder of useful Nostr things.',
         picture: 'https://example.com/alice.png',
         nip05: 'alice@example.com',
         updatedAt: 123,
@@ -123,6 +125,7 @@ describe('contact-list-service', () => {
 
       expect(profile?.name).toBe('');
       expect(profile?.displayName).toBe('Alice');
+      expect(profile?.about).toBe('');
     });
   });
 
@@ -135,6 +138,7 @@ describe('contact-list-service', () => {
           pubkey: pubkeyOne,
           name: 'alice',
           displayName: 'Alice Example',
+          about: '',
           picture: '',
           nip05: '',
           updatedAt: 100,
@@ -148,6 +152,7 @@ describe('contact-list-service', () => {
           pubkey: pubkeyOne,
           name: 'alice',
           displayName: '',
+          about: '',
           picture: '',
           nip05: '',
           updatedAt: 100,

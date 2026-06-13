@@ -78,6 +78,10 @@ function getContactSubtitle(contact: Nip02Contact): string {
   return formatContactNpub(contact.pubkey);
 }
 
+function getContactBio(contact: Nip02Contact): string {
+  return getProfile(contact)?.about ?? '';
+}
+
 async function enrichProfiles() {
   const pubkeys = contacts.value.map((contact) => contact.pubkey);
   if (pubkeys.length === 0) {
@@ -285,8 +289,15 @@ onMounted(async () => {
           <q-item-section avatar>
             <q-avatar v-if="getProfile(contact)?.picture">
               <img :src="getProfile(contact)?.picture" alt="" />
+              <q-tooltip v-if="getContactBio(contact)" class="contacts-page__bio-tooltip">
+                {{ getContactBio(contact) }}
+              </q-tooltip>
             </q-avatar>
-            <q-avatar v-else color="primary" text-color="white" icon="person" />
+            <q-avatar v-else color="primary" text-color="white" icon="person">
+              <q-tooltip v-if="getContactBio(contact)" class="contacts-page__bio-tooltip">
+                {{ getContactBio(contact) }}
+              </q-tooltip>
+            </q-avatar>
           </q-item-section>
           <q-item-section>
             <q-item-label>{{ getDisplayName(contact) }}</q-item-label>
@@ -362,6 +373,11 @@ onMounted(async () => {
 
 .contacts-page__pubkey {
   word-break: break-all;
+}
+
+:global(.contacts-page__bio-tooltip) {
+  max-width: 22rem;
+  white-space: normal;
 }
 
 .contacts-page__dialog {

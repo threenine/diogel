@@ -10,6 +10,7 @@ export interface ContactProfile {
   pubkey: string;
   name: string;
   displayName: string;
+  about: string;
   picture: string;
   nip05: string;
   updatedAt: number;

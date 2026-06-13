@@ -63,6 +63,7 @@ export function parseContactProfile(event: NostrEvent): ContactProfile | null {
       pubkey: event.pubkey,
       name: getStringField(profile, 'name'),
       displayName: getStringField(profile, 'display_name'),
+      about: getStringField(profile, 'about'),
       picture: getStringField(profile, 'picture'),
       nip05: getStringField(profile, 'nip05'),
       updatedAt: event.created_at,
