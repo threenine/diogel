@@ -297,8 +297,27 @@ bridge.on('nip47.payments.list', () => {
   return dispatchMessage('nip47.payments.list', createBridgeRequest('nip47.payments.list', {}), '') as unknown as BridgeResponsePayload<'nip47.payments.list'>;
 });
 
+// The vault's raw AES key is persisted to chrome.storage.session so it survives
+// service worker restarts. Explicitly restrict that storage area to extension
+// pages/background (never content scripts or web pages), regardless of the
+// browser's default access level.
+async function lockDownSessionStorage(): Promise<void> {
+  try {
+    if (typeof chrome !== 'undefined' && chrome.storage?.session?.setAccessLevel) {
+      await chrome.storage.session.setAccessLevel({
+        accessLevel: 'TRUSTED_CONTEXTS',
+      });
+    }
+  } catch (error: unknown) {
+    logService.log(LogLevel.ERROR, '[BEX] Failed to set session storage access level', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 async function initialize(): Promise<void> {
   try {
+    await lockDownSessionStorage();
     await restoreLastActivity();
     const restored = await restoreVaultState();
     if (restored) {
@@ -319,8 +338,32 @@ async function initialize(): Promise<void> {
 
 void initialize();
 
+// Signing/encryption actions are scoped to the requesting page's origin for
+// permission checks. This raw listener has no reliable origin of its own, so
+// these actions must carry a non-empty `payload.origin` rather than falling
+// back to '' (which could otherwise match a permission record with no origin).
+const ORIGIN_SCOPED_ACTIONS = new Set([
+  'nostr.getPublicKey',
+  'nostr.signEvent',
+  'nostr.getRelays',
+  'nostr.nip04.encrypt',
+  'nostr.nip04.decrypt',
+  'nostr.nip44.encrypt',
+  'nostr.nip44.decrypt',
+]);
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  void dispatchMessage(message.type, message.payload || {}, '')
+  const payload = (message.payload || {}) as { origin?: unknown };
+
+  if (ORIGIN_SCOPED_ACTIONS.has(message.type) && !payload.origin) {
+    sendResponse({
+      success: false,
+      error: 'Missing origin for origin-scoped action',
+    });
+    return true;
+  }
+
+  void dispatchMessage(message.type, message.payload || {}, typeof payload.origin === 'string' ? payload.origin : '')
     .then((response) => {
       if (response !== null) {
         sendResponse(response);

@@ -7,10 +7,26 @@ import {
   VAULT_AUTO_LOCK_MINUTES,
 } from 'src/services/storage-service';
 import { RELAY_SEEDS } from 'src/data/relay-seeds';
+import { PROFILE_SEARCH_RELAY_SEEDS } from 'src/data/profile-search-relay-seeds';
+import { normalizeRelayUrl } from 'src/services/relay-url';
+import {
+  getStoredProfileSearchRelays,
+  setStoredProfileSearchRelays,
+} from 'src/services/profile-search-relay-settings-service';
 
 const DEFAULT_BLOSSOM_SERVER = 'https://blossom.primal.net/';
 const DEFAULT_VAULT_AUTO_LOCK_MINUTES = 15;
 const DEFAULT_FALLBACK_RELAYS = RELAY_SEEDS;
+const DEFAULT_PROFILE_SEARCH_RELAYS = PROFILE_SEARCH_RELAY_SEEDS;
+
+function normalizeRelayList(relays: string[]): string[] {
+  const normalized = relays
+    .map((relay) => normalizeRelayUrl(relay))
+    .filter((result): result is { valid: true; url: string; hostname?: string } => result.valid && typeof result.url === 'string')
+    .map((result) => result.url);
+
+  return Array.from(new Set(normalized));
+}
 
 const useSettingsStore = defineStore('settings', {
   state: () => ({
@@ -18,6 +34,7 @@ const useSettingsStore = defineStore('settings', {
     darkMode: true, // Default to dark mode as per current observed behavior
     vaultAutoLockMinutes: DEFAULT_VAULT_AUTO_LOCK_MINUTES,
     fallbackRelays: DEFAULT_FALLBACK_RELAYS,
+    profileSearchRelays: DEFAULT_PROFILE_SEARCH_RELAYS,
     isListening: false,
   }),
 
@@ -27,6 +44,13 @@ const useSettingsStore = defineStore('settings', {
         await this.getSettings();
       }
       return this.fallbackRelays;
+    },
+
+    async getProfileSearchRelays(): Promise<string[]> {
+      if (this.profileSearchRelays.length === 0) {
+        await this.getSettings();
+      }
+      return this.profileSearchRelays;
     },
 
     async getSettings(): Promise<void> {
@@ -51,6 +75,16 @@ const useSettingsStore = defineStore('settings', {
       if (Array.isArray(result[FALLBACK_RELAYS]) && (result[FALLBACK_RELAYS] as unknown[]).length > 0) {
         this.fallbackRelays = result[FALLBACK_RELAYS] as string[];
       }
+      let storedProfileSearchRelays: string[] | undefined;
+      try {
+        storedProfileSearchRelays = await getStoredProfileSearchRelays();
+      } catch {
+        storedProfileSearchRelays = undefined;
+      }
+      if (Array.isArray(storedProfileSearchRelays)) {
+        const normalized = normalizeRelayList(storedProfileSearchRelays);
+        this.profileSearchRelays = normalized.length > 0 ? normalized : DEFAULT_PROFILE_SEARCH_RELAYS;
+      }
     },
 
     async setBlossomServer(url: string): Promise<void> {
@@ -70,13 +104,31 @@ const useSettingsStore = defineStore('settings', {
     },
 
     async setFallbackRelays(relays: string[]): Promise<void> {
-      const filtered = Array.isArray(relays) ? relays.filter(r => typeof r === 'string' && r.length > 0) : [];
+      const filtered = Array.isArray(relays) ? normalizeRelayList(relays) : [];
       if (filtered.length === 0) {
         this.fallbackRelays = DEFAULT_FALLBACK_RELAYS;
       } else {
         this.fallbackRelays = filtered;
       }
       await storageService.set(FALLBACK_RELAYS, this.fallbackRelays);
+    },
+
+    async setProfileSearchRelays(relays: string[]): Promise<void> {
+      const filtered = Array.isArray(relays) ? normalizeRelayList(relays) : [];
+      this.profileSearchRelays = filtered.length > 0 ? filtered : DEFAULT_PROFILE_SEARCH_RELAYS;
+      await setStoredProfileSearchRelays(this.profileSearchRelays);
+    },
+
+    async addProfileSearchRelay(relay: string): Promise<void> {
+      const normalized = normalizeRelayList([...this.profileSearchRelays, relay]);
+      if (normalized.length === 0) {
+        throw new Error('Invalid relay URL.');
+      }
+      await this.setProfileSearchRelays(normalized);
+    },
+
+    async removeProfileSearchRelay(relay: string): Promise<void> {
+      await this.setProfileSearchRelays(this.profileSearchRelays.filter((item) => item !== relay));
     },
 
     listenToStorageChanges() {
@@ -103,7 +155,7 @@ const useSettingsStore = defineStore('settings', {
           if (FALLBACK_RELAYS in changes) {
             const newValue = changes[FALLBACK_RELAYS].newValue;
             if (Array.isArray(newValue) && newValue.length > 0) {
-              this.fallbackRelays = newValue as string[];
+              this.fallbackRelays = normalizeRelayList(newValue as string[]);
             } else {
               this.fallbackRelays = DEFAULT_FALLBACK_RELAYS;
             }

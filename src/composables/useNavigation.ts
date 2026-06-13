@@ -24,7 +24,7 @@ export function useNavigation(): UseNavigationResult {
       icon: 'description',
       label: t('navigation.documentation.label'),
       caption: t('navigation.documentation.caption'),
-      href: 'https://diogel.io/docs',
+      href: 'https://diogel.io/docs/porwr',
     },
   ]);
 
@@ -65,6 +65,14 @@ export function useNavigation(): UseNavigationResult {
       caption: t('navigation.relays.caption'),
       target: { name: 'relays' },
       isActive: () => routeName.value === 'relays',
+    },
+    {
+      id: 'contacts',
+      icon: 'contacts',
+      label: t('navigation.contacts.label'),
+      caption: t('navigation.contacts.caption'),
+      target: { name: 'contacts' },
+      isActive: () => routeName.value === 'contacts',
     },
     {
       id: 'wallet-connections',

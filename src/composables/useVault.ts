@@ -11,6 +11,7 @@ const dashboardRouteNames = new Set([
   'dashboard',
   'settings',
   'profile',
+  'contacts',
   'logs',
   'keys',
   'view-key',

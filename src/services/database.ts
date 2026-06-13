@@ -23,12 +23,19 @@ export interface ApprovalLog {
   account?: string | null;
 }
 
+export interface AppSetting {
+  key: string;
+  value: unknown;
+  updatedAt: string;
+}
+
 export class DiogelDatabase extends Dexie {
   vaults!: Table<Vault, string>;
   exceptions!: Table<ExceptionLog, number>;
   approvals!: Table<ApprovalLog, number>;
   relayCatalog!: Table<RelayCatalogEntry, string>;
   relayDiscoveryState!: Table<RelayDiscoveryState, string>;
+  appSettings!: Table<AppSetting, string>;
 
   constructor() {
     super('DiogelDatabase');
@@ -65,6 +72,15 @@ export class DiogelDatabase extends Dexie {
       approvals: '++id, dateTime, eventKind, hostname, account',
       relayCatalog: 'url, hostname, status, lastSeen, createdAt',
       relayDiscoveryState: 'id, lastGlobalDiscoveryAt',
+    });
+
+    this.version(8).stores({
+      vaults: 'id',
+      exceptions: '++id, dateTime, account, hostname',
+      approvals: '++id, dateTime, eventKind, hostname, account',
+      relayCatalog: 'url, hostname, status, lastSeen, createdAt',
+      relayDiscoveryState: 'id, lastGlobalDiscoveryAt',
+      appSettings: 'key, updatedAt',
     });
   }
 }
