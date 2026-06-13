@@ -8,10 +8,12 @@ import type {
   ContactListState,
   ContactListRelayPublishResult,
   ContactProfile,
+  ContactSearchResult,
   Nip02Contact,
 } from 'src/types/contact-list';
 import useSettingsStore from 'src/stores/settings-store';
 import { normalizeRelayUrl } from 'src/services/relay-url';
+import { parseNip05Identifier } from 'src/services/nip05-service';
 
 const CONTACT_LIST_KIND = 3;
 const PROFILE_METADATA_KIND = 0;
@@ -75,6 +77,150 @@ export function parseContactProfile(event: NostrEvent): ContactProfile | null {
 
 export function getContactDisplayName(contact: Nip02Contact, profile?: ContactProfile): string {
   return profile?.displayName || profile?.name || contact.petname || formatContactNpub(contact.pubkey);
+}
+
+function isContactProfileMatch(profile: ContactProfile, query: string): boolean {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return false;
+  }
+
+  return [profile.displayName, profile.name, profile.nip05]
+    .filter((field) => field.length > 0)
+    .some((field) => field.toLowerCase().includes(normalizedQuery));
+}
+
+function mergeSearchResult(
+  results: Map<string, ContactSearchResult>,
+  result: ContactSearchResult,
+): void {
+  const existing = results.get(result.pubkey);
+  if (!existing) {
+    results.set(result.pubkey, result);
+    return;
+  }
+
+  if (!existing.profile && result.profile) {
+    results.set(result.pubkey, result);
+  }
+}
+
+async function resolveNip05Pubkey(identifier: string): Promise<string | null> {
+  const parsed = parseNip05Identifier(identifier);
+  if (!parsed) {
+    return null;
+  }
+
+  const url = new URL(`https://${parsed.domain}/.well-known/nostr.json`);
+  url.searchParams.set('name', parsed.name);
+
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+  const json = (await response.json()) as unknown;
+  if (!json || typeof json !== 'object' || Array.isArray(json)) {
+    return null;
+  }
+
+  const names = (json as Record<string, unknown>).names;
+  if (!names || typeof names !== 'object' || Array.isArray(names)) {
+    return null;
+  }
+
+  const pubkey = (names as Record<string, unknown>)[parsed.name];
+  return typeof pubkey === 'string' ? normalizePubkey(pubkey) : null;
+}
+
+export async function searchContacts(query: string): Promise<ContactSearchResult[]> {
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) {
+    return [];
+  }
+
+  const settingsStore = useSettingsStore();
+  const relays = await settingsStore.getFallbackRelays();
+  const results = new Map<string, ContactSearchResult>();
+  const directPubkey = normalizePubkey(trimmedQuery);
+
+  if (directPubkey) {
+    const profile = (await fetchContactProfiles([directPubkey]))[directPubkey];
+    const result: ContactSearchResult = {
+      pubkey: directPubkey,
+      relayUrl: '',
+      matchType: 'pubkey',
+    };
+    if (profile) {
+      result.profile = profile;
+    }
+    mergeSearchResult(results, result);
+  }
+
+  if (parseNip05Identifier(trimmedQuery)) {
+    try {
+      const pubkey = await resolveNip05Pubkey(trimmedQuery);
+      if (pubkey) {
+        const existingProfile = (await fetchContactProfiles([pubkey]))[pubkey];
+        const profile = existingProfile
+          ? {
+              ...existingProfile,
+              nip05: existingProfile.nip05 || trimmedQuery,
+            }
+          : {
+              pubkey,
+              name: '',
+              displayName: '',
+              about: '',
+              picture: '',
+              nip05: trimmedQuery,
+              updatedAt: 0,
+            };
+
+        mergeSearchResult(results, {
+          pubkey,
+          relayUrl: '',
+          profile,
+          matchType: 'nip05',
+        });
+      }
+    } catch {
+      // NIP-05 lookup is best-effort; relay profile search may still return matches.
+    }
+  }
+
+  const events = await pool.querySync(
+    relays,
+    {
+      kinds: [PROFILE_METADATA_KIND],
+      search: trimmedQuery,
+      limit: 20,
+    },
+    { maxWait: 5000 },
+  );
+
+  for (const event of events) {
+    const profile = parseContactProfile(event);
+    if (!profile) {
+      continue;
+    }
+
+    if (results.has(profile.pubkey) || isContactProfileMatch(profile, trimmedQuery)) {
+      mergeSearchResult(results, {
+        pubkey: profile.pubkey,
+        relayUrl: '',
+        profile,
+        matchType: 'profile-search',
+      });
+    }
+  }
+
+  return Array.from(results.values()).sort((left, right) => {
+    const leftName = left.profile?.displayName || left.profile?.name || left.profile?.nip05 || left.pubkey;
+    const rightName = right.profile?.displayName || right.profile?.name || right.profile?.nip05 || right.pubkey;
+    return leftName.localeCompare(rightName);
+  });
 }
 
 export async function fetchContactProfiles(pubkeys: string[]): Promise<Record<string, ContactProfile>> {

@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
 import useAccountStore from 'src/stores/account-store';
-import type { ContactProfile, Nip02Contact } from 'src/types/contact-list';
+import type { ContactProfile, ContactSearchResult, Nip02Contact } from 'src/types/contact-list';
 import type { StoredKey } from 'src/types';
 import {
   fetchContactList,
@@ -11,7 +11,7 @@ import {
   formatContactNpub,
   getContactDisplayName,
   publishContactList,
-  validateContactInput,
+  searchContacts,
 } from 'src/services/contact-list-service';
 
 const { t } = useI18n();
@@ -28,9 +28,9 @@ const loadingProfiles = ref(false);
 const errorMessage = ref('');
 const dirty = ref(false);
 const dialogOpen = ref(false);
-const pubkeyInput = ref('');
-const relayUrlInput = ref('');
-const petnameInput = ref('');
+const searchQuery = ref('');
+const searchResults = ref<ContactSearchResult[]>([]);
+const searchingContacts = ref(false);
 const formError = ref('');
 
 const activeStoredKey = computed<StoredKey | undefined>(() => {
@@ -81,6 +81,14 @@ function getContactBio(contact: Nip02Contact): string {
   return getProfile(contact)?.about ?? '';
 }
 
+function getSearchResultName(result: ContactSearchResult): string {
+  return result.profile?.displayName || result.profile?.name || result.profile?.nip05 || formatContactNpub(result.pubkey);
+}
+
+function getSearchResultSubtitle(result: ContactSearchResult): string {
+  return result.profile?.nip05 || formatContactNpub(result.pubkey);
+}
+
 async function enrichProfiles() {
   const pubkeys = contacts.value.map((contact) => contact.pubkey);
   if (pubkeys.length === 0) {
@@ -99,15 +107,39 @@ async function enrichProfiles() {
 }
 
 function resetForm() {
-  pubkeyInput.value = '';
-  relayUrlInput.value = '';
-  petnameInput.value = '';
+  searchQuery.value = '';
+  searchResults.value = [];
+  searchingContacts.value = false;
   formError.value = '';
 }
 
 function openAddDialog() {
   resetForm();
   dialogOpen.value = true;
+}
+
+async function runContactSearch() {
+  const query = searchQuery.value.trim();
+  if (!query) {
+    formError.value = t('contacts.searchRequired');
+    searchResults.value = [];
+    return;
+  }
+
+  searchingContacts.value = true;
+  formError.value = '';
+
+  try {
+    searchResults.value = await searchContacts(query);
+    if (searchResults.value.length === 0) {
+      formError.value = t('contacts.noSearchResults');
+    }
+  } catch (error: unknown) {
+    formError.value = error instanceof Error ? error.message : String(error);
+    searchResults.value = [];
+  } finally {
+    searchingContacts.value = false;
+  }
 }
 
 async function loadContacts() {
@@ -132,23 +164,27 @@ async function loadContacts() {
   }
 }
 
-function saveContact() {
-  const result = validateContactInput(
-    pubkeyInput.value,
-    relayUrlInput.value,
-    petnameInput.value,
-    contacts.value,
-  );
-
-  if (!result.valid || !result.contact) {
-    formError.value = result.error ?? t('contacts.invalidContact');
+function selectSearchResult(result: ContactSearchResult) {
+  if (contacts.value.some((contact) => contact.pubkey === result.pubkey)) {
+    formError.value = t('contacts.duplicateContact');
     return;
   }
 
-  contacts.value = [...contacts.value, result.contact];
+  const contact: Nip02Contact = {
+    pubkey: result.pubkey,
+    relayUrl: result.relayUrl,
+    petname: result.profile?.displayName || result.profile?.name || '',
+  };
+
+  contacts.value = [...contacts.value, contact];
+  if (result.profile) {
+    profiles.value = {
+      ...profiles.value,
+      [result.pubkey]: result.profile,
+    };
+  }
 
   dirty.value = true;
-  void enrichProfiles();
   dialogOpen.value = false;
   resetForm();
 }
@@ -315,15 +351,55 @@ onMounted(async () => {
         </q-card-section>
 
         <q-card-section class="q-gutter-md">
-          <q-input v-model="pubkeyInput" outlined :label="t('contacts.pubkey')" />
-          <q-input v-model="relayUrlInput" outlined :label="t('contacts.relayUrl')" />
-          <q-input v-model="petnameInput" outlined :label="t('contacts.petname')" />
+          <div class="contacts-page__search-row">
+            <q-input
+              v-model="searchQuery"
+              class="contacts-page__search-input"
+              outlined
+              :label="t('contacts.searchLabel')"
+              :hint="t('contacts.searchHint')"
+              @keyup.enter="runContactSearch"
+            />
+            <q-btn
+              color="primary"
+              icon="search"
+              :label="t('contacts.search')"
+              :loading="searchingContacts"
+              @click="runContactSearch"
+            />
+          </div>
+
           <q-banner v-if="formError" class="bg-red-1 text-red-10" rounded>{{ formError }}</q-banner>
+
+          <q-list v-if="searchResults.length > 0" bordered separator class="contacts-page__search-results">
+            <q-item
+              v-for="result in searchResults"
+              :key="result.pubkey"
+              clickable
+              @click="selectSearchResult(result)"
+            >
+              <q-item-section avatar>
+                <q-avatar v-if="result.profile?.picture">
+                  <img :src="result.profile.picture" alt="" />
+                </q-avatar>
+                <q-avatar v-else color="primary" text-color="white" icon="person" />
+              </q-item-section>
+              <q-item-section>
+                <q-item-label>{{ getSearchResultName(result) }}</q-item-label>
+                <q-item-label caption>{{ getSearchResultSubtitle(result) }}</q-item-label>
+                <q-item-label caption class="contacts-page__pubkey">
+                  {{ formatContactNpub(result.pubkey) }}
+                </q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn flat dense color="primary" :label="t('contacts.select')" />
+              </q-item-section>
+            </q-item>
+          </q-list>
         </q-card-section>
 
         <q-card-actions align="right">
           <q-btn v-close-popup flat :label="t('account.cancel')" />
-          <q-btn color="primary" :label="t('contacts.save')" @click="saveContact" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -352,6 +428,21 @@ onMounted(async () => {
   gap: 0.5rem;
 }
 
+.contacts-page__search-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.contacts-page__search-input {
+  flex: 1;
+}
+
+.contacts-page__search-results {
+  max-height: 28rem;
+  overflow: auto;
+}
+
 .contacts-page__card {
   overflow: hidden;
 }
@@ -372,9 +463,14 @@ onMounted(async () => {
 @media (max-width: 700px) {
   .contacts-page__hero,
   .contacts-page__summary,
-  .contacts-page__toolbar {
+  .contacts-page__toolbar,
+  .contacts-page__search-row {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .contacts-page__search-input {
+    width: 100%;
   }
 }
 </style>

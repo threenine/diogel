@@ -16,6 +16,15 @@ export interface ContactProfile {
   updatedAt: number;
 }
 
+export type ContactSearchMatchType = 'pubkey' | 'nip05' | 'profile-search';
+
+export interface ContactSearchResult {
+  pubkey: string;
+  relayUrl: string;
+  profile?: ContactProfile;
+  matchType: ContactSearchMatchType;
+}
+
 export interface ContactListState {
   accountAlias: string;
   pubkey: string;

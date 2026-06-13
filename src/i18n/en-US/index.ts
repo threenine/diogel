@@ -335,6 +335,13 @@ export default {
     petname: 'Petname',
     addTitle: 'Add Contact',
     editTitle: 'Edit Contact',
+    searchLabel: 'Name, npub, or NIP-05',
+    searchHint: 'Search by profile name, npub, hex pubkey, or name@example.com',
+    search: 'Search',
+    select: 'Select',
+    searchRequired: 'Enter a name, npub, or NIP-05 identifier to search.',
+    noSearchResults: 'No matching profiles found.',
+    duplicateContact: 'This contact is already in the list.',
     invalidContact: 'Contact details are invalid.',
     unsavedChanges: 'Unsaved changes',
     replaceWarning:
