@@ -915,16 +915,16 @@ onMounted(() => {
   position: absolute;
   z-index: 20;
   top: calc(100% - 8px);
-  left: 18px;
-  right: 18px;
+  left: 50%;
   display: none;
-  min-width: min(280px, calc(100vw - 48px));
+  width: min(520px, calc(100vw - 48px));
   padding: 14px;
   border: 1px solid rgba(249, 115, 22, 0.45);
   border-radius: 14px;
   background: #111827;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
   color: #f9fafb;
+  transform: translateX(-50%);
 }
 
 .wallet-active-card__metric--capabilities:hover .wallet-active-card__capability-panel,
@@ -944,7 +944,9 @@ onMounted(() => {
 
 .wallet-active-card__capability-list {
   display: grid;
-  gap: 7px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 22px;
+  row-gap: 7px;
   margin: 0;
   padding-left: 18px;
 }
@@ -1132,6 +1134,10 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
+  .wallet-active-card__capability-list {
+    grid-template-columns: 1fr;
+  }
+
   .wallet-connections-page__hero-actions,
   .wallet-import-card__actions,
   .wallet-active-card__actions,
