@@ -777,7 +777,9 @@ onMounted(() => {
 }
 
 .wallet-active-card {
-  overflow: hidden;
+  position: relative;
+  z-index: 2;
+  overflow: visible;
   border-radius: 24px;
   background: #111827;
   color: #ffffff;
@@ -835,6 +837,8 @@ onMounted(() => {
 }
 
 .wallet-active-card__metrics {
+  position: relative;
+  z-index: 3;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
@@ -909,7 +913,7 @@ onMounted(() => {
 
 .wallet-active-card__capability-panel {
   position: absolute;
-  z-index: 5;
+  z-index: 20;
   top: calc(100% - 8px);
   left: 18px;
   right: 18px;
