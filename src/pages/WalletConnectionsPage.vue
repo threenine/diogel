@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useQuasar } from 'quasar';
 import {
   getNip47Balance,
   getNip47Info,
@@ -10,7 +11,6 @@ import {
   removeNip47Connection,
   setActiveNip47Connection,
 } from 'src/services/nip47-service';
-import { useQuasar } from 'quasar';
 import type { Nip47ConnectionSummary, Nip47PaymentHistoryEntry } from 'src/types/nip47';
 
 const $q = useQuasar();
@@ -30,9 +30,22 @@ const payingConnectionId = ref<string | null>(null);
 const lastPaymentPreimage = ref<string | null>(null);
 const paymentHistory = ref<Nip47PaymentHistoryEntry[]>([]);
 const historyLoading = ref(false);
+const importPanelOpen = ref(false);
 
 const hasConnections = computed(() => connections.value.length > 0);
-
+const activeConnection = computed<Nip47ConnectionSummary | null>(() => {
+  return connections.value.find((connection) => connection.isActive) ?? connections.value[0] ?? null;
+});
+const secondaryConnections = computed<Nip47ConnectionSummary[]>(() => {
+  const activeId = activeConnection.value?.id;
+  return connections.value.filter((connection) => connection.id !== activeId);
+});
+const activeBalance = computed<number | undefined>(() => {
+  const activeId = activeConnection.value?.id;
+  return activeId ? balances.value[activeId] : undefined;
+});
+const activeCanPay = computed(() => Boolean(activeConnection.value?.capabilities.includes('pay_invoice')));
+const importPanelVisible = computed(() => importPanelOpen.value || !hasConnections.value);
 const parsedInvoiceAmount = computed(() => parseBolt11Amount(paymentInvoice.value));
 
 function shortHex(value: string): string {
@@ -85,6 +98,30 @@ function setError(error: unknown): void {
   successMessage.value = null;
 }
 
+function getConnectionSubtitle(connection: Nip47ConnectionSummary): string {
+  return connection.lud16 || shortHex(connection.walletServicePubkey);
+}
+
+function getCapabilitySummary(connection: Nip47ConnectionSummary): string {
+  if (connection.capabilities.length === 0) {
+    return 'Capabilities not checked yet';
+  }
+
+  return connection.capabilities.join(' · ');
+}
+
+function getActiveConnectionStatus(connection: Nip47ConnectionSummary): string {
+  if (connection.capabilities.includes('pay_invoice')) {
+    return 'Ready for manual payments';
+  }
+
+  if (connection.capabilities.length > 0) {
+    return 'Connected, payments unavailable';
+  }
+
+  return 'Check capabilities before paying';
+}
+
 async function refreshPaymentHistory(): Promise<void> {
   historyLoading.value = true;
   try {
@@ -101,6 +138,7 @@ async function refreshConnections(): Promise<void> {
   errorMessage.value = null;
   try {
     connections.value = sortConnections(await listNip47Connections());
+    importPanelOpen.value = connections.value.length === 0;
     await refreshPaymentHistory();
   } catch (error: unknown) {
     setError(error);
@@ -130,6 +168,7 @@ async function importConnection(): Promise<void> {
     });
     nwcUri.value = '';
     label.value = '';
+    importPanelOpen.value = false;
     successMessage.value = 'Wallet connection imported into the encrypted vault.';
     await refreshConnections();
   } catch (error: unknown) {
@@ -266,197 +305,312 @@ onMounted(() => {
 </script>
 
 <template>
-  <q-page padding class="wallet-connections-page">
-    <div class="row items-start q-col-gutter-lg">
-      <div class="col-12 col-md-5">
-        <q-card flat bordered>
-          <q-card-section>
-            <div class="text-h5">Wallet Connections</div>
+  <q-page class="dashboard-page wallet-connections-page">
+    <section class="dashboard-hero wallet-connections-page__hero">
+      <div>
+        <h1 class="dashboard-hero-title">Wallet Management</h1>
+        <p class="dashboard-hero-caption">
+          Manage encrypted Nostr Wallet Connect links for Lightning payments.
+        </p>
+      </div>
+      <div class="wallet-connections-page__hero-actions">
+        <q-btn
+          class="diogel-btn-primary"
+          icon="add"
+          :label="hasConnections && importPanelVisible ? 'Hide import' : 'Import wallet'"
+          no-caps
+          @click="importPanelOpen = !importPanelOpen"
+        />
+        <q-btn flat round icon="refresh" :loading="loading" @click="refreshConnections" />
+      </div>
+    </section>
+
+    <q-banner v-if="errorMessage" rounded class="bg-negative text-white">
+      {{ errorMessage }}
+    </q-banner>
+    <q-banner v-if="successMessage" rounded class="bg-positive text-white">
+      {{ successMessage }}
+    </q-banner>
+
+    <q-slide-transition>
+      <q-card v-if="importPanelVisible" class="dashboard-card wallet-import-card">
+        <q-card-section class="dashboard-card-section wallet-import-card__section">
+          <div class="wallet-import-card__intro">
+            <div class="text-h6">Import wallet connection</div>
             <p class="text-body2 text-grey-7 q-mb-none">
-              Import Nostr Wallet Connect URIs for Lightning wallet access. Secrets are stored inside the encrypted Diogel vault.
+              Paste a Nostr Wallet Connect URI from your Lightning wallet. NWC secrets are stored inside your encrypted Diogel vault and are not exposed to websites in this MVP.
             </p>
-          </q-card-section>
-
-          <q-separator />
-
-          <q-card-section class="q-gutter-md">
+          </div>
+          <div class="wallet-import-card__form">
             <q-input
               v-model="label"
               outlined
+              dense
               label="Connection label"
               hint="Optional. Example: Alby, Mutiny, Home node"
             />
             <q-input
               v-model="nwcUri"
               outlined
+              dense
               type="textarea"
               autogrow
               label="NWC URI"
               placeholder="nostr+walletconnect://..."
             />
-            <q-btn
-              color="primary"
-              unelevated
-              no-caps
-              :loading="loading"
-              :disable="!nwcUri.trim()"
-              label="Import connection"
-              @click="importConnection"
-            />
-          </q-card-section>
-        </q-card>
-      </div>
-
-      <div class="col-12 col-md-7">
-        <q-banner v-if="errorMessage" rounded class="bg-negative text-white q-mb-md">
-          {{ errorMessage }}
-        </q-banner>
-        <q-banner v-if="successMessage" rounded class="bg-positive text-white q-mb-md">
-          {{ successMessage }}
-        </q-banner>
-
-        <q-card flat bordered>
-          <q-card-section class="row items-center justify-between">
-            <div>
-              <div class="text-h6">Configured connections</div>
-              <div class="text-caption text-grey-7">No page-provider API is exposed in this MVP.</div>
+            <div class="wallet-import-card__actions">
+              <q-btn
+                class="diogel-btn-primary"
+                no-caps
+                :loading="loading"
+                :disable="!nwcUri.trim()"
+                label="Import connection"
+                @click="importConnection"
+              />
+              <q-btn
+                v-if="hasConnections"
+                flat
+                no-caps
+                label="Cancel"
+                @click="importPanelOpen = false"
+              />
             </div>
-            <q-btn flat round icon="refresh" :loading="loading" @click="refreshConnections" />
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-slide-transition>
+
+    <div v-if="hasConnections && activeConnection" class="wallet-connections-page__main-grid">
+      <q-card class="wallet-active-card">
+        <q-card-section class="wallet-active-card__header">
+          <div class="wallet-active-card__identity">
+            <q-avatar class="wallet-active-card__avatar" size="64px">
+              <q-icon name="bolt" size="34px" />
+            </q-avatar>
+            <div>
+              <div class="wallet-active-card__eyebrow">Active wallet connection</div>
+              <h2 class="wallet-active-card__title">{{ activeConnection.label }}</h2>
+              <div class="wallet-active-card__subtitle">{{ getConnectionSubtitle(activeConnection) }}</div>
+            </div>
+          </div>
+          <q-badge class="wallet-active-card__status" rounded>
+            {{ getActiveConnectionStatus(activeConnection) }}
+          </q-badge>
+        </q-card-section>
+
+        <q-card-section class="wallet-active-card__metrics">
+          <div class="wallet-active-card__metric">
+            <span class="wallet-active-card__metric-label">Balance</span>
+            <strong>{{ activeBalance !== undefined ? formatMsat(activeBalance) : 'Not checked' }}</strong>
+          </div>
+          <div class="wallet-active-card__metric">
+            <span class="wallet-active-card__metric-label">Capabilities</span>
+            <strong>{{ activeConnection.capabilities.length }}</strong>
+            <small>{{ activeCanPay ? 'pay_invoice enabled' : 'payment unavailable' }}</small>
+          </div>
+          <div class="wallet-active-card__metric">
+            <span class="wallet-active-card__metric-label">Security</span>
+            <strong>Vault stored</strong>
+            <small>No website API</small>
+          </div>
+        </q-card-section>
+
+        <q-card-section class="wallet-active-card__capabilities">
+          <q-icon name="verified_user" size="20px" />
+          <span>{{ getCapabilitySummary(activeConnection) }}</span>
+        </q-card-section>
+
+        <q-card-section class="wallet-active-card__actions">
+          <q-btn
+            class="wallet-active-card__pay-button"
+            icon="bolt"
+            no-caps
+            unelevated
+            label="Pay invoice"
+            :disable="!activeCanPay"
+            :loading="payingConnectionId === activeConnection.id"
+            @click="openPaymentDialog(activeConnection)"
+          />
+          <q-btn
+            class="wallet-active-card__secondary-button"
+            outline
+            no-caps
+            label="Balance"
+            :loading="testingConnectionId === activeConnection.id"
+            @click="testBalance(activeConnection)"
+          />
+          <q-btn
+            class="wallet-active-card__secondary-button"
+            outline
+            no-caps
+            label="Info"
+            :loading="testingConnectionId === activeConnection.id"
+            @click="testInfo(activeConnection)"
+          />
+        </q-card-section>
+
+        <q-separator dark />
+
+        <q-expansion-item class="wallet-active-card__details" dark dense expand-separator label="Technical details">
+          <div class="wallet-details-grid">
+            <div>
+              <span>Wallet service</span>
+              <strong>{{ activeConnection.walletServicePubkey }}</strong>
+            </div>
+            <div>
+              <span>Client pubkey</span>
+              <strong>{{ activeConnection.clientPubkey }}</strong>
+            </div>
+            <div>
+              <span>Relays</span>
+              <strong>{{ activeConnection.relays.join(', ') }}</strong>
+            </div>
+            <div>
+              <span>Updated</span>
+              <strong>{{ formatTimestamp(activeConnection.updatedAt) }}</strong>
+            </div>
+          </div>
+        </q-expansion-item>
+      </q-card>
+
+      <div class="wallet-side-column">
+        <q-card class="dashboard-card wallet-secondary-card">
+          <q-card-section class="dashboard-card-section wallet-secondary-card__header">
+            <div>
+              <div class="text-h6">Other connections</div>
+              <div class="text-caption text-grey-7">Switch the active wallet when needed.</div>
+            </div>
+            <q-badge color="grey-2" text-color="grey-8" :label="`${secondaryConnections.length} standby`" />
           </q-card-section>
 
-          <q-separator />
-
-          <q-card-section v-if="!hasConnections" class="text-grey-7">
-            No wallet connections imported yet.
+          <q-card-section v-if="secondaryConnections.length === 0" class="wallet-secondary-card__empty">
+            <q-icon name="account_balance_wallet" size="40px" color="grey-5" />
+            <div class="text-subtitle2">No standby wallets</div>
+            <p class="text-caption text-grey-7 q-mb-none">Import another NWC connection if you want a backup or alternate wallet.</p>
           </q-card-section>
 
           <q-list v-else separator>
-            <q-item v-for="connection in connections" :key="connection.id" class="q-py-md">
-              <q-item-section>
-                <q-item-label class="text-weight-medium">{{ connection.label }}</q-item-label>
-                <q-item-label v-if="connection.isActive" caption>
-                  <q-badge color="positive" label="Active wallet" />
-                </q-item-label>
-                <q-item-label caption>
-                  Wallet: {{ shortHex(connection.walletServicePubkey) }} · Client: {{ shortHex(connection.clientPubkey) }}
-                </q-item-label>
-                <q-item-label caption>
-                  Relays: {{ connection.relays.join(', ') }}
-                </q-item-label>
-                <q-item-label v-if="connection.capabilities.length" caption>
-                  Capabilities: {{ connection.capabilities.join(', ') }}
-                </q-item-label>
-                <q-item-label v-if="balances[connection.id] !== undefined" caption class="text-positive">
-                  Last balance check: {{ formatMsat(balances[connection.id]!) }}
-                </q-item-label>
-              </q-item-section>
+            <q-expansion-item
+              v-for="connection in secondaryConnections"
+              :key="connection.id"
+              class="wallet-secondary-card__item"
+              expand-separator
+            >
+              <template v-slot:header>
+                <q-item-section avatar>
+                  <q-avatar color="grey-3" text-color="grey-8" icon="account_balance_wallet" />
+                </q-item-section>
+                <q-item-section>
+                  <q-item-label>{{ connection.label }}</q-item-label>
+                  <q-item-label caption>{{ getConnectionSubtitle(connection) }}</q-item-label>
+                  <q-item-label caption>{{ getCapabilitySummary(connection) }}</q-item-label>
+                </q-item-section>
+              </template>
 
-              <q-item-section side>
-                <div class="row q-gutter-sm">
+              <div class="wallet-secondary-card__details q-pa-md">
+                <div class="wallet-secondary-card__actions">
                   <q-btn
+                    class="diogel-btn-primary"
                     dense
-                    outline
                     no-caps
-                    color="positive"
                     label="Make active"
-                    :disable="connection.isActive"
-                    :loading="loading && !connection.isActive"
+                    :loading="loading"
                     @click="makeActive(connection)"
                   />
-                  <q-btn
-                    dense
-                    outline
-                    no-caps
-                    color="primary"
-                    label="Info"
-                    :loading="testingConnectionId === connection.id"
-                    @click="testInfo(connection)"
-                  />
-                  <q-btn
-                    dense
-                    outline
-                    no-caps
-                    color="secondary"
-                    label="Balance"
-                    :loading="testingConnectionId === connection.id"
-                    @click="testBalance(connection)"
-                  />
-                  <q-btn
-                    dense
-                    unelevated
-                    no-caps
-                    color="warning"
-                    text-color="black"
-                    label="Pay invoice"
-                    :disable="!connection.capabilities.includes('pay_invoice')"
-                    :loading="payingConnectionId === connection.id"
-                    @click="openPaymentDialog(connection)"
-                  />
-                  <q-btn
-                    dense
-                    flat
-                    no-caps
-                    color="negative"
-                    label="Remove"
-                    @click="confirmRemoveConnection(connection)"
-                  />
+                  <q-btn dense outline no-caps label="Info" :loading="testingConnectionId === connection.id" @click="testInfo(connection)" />
+                  <q-btn dense flat no-caps color="negative" label="Remove" @click="confirmRemoveConnection(connection)" />
                 </div>
-              </q-item-section>
-            </q-item>
+                <div class="wallet-details-grid wallet-details-grid--light">
+                  <div>
+                    <span>Wallet service</span>
+                    <strong>{{ connection.walletServicePubkey }}</strong>
+                  </div>
+                  <div>
+                    <span>Client pubkey</span>
+                    <strong>{{ connection.clientPubkey }}</strong>
+                  </div>
+                  <div>
+                    <span>Relays</span>
+                    <strong>{{ connection.relays.join(', ') }}</strong>
+                  </div>
+                </div>
+              </div>
+            </q-expansion-item>
           </q-list>
         </q-card>
 
-        <q-card flat bordered class="q-mt-lg">
-          <q-card-section class="row items-center justify-between">
-            <div>
-              <div class="text-h6">Payment history</div>
-              <div class="text-caption text-grey-7">
-                Stored inside the encrypted vault. Latest 100 payment attempts only.
+        <q-card class="dashboard-card wallet-safety-card">
+          <q-card-section class="dashboard-card-section">
+            <div class="wallet-safety-card__content">
+              <q-icon name="lock" color="primary" size="28px" />
+              <div>
+                <div class="text-subtitle1 text-weight-bold">Manual payments only</div>
+                <p class="text-caption text-grey-7 q-mb-none">
+                  Websites cannot trigger NWC payments in this MVP. Every invoice still requires explicit approval.
+                </p>
               </div>
             </div>
-            <q-btn flat round icon="refresh" :loading="historyLoading" @click="refreshPaymentHistory" />
           </q-card-section>
-
-          <q-separator />
-
-          <q-card-section v-if="paymentHistory.length === 0" class="text-grey-7">
-            No payment attempts recorded yet.
-          </q-card-section>
-
-          <q-list v-else separator>
-            <q-item v-for="entry in paymentHistory" :key="entry.id" class="q-py-md">
-              <q-item-section>
-                <q-item-label class="row items-center q-gutter-sm">
-                  <q-badge
-                    :color="entry.status === 'succeeded' ? 'positive' : 'negative'"
-                    :label="entry.status"
-                  />
-                  <span class="text-weight-medium">{{ entry.connectionLabel }}</span>
-                </q-item-label>
-                <q-item-label caption>
-                  {{ formatTimestamp(entry.createdAt) }}
-                </q-item-label>
-                <q-item-label caption>
-                  Amount: {{ entry.amountMsat !== undefined ? formatMsat(entry.amountMsat) : 'unknown' }}
-                  <span v-if="entry.feesPaidMsat !== undefined">
-                    · Fees: {{ formatMsat(entry.feesPaidMsat) }}
-                  </span>
-                </q-item-label>
-                <q-item-label v-if="entry.paymentHash" caption>
-                  Payment hash: {{ shortHex(entry.paymentHash) }}
-                </q-item-label>
-                <q-item-label caption class="break-word">
-                  Invoice: {{ entry.invoicePreview }}
-                </q-item-label>
-                <q-item-label v-if="entry.error" caption class="text-negative break-word">
-                  Error: {{ entry.error }}
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-          </q-list>
         </q-card>
       </div>
     </div>
+
+    <q-card v-else class="dashboard-card wallet-empty-card">
+      <q-card-section class="text-center q-pa-xl">
+        <q-icon color="grey-5" name="account_balance_wallet" size="4em" />
+        <div class="text-h6 text-grey-7 q-mt-md">No wallet connections yet</div>
+        <p class="text-grey-6">
+          Import a Nostr Wallet Connect URI from a wallet such as Alby Hub to test balance checks and manual invoice payments.
+        </p>
+      </q-card-section>
+    </q-card>
+
+    <q-card class="dashboard-card wallet-history-card">
+      <q-card-section class="dashboard-card-section wallet-history-card__header">
+        <div>
+          <div class="text-h6">Payment history</div>
+          <div class="text-caption text-grey-7">
+            Stored inside the encrypted vault. Latest 100 payment attempts only.
+          </div>
+        </div>
+        <q-btn flat round icon="refresh" :loading="historyLoading" @click="refreshPaymentHistory" />
+      </q-card-section>
+
+      <q-separator />
+
+      <q-card-section v-if="paymentHistory.length === 0" class="wallet-history-card__empty">
+        No payment attempts recorded yet.
+      </q-card-section>
+
+      <q-list v-else separator>
+        <q-item v-for="entry in paymentHistory" :key="entry.id" class="wallet-history-card__item">
+          <q-item-section avatar>
+            <q-avatar :color="entry.status === 'succeeded' ? 'positive' : 'negative'" text-color="white" :icon="entry.status === 'succeeded' ? 'check' : 'close'" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label class="wallet-history-card__item-title">
+              {{ entry.connectionLabel }}
+              <q-badge :color="entry.status === 'succeeded' ? 'positive' : 'negative'" :label="entry.status" />
+            </q-item-label>
+            <q-item-label caption>
+              {{ formatTimestamp(entry.createdAt) }} · Amount: {{ entry.amountMsat !== undefined ? formatMsat(entry.amountMsat) : 'unknown' }}
+              <span v-if="entry.feesPaidMsat !== undefined">
+                · Fees: {{ formatMsat(entry.feesPaidMsat) }}
+              </span>
+            </q-item-label>
+            <q-item-label v-if="entry.paymentHash" caption>
+              Payment hash: {{ shortHex(entry.paymentHash) }}
+            </q-item-label>
+            <q-item-label caption class="break-word">
+              Invoice: {{ entry.invoicePreview }}
+            </q-item-label>
+            <q-item-label v-if="entry.error" caption class="text-negative break-word">
+              Error: {{ entry.error }}
+            </q-item-label>
+          </q-item-section>
+        </q-item>
+      </q-list>
+    </q-card>
 
     <q-dialog v-model="paymentDialogOpen" persistent>
       <q-card class="payment-approval-card">
@@ -525,6 +679,275 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.wallet-connections-page {
+  width: 100%;
+}
+
+.wallet-connections-page__hero {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wallet-connections-page__hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.wallet-connections-page__main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.8fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.wallet-import-card__section {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(0, 1.3fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.wallet-import-card__intro p {
+  max-width: 560px;
+}
+
+.wallet-import-card__form {
+  display: grid;
+  gap: 14px;
+}
+
+.wallet-import-card__actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.wallet-active-card {
+  overflow: hidden;
+  border-radius: 24px;
+  background: #111827;
+  color: #ffffff;
+  box-shadow: 0 24px 60px rgba(17, 24, 39, 0.22);
+}
+
+.wallet-active-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 28px;
+}
+
+.wallet-active-card__identity {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.wallet-active-card__avatar {
+  background: #f97316;
+  color: #111827;
+  flex-shrink: 0;
+}
+
+.wallet-active-card__eyebrow,
+.wallet-active-card__metric-label {
+  color: #fbbf24;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wallet-active-card__title {
+  margin: 4px 0;
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 800;
+  line-height: 1;
+}
+
+.wallet-active-card__subtitle {
+  color: #d1d5db;
+  font-size: 0.95rem;
+}
+
+.wallet-active-card__status {
+  padding: 8px 14px;
+  background: #dcfce7;
+  color: #166534;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.wallet-active-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 0 28px 22px;
+}
+
+.wallet-active-card__metric {
+  display: grid;
+  gap: 8px;
+  min-height: 116px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #1f2937;
+}
+
+.wallet-active-card__metric strong {
+  color: #ffffff;
+  font-size: clamp(1.3rem, 2.2vw, 2rem);
+  font-weight: 850;
+  line-height: 1.05;
+}
+
+.wallet-active-card__metric small {
+  color: #d1d5db;
+  font-size: 0.82rem;
+}
+
+.wallet-active-card__capabilities {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 28px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: rgba(249, 115, 22, 0.15);
+  color: #fed7aa;
+  font-weight: 700;
+}
+
+.wallet-active-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 24px 28px 28px;
+}
+
+.wallet-active-card__pay-button {
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 14px;
+  background: #f97316 !important;
+  color: #111827 !important;
+  font-weight: 900;
+}
+
+.wallet-active-card__secondary-button {
+  min-height: 48px;
+  padding: 0 20px;
+  border-radius: 14px;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+
+.wallet-active-card__details {
+  padding: 0 16px 10px;
+  color: #e5e7eb;
+}
+
+.wallet-details-grid {
+  display: grid;
+  gap: 12px;
+  padding: 14px 12px 20px;
+}
+
+.wallet-details-grid div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.wallet-details-grid span {
+  color: #9ca3af;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.wallet-details-grid strong {
+  overflow-wrap: anywhere;
+  color: #f9fafb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.wallet-details-grid--light strong {
+  color: #374151;
+}
+
+.wallet-side-column {
+  display: grid;
+  gap: 16px;
+}
+
+.wallet-secondary-card,
+.wallet-safety-card,
+.wallet-history-card,
+.wallet-empty-card,
+.wallet-import-card {
+  overflow: hidden;
+}
+
+.wallet-secondary-card__header,
+.wallet-history-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.wallet-secondary-card__empty,
+.wallet-history-card__empty {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 36px 24px;
+  color: #6b7280;
+  text-align: center;
+}
+
+.wallet-secondary-card__item :deep(.q-item) {
+  padding: 14px 20px;
+}
+
+.wallet-secondary-card__details {
+  display: grid;
+  gap: 12px;
+  background: rgba(249, 115, 22, 0.06);
+}
+
+.wallet-secondary-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wallet-safety-card__content {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.wallet-history-card__item {
+  padding: 16px 20px;
+}
+
+.wallet-history-card__item-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-weight: 800;
+}
+
 .payment-approval-card {
   width: min(560px, 92vw);
 }
@@ -550,5 +973,39 @@ onMounted(() => {
 .body--dark .payment-review-label,
 .body--dark .payment-review-value {
   color: #fb923c;
+}
+
+@media (max-width: 1023px) {
+  .wallet-connections-page__hero,
+  .wallet-import-card__section {
+    grid-template-columns: 1fr;
+  }
+
+  .wallet-connections-page__hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .wallet-connections-page__main-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .wallet-connections-page__hero-actions,
+  .wallet-import-card__actions,
+  .wallet-active-card__actions,
+  .wallet-secondary-card__actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .wallet-active-card__header {
+    flex-direction: column;
+  }
+
+  .wallet-active-card__metrics {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
