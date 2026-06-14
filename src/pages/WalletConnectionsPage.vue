@@ -448,21 +448,27 @@ onMounted(() => {
             </strong>
             <small>{{ activeBalance !== undefined ? `Click to show ${balanceDisplayUnit === 'btc' ? 'sats' : 'BTC'}` : 'Run balance check first' }}</small>
           </button>
-          <div class="wallet-active-card__metric">
+          <div class="wallet-active-card__metric wallet-active-card__metric--capabilities" tabindex="0">
             <span class="wallet-active-card__metric-label">Capabilities</span>
             <strong>{{ activeConnection.capabilities.length }}</strong>
             <small>{{ activeCanPay ? 'pay_invoice enabled' : 'payment unavailable' }}</small>
+            <div class="wallet-active-card__capability-panel" role="tooltip">
+              <div class="wallet-active-card__capability-panel-title">Wallet capabilities</div>
+              <ul v-if="activeConnection.capabilities.length > 0" class="wallet-active-card__capability-list">
+                <li v-for="capability in activeConnection.capabilities" :key="capability">
+                  {{ capability }}
+                </li>
+              </ul>
+              <p v-else class="wallet-active-card__capability-empty">
+                Capabilities have not been checked yet. Use Info to query this wallet.
+              </p>
+            </div>
           </div>
           <div class="wallet-active-card__metric">
             <span class="wallet-active-card__metric-label">Security</span>
             <strong>Vault stored</strong>
             <small>No website API</small>
           </div>
-        </q-card-section>
-
-        <q-card-section class="wallet-active-card__capabilities">
-          <q-icon name="verified_user" size="20px" />
-          <span>{{ getCapabilitySummary(activeConnection) }}</span>
         </q-card-section>
 
         <q-card-section class="wallet-active-card__actions">
@@ -836,6 +842,7 @@ onMounted(() => {
 }
 
 .wallet-active-card__metric {
+  position: relative;
   display: grid;
   gap: 8px;
   min-height: 116px;
@@ -890,16 +897,66 @@ onMounted(() => {
   font-size: 0.82rem;
 }
 
-.wallet-active-card__capabilities {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 28px;
-  padding: 12px 16px;
+.wallet-active-card__metric--capabilities {
+  outline: none;
+}
+
+.wallet-active-card__metric--capabilities:hover,
+.wallet-active-card__metric--capabilities:focus-visible,
+.wallet-active-card__metric--capabilities:focus-within {
+  background: #263244;
+}
+
+.wallet-active-card__capability-panel {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% - 8px);
+  left: 18px;
+  right: 18px;
+  display: none;
+  min-width: min(280px, calc(100vw - 48px));
+  padding: 14px;
+  border: 1px solid rgba(249, 115, 22, 0.45);
   border-radius: 14px;
-  background: rgba(249, 115, 22, 0.15);
-  color: #fed7aa;
-  font-weight: 700;
+  background: #111827;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.34);
+  color: #f9fafb;
+}
+
+.wallet-active-card__metric--capabilities:hover .wallet-active-card__capability-panel,
+.wallet-active-card__metric--capabilities:focus-visible .wallet-active-card__capability-panel,
+.wallet-active-card__metric--capabilities:focus-within .wallet-active-card__capability-panel {
+  display: block;
+}
+
+.wallet-active-card__capability-panel-title {
+  margin-bottom: 10px;
+  color: #f97316;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.wallet-active-card__capability-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 18px;
+}
+
+.wallet-active-card__capability-list li {
+  overflow-wrap: anywhere;
+  color: #e5e7eb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  font-size: 0.82rem;
+}
+
+.wallet-active-card__capability-empty {
+  margin: 0;
+  color: #d1d5db;
+  font-size: 0.86rem;
+  line-height: 1.45;
 }
 
 .wallet-active-card__actions {
