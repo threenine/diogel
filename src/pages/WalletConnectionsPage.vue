@@ -19,7 +19,7 @@ const nwcUri = ref('');
 const label = ref('');
 const loading = ref(false);
 const testingConnectionId = ref<string | null>(null);
-const activatingConnectionId = ref<string | null>(null);
+const activationSavePending = ref(false);
 const balances = ref<Record<string, number>>({});
 const selectedPaymentConnection = ref<Nip47ConnectionSummary | null>(null);
 const paymentInvoice = ref('');
@@ -244,7 +244,18 @@ async function testBalance(connection: Nip47ConnectionSummary): Promise<void> {
 }
 
 async function makeActive(connection: Nip47ConnectionSummary): Promise<void> {
-  activatingConnectionId.value = connection.id;
+  const previousConnections = connections.value;
+  const optimisticUpdatedAt = new Date().toISOString();
+
+  connections.value = sortConnections(
+    connections.value.map((item) => ({
+      ...item,
+      isActive: item.id === connection.id,
+      updatedAt: item.id === connection.id ? optimisticUpdatedAt : item.updatedAt,
+    })),
+  );
+  activationSavePending.value = true;
+
   try {
     const activeWallet = await setActiveNip47Connection(connection.id);
     connections.value = sortConnections(
@@ -256,9 +267,10 @@ async function makeActive(connection: Nip47ConnectionSummary): Promise<void> {
     );
     notifySuccess(`${connection.label} is now the active wallet connection.`);
   } catch (error: unknown) {
+    connections.value = previousConnections;
     notifyError(error);
   } finally {
-    activatingConnectionId.value = null;
+    activationSavePending.value = false;
   }
 }
 
@@ -556,8 +568,7 @@ onMounted(() => {
                     dense
                     no-caps
                     label="Make active"
-                    :loading="activatingConnectionId === connection.id"
-                    :disable="activatingConnectionId !== null"
+                    :disable="activationSavePending"
                     @click="makeActive(connection)"
                   />
                   <q-btn dense outline no-caps label="Info" :loading="testingConnectionId === connection.id" @click="testInfo(connection)" />
