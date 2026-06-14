@@ -31,6 +31,7 @@ const lastPaymentPreimage = ref<string | null>(null);
 const paymentHistory = ref<Nip47PaymentHistoryEntry[]>([]);
 const historyLoading = ref(false);
 const importPanelOpen = ref(false);
+const balanceDisplayUnit = ref<'sats' | 'btc'>('sats');
 
 const hasConnections = computed(() => connections.value.length > 0);
 const activeConnection = computed<Nip47ConnectionSummary | null>(() => {
@@ -45,6 +46,19 @@ const activeBalance = computed<number | undefined>(() => {
   return activeId ? balances.value[activeId] : undefined;
 });
 const activeCanPay = computed(() => Boolean(activeConnection.value?.capabilities.includes('pay_invoice')));
+const activeBalanceDisplay = computed(() => {
+  const balance = activeBalance.value;
+  if (balance === undefined) {
+    return 'Not checked';
+  }
+
+  return balanceDisplayUnit.value === 'btc' ? formatMsatAsBtc(balance) : formatMsat(balance);
+});
+const activeBalanceToggleLabel = computed(() => {
+  return activeBalance.value === undefined
+    ? 'Check balance to enable BTC and sats display toggle'
+    : `Show balance in ${balanceDisplayUnit.value === 'btc' ? 'sats' : 'BTC'}`;
+});
 const importPanelVisible = computed(() => importPanelOpen.value || !hasConnections.value);
 const parsedInvoiceAmount = computed(() => parseBolt11Amount(paymentInvoice.value));
 
@@ -56,6 +70,22 @@ function shortHex(value: string): string {
 function formatMsat(msat: number): string {
   const sats = msat / 1000;
   return `${sats.toLocaleString(undefined, { maximumFractionDigits: 3 })} sats`;
+}
+
+function formatMsatAsBtc(msat: number): string {
+  const btc = msat / 1000 / 100_000_000;
+  return `${btc.toLocaleString(undefined, {
+    minimumFractionDigits: 8,
+    maximumFractionDigits: 8,
+  })} BTC`;
+}
+
+function toggleBalanceDisplayUnit(): void {
+  if (activeBalance.value === undefined) {
+    return;
+  }
+
+  balanceDisplayUnit.value = balanceDisplayUnit.value === 'btc' ? 'sats' : 'btc';
 }
 
 function parseBolt11Amount(invoice: string): string {
@@ -399,10 +429,17 @@ onMounted(() => {
         </q-card-section>
 
         <q-card-section class="wallet-active-card__metrics">
-          <div class="wallet-active-card__metric">
+          <button
+            class="wallet-active-card__metric wallet-active-card__metric--balance"
+            type="button"
+            :aria-label="activeBalanceToggleLabel"
+            :disabled="activeBalance === undefined"
+            @click="toggleBalanceDisplayUnit"
+          >
             <span class="wallet-active-card__metric-label">Balance</span>
-            <strong>{{ activeBalance !== undefined ? formatMsat(activeBalance) : 'Not checked' }}</strong>
-          </div>
+            <strong>{{ activeBalanceDisplay }}</strong>
+            <small>{{ activeBalance !== undefined ? `Click to show ${balanceDisplayUnit === 'btc' ? 'sats' : 'BTC'}` : 'Run balance check first' }}</small>
+          </button>
           <div class="wallet-active-card__metric">
             <span class="wallet-active-card__metric-label">Capabilities</span>
             <strong>{{ activeConnection.capabilities.length }}</strong>
@@ -795,8 +832,28 @@ onMounted(() => {
   gap: 8px;
   min-height: 116px;
   padding: 18px;
+  border: 0;
   border-radius: 18px;
   background: #1f2937;
+  color: inherit;
+  text-align: left;
+}
+
+.wallet-active-card__metric--balance {
+  cursor: pointer;
+  transition: background 0.18s ease, outline-color 0.18s ease, transform 0.18s ease;
+}
+
+.wallet-active-card__metric--balance:not(:disabled):hover,
+.wallet-active-card__metric--balance:not(:disabled):focus-visible {
+  outline: 2px solid rgba(249, 115, 22, 0.7);
+  outline-offset: 2px;
+  background: #263244;
+  transform: translateY(-1px);
+}
+
+.wallet-active-card__metric--balance:disabled {
+  cursor: default;
 }
 
 .wallet-active-card__metric strong {
