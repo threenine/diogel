@@ -46,6 +46,10 @@ async function saveVaultData(vaultData: VaultData): Promise<void> {
 
 let nip47VaultMutationQueue: Promise<void> = Promise.resolve();
 
+async function waitForNip47VaultMutations(): Promise<void> {
+  await nip47VaultMutationQueue;
+}
+
 async function mutateNip47Vault<T>(
   mutator: (vaultData: VaultData) => { vaultData: VaultData; data: T } | Promise<{ vaultData: VaultData; data: T }>,
 ): Promise<T> {
@@ -88,6 +92,7 @@ function buildPaymentHistoryEntry(params: {
 }
 
 export async function handleNip47ConnectionsList(): Promise<HandlerResult<Nip47ConnectionSummary[]>> {
+  await waitForNip47VaultMutations();
   const vaultData = await requireUnlockedVaultData();
   return {
     success: true,
@@ -184,6 +189,7 @@ export async function handleNip47GetInfo(payload: { connectionId: string }): Pro
 }
 
 export async function handleNip47GetBalance(payload: { connectionId: string }): Promise<HandlerResult<Nip47BalanceResponse>> {
+  await waitForNip47VaultMutations();
   const vaultData = await requireUnlockedVaultData();
   const connection = findNip47Connection(vaultData, payload.connectionId);
   if (!connection) {
@@ -250,6 +256,7 @@ export async function handleNip47PayInvoice(
 }
 
 export async function handleNip47PaymentHistoryList(): Promise<HandlerResult<Nip47PaymentHistoryEntry[]>> {
+  await waitForNip47VaultMutations();
   const vaultData = await requireUnlockedVaultData();
   return {
     success: true,

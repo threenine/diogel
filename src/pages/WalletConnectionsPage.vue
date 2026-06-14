@@ -262,7 +262,7 @@ async function makeActive(connection: Nip47ConnectionSummary): Promise<void> {
         updatedAt: item.id === activeWallet.id ? activeWallet.updatedAt : item.updatedAt,
       })),
     );
-    notifySuccess(`${connection.label} is now the active wallet connection.`);
+    notifySuccess(`${connection.label} Wallet is now active wallet`);
     void refreshConnectionInfo(activeWallet.id);
   } catch (error: unknown) {
     connections.value = previousConnections;

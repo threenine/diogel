@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { VaultData } from 'src/types/bridge';
-import type { Nip47Connection } from 'src/types/nip47';
+import type { Nip47Command, Nip47Connection } from 'src/types/nip47';
 import {
   listNip47Connections,
   setActiveNip47Connection,
@@ -35,6 +35,30 @@ describe('nip47-connection-store', () => {
     expect(listNip47Connections(result).map((connection) => ({ id: connection.id, isActive: connection.isActive }))).toEqual([
       { id: 'wallet-a', isActive: false },
       { id: 'wallet-b', isActive: true },
+    ]);
+  });
+
+  it('preserves the selected active wallet across later metadata upserts', () => {
+    const vaultData: VaultData = {
+      accounts: [],
+      nip47Connections: [
+        buildConnection('coinos', true),
+        buildConnection('alby', false),
+      ],
+    };
+
+    const activeResult = setActiveNip47Connection(vaultData, 'alby');
+    const albyAfterInfoRefresh: Nip47Connection = {
+      ...buildConnection('alby', true),
+      capabilities: ['pay_invoice' satisfies Nip47Command],
+      updatedAt: '2026-06-14T00:01:00.000Z',
+    };
+
+    const result = upsertNip47Connection(activeResult, albyAfterInfoRefresh);
+
+    expect(listNip47Connections(result).map((connection) => ({ id: connection.id, isActive: connection.isActive }))).toEqual([
+      { id: 'coinos', isActive: false },
+      { id: 'alby', isActive: true },
     ]);
   });
 
