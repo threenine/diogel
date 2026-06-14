@@ -44,6 +44,26 @@ async function saveVaultData(vaultData: VaultData): Promise<void> {
   }
 }
 
+let nip47VaultMutationQueue: Promise<void> = Promise.resolve();
+
+async function mutateNip47Vault<T>(
+  mutator: (vaultData: VaultData) => { vaultData: VaultData; data: T } | Promise<{ vaultData: VaultData; data: T }>,
+): Promise<T> {
+  const runMutation = async (): Promise<T> => {
+    const vaultData = await requireUnlockedVaultData();
+    const result = await mutator(vaultData);
+    await saveVaultData(result.vaultData);
+    return result.data;
+  };
+
+  const mutation = nip47VaultMutationQueue.then(runMutation, runMutation);
+  nip47VaultMutationQueue = mutation.then(
+    () => undefined,
+    () => undefined,
+  );
+  return mutation;
+}
+
 function buildPaymentHistoryEntry(params: {
   connection: Nip47Connection;
   invoice: string;
@@ -78,49 +98,62 @@ export async function handleNip47ConnectionsList(): Promise<HandlerResult<Nip47C
 export async function handleNip47ConnectionImport(
   payload: ImportNip47ConnectionRequest,
 ): Promise<HandlerResult<Nip47ConnectionSummary>> {
-  const vaultData = await requireUnlockedVaultData();
   const parsed = parseNwcUri(payload.uri);
   const clientPubkey = getPublicKey(hexToBytes(parsed.clientSecret));
   const id = buildNip47ConnectionId(parsed.walletServicePubkey, clientPubkey);
-  const now = new Date().toISOString();
-  const existing = findNip47Connection(vaultData, id);
-  const connection: Nip47Connection = {
-    id,
-    label: payload.label?.trim() || existing?.label || parsed.lud16 || 'Nostr Wallet Connect',
-    walletServicePubkey: parsed.walletServicePubkey,
-    clientSecret: parsed.clientSecret,
-    clientPubkey,
-    relays: parsed.relays,
-    ...(parsed.lud16 ? { lud16: parsed.lud16 } : existing?.lud16 ? { lud16: existing.lud16 } : {}),
-    capabilities: existing?.capabilities ?? [],
-    createdAt: existing?.createdAt ?? now,
-    updatedAt: now,
-    isActive: existing?.isActive ?? true,
-  };
 
-  await saveVaultData(upsertNip47Connection(vaultData, connection));
+  const connection = await mutateNip47Vault((vaultData) => {
+    const now = new Date().toISOString();
+    const existing = findNip47Connection(vaultData, id);
+    const nextConnection: Nip47Connection = {
+      id,
+      label: payload.label?.trim() || existing?.label || parsed.lud16 || 'Nostr Wallet Connect',
+      walletServicePubkey: parsed.walletServicePubkey,
+      clientSecret: parsed.clientSecret,
+      clientPubkey,
+      relays: parsed.relays,
+      ...(parsed.lud16 ? { lud16: parsed.lud16 } : existing?.lud16 ? { lud16: existing.lud16 } : {}),
+      capabilities: existing?.capabilities ?? [],
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      isActive: existing?.isActive ?? true,
+    };
+
+    return {
+      vaultData: upsertNip47Connection(vaultData, nextConnection),
+      data: nextConnection,
+    };
+  });
+
   return { success: true, data: summarizeNip47Connection(connection) };
 }
 
 export async function handleNip47ConnectionRemove(
   payload: { connectionId: string },
 ): Promise<HandlerResult<boolean>> {
-  const vaultData = await requireUnlockedVaultData();
-  await saveVaultData(removeNip47Connection(vaultData, payload.connectionId));
+  await mutateNip47Vault((vaultData) => ({
+    vaultData: removeNip47Connection(vaultData, payload.connectionId),
+    data: true,
+  }));
   return { success: true, data: true };
 }
 
 export async function handleNip47ConnectionSetActive(
   payload: { connectionId: string },
 ): Promise<HandlerResult<Nip47ConnectionSummary>> {
-  const vaultData = await requireUnlockedVaultData();
-  const updatedVaultData = setActiveNip47Connection(vaultData, payload.connectionId);
-  const activeConnection = findNip47Connection(updatedVaultData, payload.connectionId);
-  if (!activeConnection) {
-    throw new Error('NIP-47 connection not found');
-  }
+  const activeConnection = await mutateNip47Vault((vaultData) => {
+    const updatedVaultData = setActiveNip47Connection(vaultData, payload.connectionId);
+    const connection = findNip47Connection(updatedVaultData, payload.connectionId);
+    if (!connection) {
+      throw new Error('NIP-47 connection not found');
+    }
 
-  await saveVaultData(updatedVaultData);
+    return {
+      vaultData: updatedVaultData,
+      data: connection,
+    };
+  });
+
   return { success: true, data: summarizeNip47Connection(activeConnection) };
 }
 
@@ -133,19 +166,20 @@ export async function handleNip47GetInfo(payload: { connectionId: string }): Pro
 
   const info = await nip47Client.getInfo(connection);
 
-  // Refetch before saving because getInfo is a relay/network operation. Another
-  // action may have changed vault state while the request was in flight, most
-  // importantly the active wallet flag. Saving against the original vault
-  // snapshot can otherwise resurrect stale isActive values.
-  const latestVaultData = await requireUnlockedVaultData();
-  const latestConnection = findNip47Connection(latestVaultData, payload.connectionId) ?? connection;
-  const updatedConnection: Nip47Connection = {
-    ...latestConnection,
-    capabilities: info.capabilities,
-    lastInfoCheckedAt: info.checkedAt,
-    updatedAt: new Date().toISOString(),
-  };
-  await saveVaultData(upsertNip47Connection(latestVaultData, updatedConnection));
+  await mutateNip47Vault((latestVaultData) => {
+    const latestConnection = findNip47Connection(latestVaultData, payload.connectionId) ?? connection;
+    const updatedConnection: Nip47Connection = {
+      ...latestConnection,
+      capabilities: info.capabilities,
+      lastInfoCheckedAt: info.checkedAt,
+      updatedAt: new Date().toISOString(),
+    };
+
+    return {
+      vaultData: upsertNip47Connection(latestVaultData, updatedConnection),
+      data: true,
+    };
+  });
   return { success: true, data: info };
 }
 
@@ -183,9 +217,9 @@ export async function handleNip47PayInvoice(
 
   try {
     const payment = await nip47Client.payInvoice(connection, invoice);
-    await saveVaultData(
-      appendNip47PaymentHistory(
-        vaultData,
+    await mutateNip47Vault((latestVaultData) => ({
+      vaultData: appendNip47PaymentHistory(
+        latestVaultData,
         buildPaymentHistoryEntry({
           connection,
           invoice,
@@ -194,13 +228,14 @@ export async function handleNip47PayInvoice(
           ...(payment.feesPaidMsat !== undefined ? { feesPaidMsat: payment.feesPaidMsat } : {}),
         }),
       ),
-    );
+      data: true,
+    }));
     return { success: true, data: payment };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    await saveVaultData(
-      appendNip47PaymentHistory(
-        vaultData,
+    await mutateNip47Vault((latestVaultData) => ({
+      vaultData: appendNip47PaymentHistory(
+        latestVaultData,
         buildPaymentHistoryEntry({
           connection,
           invoice,
@@ -208,7 +243,8 @@ export async function handleNip47PayInvoice(
           error: message,
         }),
       ),
-    );
+      data: true,
+    }));
     throw error;
   }
 }
