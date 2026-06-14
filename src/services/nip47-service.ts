@@ -1,7 +1,8 @@
-import { sendBexMessage } from './vault-service';
+import { getVaultData, sendBexMessage, updateVaultData } from './vault-service';
 import type {
   ImportNip47ConnectionRequest,
   Nip47BalanceResponse,
+  Nip47Connection,
   Nip47ConnectionSummary,
   Nip47InfoResponse,
   Nip47PayInvoiceResponse,
@@ -46,13 +47,60 @@ export async function removeNip47Connection(connectionId: string): Promise<void>
   throwIfError(response);
 }
 
-export async function setActiveNip47Connection(connectionId: string): Promise<Nip47ConnectionSummary> {
-  const response = await sendBexMessage('nip47.connections.setActive', { connectionId });
-  throwIfError(response);
-  if (!response || typeof response !== 'object' || !('id' in response)) {
-    throw new Error('Invalid NIP-47 active connection response');
+function summarizeConnection(connection: Nip47Connection): Nip47ConnectionSummary {
+  const { clientSecret: _clientSecret, ...safeConnection } = connection;
+  void _clientSecret;
+  return {
+    ...safeConnection,
+    hasClientSecret: connection.clientSecret.length > 0,
+  };
+}
+
+async function setActiveNip47ConnectionViaVault(connectionId: string): Promise<Nip47ConnectionSummary> {
+  const vaultResult = await getVaultData();
+  if (!vaultResult.success || !vaultResult.vaultData) {
+    throw new Error(vaultResult.error || 'Failed to load vault data');
   }
-  return response;
+
+  const connections = vaultResult.vaultData.nip47Connections ?? [];
+  const hasConnection = connections.some((connection) => connection.id === connectionId);
+  if (!hasConnection) {
+    throw new Error('NIP-47 connection not found');
+  }
+
+  const now = new Date().toISOString();
+  const updatedConnections = connections.map((connection) => ({
+    ...connection,
+    isActive: connection.id === connectionId,
+    updatedAt: connection.id === connectionId ? now : connection.updatedAt,
+  }));
+  const activeConnection = updatedConnections.find((connection) => connection.id === connectionId);
+  if (!activeConnection) {
+    throw new Error('NIP-47 connection not found');
+  }
+
+  const updateResult = await updateVaultData({
+    ...vaultResult.vaultData,
+    nip47Connections: updatedConnections,
+  });
+  if (!updateResult.success) {
+    throw new Error(updateResult.error || 'Failed to update active wallet connection');
+  }
+
+  return summarizeConnection(activeConnection);
+}
+
+export async function setActiveNip47Connection(connectionId: string): Promise<Nip47ConnectionSummary> {
+  try {
+    const response = await sendBexMessage('nip47.connections.setActive', { connectionId });
+    throwIfError(response);
+    if (!response || typeof response !== 'object' || !('id' in response)) {
+      throw new Error('Invalid NIP-47 active connection response');
+    }
+    return response;
+  } catch {
+    return await setActiveNip47ConnectionViaVault(connectionId);
+  }
 }
 
 export async function getNip47Info(connectionId: string): Promise<Nip47InfoResponse> {
