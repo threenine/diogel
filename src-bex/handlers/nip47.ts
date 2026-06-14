@@ -132,13 +132,20 @@ export async function handleNip47GetInfo(payload: { connectionId: string }): Pro
   }
 
   const info = await nip47Client.getInfo(connection);
+
+  // Refetch before saving because getInfo is a relay/network operation. Another
+  // action may have changed vault state while the request was in flight, most
+  // importantly the active wallet flag. Saving against the original vault
+  // snapshot can otherwise resurrect stale isActive values.
+  const latestVaultData = await requireUnlockedVaultData();
+  const latestConnection = findNip47Connection(latestVaultData, payload.connectionId) ?? connection;
   const updatedConnection: Nip47Connection = {
-    ...connection,
+    ...latestConnection,
     capabilities: info.capabilities,
     lastInfoCheckedAt: info.checkedAt,
     updatedAt: new Date().toISOString(),
   };
-  await saveVaultData(upsertNip47Connection(vaultData, updatedConnection));
+  await saveVaultData(upsertNip47Connection(latestVaultData, updatedConnection));
   return { success: true, data: info };
 }
 
