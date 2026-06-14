@@ -164,20 +164,23 @@ Each connection becomes a card:
 
 ## Recommendation
 
-Use **Concept A now**, with a small influence from Concept B.
+Use **Concept B — Active wallet dashboard**.
+
+Woody selected Concept B on 2026-06-14 because it is a stronger fit for the direction Diogel wants to provide. The product should present one active wallet as the primary wallet users actually operate, with other NWC connections treated as secondary switchable connections.
 
 The immediate MVP should become:
 
 1. `dashboard-page` shell, matching the rest of Diogel.
 2. Hero with import action.
-3. Import panel collapsed by default when connections exist.
-4. Wallet connections rendered as cards, not raw list rows.
-5. Active wallet appears first and looks materially different.
-6. Money action (`Pay invoice`) is visually distinct and only prominent when supported.
-7. Technical connection details move into an expansion panel.
-8. Payment history remains a separate card below, with improved row styling later.
+3. Large active-wallet dashboard panel first.
+4. Active panel shows wallet label, balance/status, capability state, security note, and primary actions.
+5. Money action (`Pay invoice`) belongs in the active-wallet panel and remains visually distinct.
+6. Other wallet connections render as compact secondary rows/cards with `Make active`, `Details`, and `Remove`.
+7. Import panel is collapsed by default when connections exist, but visible in the empty state.
+8. Technical connection details move into an expansion panel.
+9. Payment history remains a separate card below, with improved row styling later.
 
-This is the best balance: it gives a major UX lift without changing the product model or NIP-47 behavior.
+This is more opinionated than Concept A, but in a useful product way: one active wallet is the thing Diogel uses, while other connections are managed as alternatives.
 
 ## Proposed MVP visual structure
 
@@ -194,13 +197,14 @@ This is the best balance: it gives a major UX lift without changing the product 
 
 [Import panel, collapsed unless empty or user clicks Import]
 
-┌──────────────────────────────┐ ┌──────────────────────────────┐
-│ 🟠 Alby Hub      Active NWC  │ │ ⚪ Home Node             NWC  │
-│ Balance: 2,100 sats          │ │ Not active                   │
-│ pay_invoice · get_balance    │ │ get_balance                  │
-│ [Pay invoice] [Balance]      │ │ [Make active] [Info]         │
-│ [Details ▾]        [Remove]  │ │ [Details ▾]        [Remove]  │
-└──────────────────────────────┘ └──────────────────────────────┘
+┌──────────────────────────────────────────┐ ┌────────────────┐
+│ ACTIVE WALLET                            │ │ OTHER WALLETS  │
+│ 🟠 Alby Hub            Ready to pay      │ │ Home Node      │
+│ Balance: 2,100 sats                      │ │ [Make active] │
+│ Capabilities: pay_invoice · get_balance  │ │                │
+│ Security: Vault stored, no website API   │ │ Test Wallet    │
+│ [Pay invoice] [Balance] [Info] [Details] │ │ [Make active] │
+└──────────────────────────────────────────┘ └────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
 │ Payment history                                      refresh │
@@ -214,7 +218,8 @@ Likely implementation split:
 
 - Keep `WalletConnectionsPage.vue` as the orchestrating page.
 - Add small presentational components if the page starts getting too large:
-  - `WalletConnectionCard.vue`
+  - `ActiveWalletPanel.vue`
+  - `SecondaryWalletConnectionList.vue`
   - `WalletImportPanel.vue`
   - `WalletPaymentHistory.vue`
 - No backend/service changes required for the first visual pass.
@@ -241,11 +246,13 @@ Suggested copy:
 Implement in this order:
 
 1. Restructure the page to use `dashboard-page` + `dashboard-hero`.
-2. Add collapsed import panel with empty-state auto-open behavior.
-3. Replace configured connection list with card grid.
-4. Add connection details expansion.
-5. Restyle payment history rows enough to match the new card style.
-6. Add/update component tests only where behavior changes.
+2. Derive active connection and secondary connections from the sorted connection list.
+3. Add the large active-wallet panel.
+4. Move inactive wallet connections into a compact secondary list/card.
+5. Add collapsed import panel with empty-state auto-open behavior.
+6. Add connection details expansion.
+7. Restyle payment history rows enough to match the new page direction.
+8. Add/update component tests only where behavior changes.
 
 ## Non-goals for this UI pass
 
