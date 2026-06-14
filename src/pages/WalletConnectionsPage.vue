@@ -226,7 +226,7 @@ onMounted(() => {
       <div class="col-12 col-md-5">
         <q-card flat bordered>
           <q-card-section>
-            <div class="text-h5">Wallet Connections</div>
+            <div class="text-h5">Wallet Management</div>
             <p class="text-body2 text-grey-7 q-mb-none">
               Import Nostr Wallet Connect URIs for Lightning wallet access. Secrets are stored inside the encrypted Diogel vault.
             </p>
