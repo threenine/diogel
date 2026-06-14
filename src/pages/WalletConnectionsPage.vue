@@ -74,10 +74,10 @@ function formatMsat(msat: number): string {
 
 function formatMsatAsBtc(msat: number): string {
   const btc = msat / 1000 / 100_000_000;
-  return `${btc.toLocaleString(undefined, {
+  return btc.toLocaleString(undefined, {
     minimumFractionDigits: 8,
     maximumFractionDigits: 8,
-  })} BTC`;
+  });
 }
 
 function toggleBalanceDisplayUnit(): void {
@@ -437,7 +437,10 @@ onMounted(() => {
             @click="toggleBalanceDisplayUnit"
           >
             <span class="wallet-active-card__metric-label">Balance</span>
-            <strong>{{ activeBalanceDisplay }}</strong>
+            <strong>
+              <span v-if="balanceDisplayUnit === 'btc' && activeBalance !== undefined" class="wallet-active-card__bitcoin-symbol">₿</span>
+              {{ activeBalanceDisplay }}
+            </strong>
             <small>{{ activeBalance !== undefined ? `Click to show ${balanceDisplayUnit === 'btc' ? 'sats' : 'BTC'}` : 'Run balance check first' }}</small>
           </button>
           <div class="wallet-active-card__metric">
@@ -857,10 +860,18 @@ onMounted(() => {
 }
 
 .wallet-active-card__metric strong {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   color: #ffffff;
   font-size: clamp(1.3rem, 2.2vw, 2rem);
   font-weight: 850;
   line-height: 1.05;
+}
+
+.wallet-active-card__bitcoin-symbol {
+  color: #f97316;
+  font-size: 0.92em;
 }
 
 .wallet-active-card__metric small {
