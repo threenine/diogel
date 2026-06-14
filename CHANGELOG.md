@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.0.28
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.27...v0.0.28)
+
+### 🏡 Chore
+
+- **docs:** Add Chrome and Firefox store links, remove GitHub warning in README.md ([08757db](https://github.com/threenine/diogel/commit/08757db))
+- **release:** V0.0.24 ([dfc58f5](https://github.com/threenine/diogel/commit/dfc58f5))
+- **release:** V0.0.25 ([17388e1](https://github.com/threenine/diogel/commit/17388e1))
+- **release:** V0.0.26 ([f0a2a4a](https://github.com/threenine/diogel/commit/f0a2a4a))
+- **release:** V0.0.27 ([051ef36](https://github.com/threenine/diogel/commit/051ef36))
+
+### ❤️ Contributors
+
+- Gary Woodfine <gary.woodfine@threenine.co.uk>
+
 ## v0.0.27
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.27...v0.0.27)
