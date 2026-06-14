@@ -19,8 +19,6 @@ const nwcUri = ref('');
 const label = ref('');
 const loading = ref(false);
 const testingConnectionId = ref<string | null>(null);
-const errorMessage = ref<string | null>(null);
-const successMessage = ref<string | null>(null);
 const balances = ref<Record<string, number>>({});
 const selectedPaymentConnection = ref<Nip47ConnectionSummary | null>(null);
 const paymentInvoice = ref('');
@@ -127,9 +125,15 @@ function shortInvoice(invoice: string): string {
   return `${normalized.slice(0, 24)}…${normalized.slice(-12)}`;
 }
 
-function setError(error: unknown): void {
-  errorMessage.value = error instanceof Error ? error.message : String(error);
-  successMessage.value = null;
+function notifySuccess(message: string): void {
+  $q.notify({ type: 'positive', message });
+}
+
+function notifyError(error: unknown): void {
+  $q.notify({
+    type: 'negative',
+    message: error instanceof Error ? error.message : String(error),
+  });
 }
 
 function getConnectionSubtitle(connection: Nip47ConnectionSummary): string {
@@ -161,7 +165,7 @@ async function refreshPaymentHistory(): Promise<void> {
   try {
     paymentHistory.value = await listNip47PaymentHistory();
   } catch (error: unknown) {
-    setError(error);
+    notifyError(error);
   } finally {
     historyLoading.value = false;
   }
@@ -169,13 +173,12 @@ async function refreshPaymentHistory(): Promise<void> {
 
 async function refreshConnections(): Promise<void> {
   loading.value = true;
-  errorMessage.value = null;
   try {
     connections.value = sortConnections(await listNip47Connections());
     importPanelOpen.value = connections.value.length === 0;
     await refreshPaymentHistory();
   } catch (error: unknown) {
-    setError(error);
+    notifyError(error);
   } finally {
     loading.value = false;
   }
@@ -193,8 +196,6 @@ function sortConnections(items: Nip47ConnectionSummary[]): Nip47ConnectionSummar
 
 async function importConnection(): Promise<void> {
   loading.value = true;
-  errorMessage.value = null;
-  successMessage.value = null;
   try {
     await importNip47Connection({
       uri: nwcUri.value,
@@ -203,10 +204,10 @@ async function importConnection(): Promise<void> {
     nwcUri.value = '';
     label.value = '';
     importPanelOpen.value = false;
-    successMessage.value = 'Wallet connection imported into the encrypted vault.';
+    notifySuccess('Wallet connection imported into the encrypted vault.');
     await refreshConnections();
   } catch (error: unknown) {
-    setError(error);
+    notifyError(error);
   } finally {
     loading.value = false;
   }
@@ -214,14 +215,12 @@ async function importConnection(): Promise<void> {
 
 async function testInfo(connection: Nip47ConnectionSummary): Promise<void> {
   testingConnectionId.value = connection.id;
-  errorMessage.value = null;
-  successMessage.value = null;
   try {
     const info = await getNip47Info(connection.id);
-    successMessage.value = `Wallet info loaded. Capabilities: ${info.capabilities.join(', ') || 'none advertised'}.`;
+    notifySuccess(`Wallet info loaded. Capabilities: ${info.capabilities.join(', ') || 'none advertised'}.`);
     await refreshConnections();
   } catch (error: unknown) {
-    setError(error);
+    notifyError(error);
   } finally {
     testingConnectionId.value = null;
   }
@@ -229,17 +228,15 @@ async function testInfo(connection: Nip47ConnectionSummary): Promise<void> {
 
 async function testBalance(connection: Nip47ConnectionSummary): Promise<void> {
   testingConnectionId.value = connection.id;
-  errorMessage.value = null;
-  successMessage.value = null;
   try {
     const balance = await getNip47Balance(connection.id);
     balances.value = {
       ...balances.value,
       [connection.id]: balance.balanceMsat,
     };
-    successMessage.value = `Balance loaded for ${connection.label}.`;
+    notifySuccess(`Balance loaded for ${connection.label}.`);
   } catch (error: unknown) {
-    setError(error);
+    notifyError(error);
   } finally {
     testingConnectionId.value = null;
   }
@@ -247,14 +244,12 @@ async function testBalance(connection: Nip47ConnectionSummary): Promise<void> {
 
 async function makeActive(connection: Nip47ConnectionSummary): Promise<void> {
   loading.value = true;
-  errorMessage.value = null;
-  successMessage.value = null;
   try {
     await setActiveNip47Connection(connection.id);
-    successMessage.value = `${connection.label} is now the active wallet connection.`;
+    notifySuccess(`${connection.label} is now the active wallet connection.`);
     await refreshConnections();
   } catch (error: unknown) {
-    setError(error);
+    notifyError(error);
   } finally {
     loading.value = false;
   }
@@ -269,32 +264,30 @@ function openPaymentDialog(connection: Nip47ConnectionSummary): void {
   paymentInvoice.value = '';
   paymentApprovalChecked.value = false;
   lastPaymentPreimage.value = null;
-  errorMessage.value = null;
-  successMessage.value = null;
   paymentDialogOpen.value = true;
 }
 
 async function approvePayment(): Promise<void> {
   const connection = selectedPaymentConnection.value;
   if (!connection) {
-    setError(new Error('No wallet connection selected'));
+    notifyError(new Error('No wallet connection selected'));
     return;
   }
 
   payingConnectionId.value = connection.id;
-  errorMessage.value = null;
-  successMessage.value = null;
   lastPaymentPreimage.value = null;
   try {
     const payment = await payNip47Invoice(connection.id, paymentInvoice.value);
     lastPaymentPreimage.value = payment.preimage;
-    successMessage.value = payment.feesPaidMsat !== undefined
-      ? `Payment sent. Fees paid: ${formatMsat(payment.feesPaidMsat)}.`
-      : 'Payment sent.';
+    notifySuccess(
+      payment.feesPaidMsat !== undefined
+        ? `Payment sent. Fees paid: ${formatMsat(payment.feesPaidMsat)}.`
+        : 'Payment sent.',
+    );
     paymentDialogOpen.value = false;
     await refreshPaymentHistory();
   } catch (error: unknown) {
-    setError(error);
+    notifyError(error);
     await refreshPaymentHistory();
   } finally {
     payingConnectionId.value = null;
@@ -320,14 +313,12 @@ function confirmRemoveConnection(connection: Nip47ConnectionSummary): void {
 
 async function removeConnection(connection: Nip47ConnectionSummary): Promise<void> {
   loading.value = true;
-  errorMessage.value = null;
-  successMessage.value = null;
   try {
     await removeNip47Connection(connection.id);
-    successMessage.value = 'Wallet connection removed from this vault.';
+    notifySuccess('Wallet connection removed from this vault.');
     await refreshConnections();
   } catch (error: unknown) {
-    setError(error);
+    notifyError(error);
   } finally {
     loading.value = false;
   }
@@ -358,13 +349,6 @@ onMounted(() => {
         <q-btn flat round icon="refresh" :loading="loading" @click="refreshConnections" />
       </div>
     </section>
-
-    <q-banner v-if="errorMessage" rounded class="bg-negative text-white">
-      {{ errorMessage }}
-    </q-banner>
-    <q-banner v-if="successMessage" rounded class="bg-positive text-white">
-      {{ successMessage }}
-    </q-banner>
 
     <q-slide-transition>
       <q-card v-if="importPanelVisible" class="dashboard-card wallet-import-card">
