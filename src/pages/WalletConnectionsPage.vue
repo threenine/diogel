@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useQuasar } from 'quasar';
+import { useI18n } from 'vue-i18n';
 import {
   getNip47Balance,
   getNip47Info,
@@ -15,6 +16,7 @@ import { parseBolt11AmountMsat, previewInvoice } from 'src/services/nip47-invoic
 import type { Nip47ConnectionSummary, Nip47PaymentHistoryEntry } from 'src/types/nip47';
 
 const $q = useQuasar();
+const { t } = useI18n();
 const connections = ref<Nip47ConnectionSummary[]>([]);
 const nwcUri = ref('');
 const label = ref('');
@@ -49,15 +51,15 @@ const activeCanPay = computed(() => Boolean(activeConnection.value?.capabilities
 const activeBalanceDisplay = computed(() => {
   const balance = activeBalance.value;
   if (balance === undefined) {
-    return 'Not checked';
+    return t('walletManagement.balance.notChecked');
   }
 
   return balanceDisplayUnit.value === 'btc' ? formatMsatAsBtc(balance) : formatMsatAsSatsValue(balance);
 });
 const activeBalanceToggleLabel = computed(() => {
   return activeBalance.value === undefined
-    ? 'Check balance to enable BTC and sats display toggle'
-    : `Show balance in ${balanceDisplayUnit.value === 'btc' ? 'sats' : 'BTC'}`;
+    ? t('walletManagement.balance.toggleDisabled')
+    : t('walletManagement.balance.toggleAria', { unit: balanceDisplayUnit.value === 'btc' ? 'sats' : 'BTC' });
 });
 const importPanelVisible = computed(() => importPanelOpen.value || !hasConnections.value);
 const parsedInvoiceAmount = computed(() => parseBolt11Amount(paymentInvoice.value));
@@ -94,12 +96,12 @@ function toggleBalanceDisplayUnit(): void {
 
 function parseBolt11Amount(invoice: string): string {
   if (!invoice.trim()) {
-    return 'Amount not encoded in invoice';
+    return t('walletManagement.payment.amountNotEncoded');
   }
 
   const amountMsat = parseBolt11AmountMsat(invoice);
   if (amountMsat === undefined) {
-    return 'Amount not encoded in invoice';
+    return t('walletManagement.payment.amountNotEncoded');
   }
 
   const sats = amountMsat / 1000;
@@ -127,7 +129,7 @@ function getConnectionSubtitle(connection: Nip47ConnectionSummary): string {
 
 function getCapabilitySummary(connection: Nip47ConnectionSummary): string {
   if (connection.capabilities.length === 0) {
-    return 'Capabilities not checked yet';
+    return t('walletManagement.capabilities.notChecked');
   }
 
   return connection.capabilities.join(' · ');
@@ -135,14 +137,14 @@ function getCapabilitySummary(connection: Nip47ConnectionSummary): string {
 
 function getActiveConnectionStatus(connection: Nip47ConnectionSummary): string {
   if (connection.capabilities.includes('pay_invoice')) {
-    return 'Ready for manual payments';
+    return t('walletManagement.status.readyForManualPayments');
   }
 
   if (connection.capabilities.length > 0) {
-    return 'Connected, payments unavailable';
+    return t('walletManagement.status.paymentsUnavailable');
   }
 
-  return 'Check capabilities before paying';
+  return t('walletManagement.status.checkCapabilities');
 }
 
 async function refreshPaymentHistory(): Promise<void> {
@@ -189,7 +191,7 @@ async function importConnection(): Promise<void> {
     nwcUri.value = '';
     label.value = '';
     importPanelOpen.value = false;
-    notifySuccess('Wallet connection imported into the encrypted vault.');
+    notifySuccess(t('walletManagement.notifications.imported'));
     await refreshConnections();
   } catch (error: unknown) {
     notifyError(error);
@@ -212,7 +214,7 @@ async function refreshConnectionInfo(connectionId: string): Promise<void> {
           }
         : item),
     );
-    notifySuccess(`Wallet info loaded. Capabilities: ${info.capabilities.join(', ') || 'none advertised'}.`);
+    notifySuccess(t('walletManagement.notifications.infoLoaded', { capabilities: info.capabilities.join(', ') || t('walletManagement.capabilities.noneAdvertised') }));
   } catch (error: unknown) {
     notifyError(error);
   } finally {
@@ -232,7 +234,7 @@ async function testBalance(connection: Nip47ConnectionSummary): Promise<void> {
       ...balances.value,
       [connection.id]: balance.balanceMsat,
     };
-    notifySuccess(`Balance loaded for ${connection.label}.`);
+    notifySuccess(t('walletManagement.notifications.balanceLoaded', { label: connection.label }));
   } catch (error: unknown) {
     notifyError(error);
   } finally {
@@ -252,7 +254,7 @@ async function makeActive(connection: Nip47ConnectionSummary): Promise<void> {
     })),
   );
   activationSavePending.value = true;
-  notifySuccess(`${connection.label} Wallet is now active wallet`);
+  notifySuccess(t('walletManagement.notifications.activeWallet', { label: connection.label }));
 
   try {
     const activeWallet = await setActiveNip47Connection(connection.id);
@@ -287,7 +289,7 @@ function openPaymentDialog(connection: Nip47ConnectionSummary): void {
 async function approvePayment(): Promise<void> {
   const connection = selectedPaymentConnection.value;
   if (!connection) {
-    notifyError(new Error('No wallet connection selected'));
+    notifyError(new Error(t('walletManagement.errors.noWalletSelected')));
     return;
   }
 
@@ -298,8 +300,8 @@ async function approvePayment(): Promise<void> {
     lastPaymentPreimage.value = payment.preimage;
     notifySuccess(
       payment.feesPaidMsat !== undefined
-        ? `Payment sent. Fees paid: ${formatMsat(payment.feesPaidMsat)}.`
-        : 'Payment sent.',
+        ? t('walletManagement.notifications.paymentSentWithFees', { fees: formatMsat(payment.feesPaidMsat) })
+        : t('walletManagement.notifications.paymentSent'),
     );
     paymentDialogOpen.value = false;
     await refreshPaymentHistory();
@@ -313,12 +315,12 @@ async function approvePayment(): Promise<void> {
 
 function confirmRemoveConnection(connection: Nip47ConnectionSummary): void {
   $q.dialog({
-    title: 'Remove wallet connection?',
-    message: `Remove ${connection.label} from this encrypted vault? This does not affect the wallet itself, but Diogel will no longer be able to use this NWC connection.`,
+    title: t('walletManagement.removeDialog.title'),
+    message: t('walletManagement.removeDialog.message', { label: connection.label }),
     cancel: true,
     persistent: true,
     ok: {
-      label: 'Remove',
+      label: t('walletManagement.actions.remove'),
       color: 'negative',
       unelevated: true,
       noCaps: true,
@@ -332,7 +334,7 @@ async function removeConnection(connection: Nip47ConnectionSummary): Promise<voi
   loading.value = true;
   try {
     await removeNip47Connection(connection.id);
-    notifySuccess('Wallet connection removed from this vault.');
+    notifySuccess(t('walletManagement.notifications.removed'));
     await refreshConnections();
   } catch (error: unknown) {
     notifyError(error);
@@ -350,16 +352,16 @@ onMounted(() => {
   <q-page class="dashboard-page wallet-connections-page">
     <section class="dashboard-hero wallet-connections-page__hero">
       <div>
-        <h1 class="dashboard-hero-title">Wallet Management</h1>
+        <h1 class="dashboard-hero-title">{{ $t('walletManagement.title') }}</h1>
         <p class="dashboard-hero-caption">
-          Manage encrypted Nostr Wallet Connect links for Lightning payments.
+          {{ $t('walletManagement.caption') }}
         </p>
       </div>
       <div class="wallet-connections-page__hero-actions">
         <q-btn
           class="diogel-btn-primary"
           icon="add"
-          :label="hasConnections && importPanelVisible ? 'Hide import' : 'Import wallet'"
+          :label="hasConnections && importPanelVisible ? $t('walletManagement.actions.hideImport') : $t('walletManagement.actions.importWallet')"
           no-caps
           @click="importPanelOpen = !importPanelOpen"
         />
@@ -371,9 +373,9 @@ onMounted(() => {
       <q-card v-if="importPanelVisible" class="dashboard-card wallet-import-card">
         <q-card-section class="dashboard-card-section wallet-import-card__section">
           <div class="wallet-import-card__intro">
-            <div class="text-h6">Import wallet connection</div>
+            <div class="text-h6">{{ $t('walletManagement.import.title') }}</div>
             <p class="text-body2 text-grey-7 q-mb-none">
-              Paste a Nostr Wallet Connect URI from your Lightning wallet. NWC secrets are stored inside your encrypted Diogel vault and are not exposed to websites in this MVP.
+              {{ $t('walletManagement.import.caption') }}
             </p>
           </div>
           <div class="wallet-import-card__form">
@@ -381,8 +383,8 @@ onMounted(() => {
               v-model="label"
               outlined
               dense
-              label="Connection label"
-              hint="Optional. Example: Alby, Mutiny, Home node"
+              :label="$t('walletManagement.import.connectionLabel')"
+              :hint="$t('walletManagement.import.connectionHint')"
             />
             <q-input
               v-model="nwcUri"
@@ -390,7 +392,7 @@ onMounted(() => {
               dense
               type="textarea"
               autogrow
-              label="NWC URI"
+              :label="$t('walletManagement.import.nwcUri')"
               placeholder="nostr+walletconnect://..."
             />
             <div class="wallet-import-card__actions">
@@ -399,14 +401,14 @@ onMounted(() => {
                 no-caps
                 :loading="loading"
                 :disable="!nwcUri.trim()"
-                label="Import connection"
+                :label="$t('walletManagement.actions.importConnection')"
                 @click="importConnection"
               />
               <q-btn
                 v-if="hasConnections"
                 flat
                 no-caps
-                label="Cancel"
+                :label="$t('walletManagement.actions.cancel')"
                 @click="importPanelOpen = false"
               />
             </div>
@@ -423,7 +425,7 @@ onMounted(() => {
               <q-icon name="bolt" size="34px" />
             </q-avatar>
             <div>
-              <div class="wallet-active-card__eyebrow">Active wallet connection</div>
+              <div class="wallet-active-card__eyebrow">{{ $t('walletManagement.active.eyebrow') }}</div>
               <h2 class="wallet-active-card__title">{{ activeConnection.label }}</h2>
               <div class="wallet-active-card__subtitle">{{ getConnectionSubtitle(activeConnection) }}</div>
             </div>
@@ -441,34 +443,34 @@ onMounted(() => {
             :disabled="activeBalance === undefined"
             @click="toggleBalanceDisplayUnit"
           >
-            <span class="wallet-active-card__metric-label">Balance</span>
+            <span class="wallet-active-card__metric-label">{{ $t('walletManagement.balance.label') }}</span>
             <strong>
               <span v-if="balanceDisplayUnit === 'btc' && activeBalance !== undefined" class="wallet-active-card__bitcoin-symbol">₿</span>
               {{ activeBalanceDisplay }}
               <span v-if="balanceDisplayUnit === 'sats' && activeBalance !== undefined" class="wallet-active-card__balance-unit">sats</span>
             </strong>
-            <small>{{ activeBalance !== undefined ? `Click to show ${balanceDisplayUnit === 'btc' ? 'sats' : 'BTC'}` : 'Run balance check first' }}</small>
+            <small>{{ activeBalance !== undefined ? $t('walletManagement.balance.clickToShow', { unit: balanceDisplayUnit === 'btc' ? 'sats' : 'BTC' }) : $t('walletManagement.balance.runCheckFirst') }}</small>
           </button>
           <div class="wallet-active-card__metric wallet-active-card__metric--capabilities" tabindex="0">
-            <span class="wallet-active-card__metric-label">Capabilities</span>
+            <span class="wallet-active-card__metric-label">{{ $t('walletManagement.capabilities.label') }}</span>
             <strong>{{ activeConnection.capabilities.length }}</strong>
-            <small>{{ activeCanPay ? 'pay_invoice enabled' : 'payment unavailable' }}</small>
+            <small>{{ activeCanPay ? $t('walletManagement.capabilities.payInvoiceEnabled') : $t('walletManagement.capabilities.paymentUnavailable') }}</small>
             <div class="wallet-active-card__capability-panel" role="tooltip">
-              <div class="wallet-active-card__capability-panel-title">Wallet capabilities</div>
+              <div class="wallet-active-card__capability-panel-title">{{ $t('walletManagement.capabilities.panelTitle') }}</div>
               <ul v-if="activeConnection.capabilities.length > 0" class="wallet-active-card__capability-list">
                 <li v-for="capability in activeConnection.capabilities" :key="capability">
                   {{ capability }}
                 </li>
               </ul>
               <p v-else class="wallet-active-card__capability-empty">
-                Capabilities have not been checked yet. Use Info to query this wallet.
+                {{ $t('walletManagement.capabilities.empty') }}
               </p>
             </div>
           </div>
           <div class="wallet-active-card__metric">
-            <span class="wallet-active-card__metric-label">Security</span>
-            <strong>Vault stored</strong>
-            <small>No website API</small>
+            <span class="wallet-active-card__metric-label">{{ $t('walletManagement.security.label') }}</span>
+            <strong>{{ $t('walletManagement.security.vaultStored') }}</strong>
+            <small>{{ $t('walletManagement.security.noWebsiteApi') }}</small>
           </div>
         </q-card-section>
 
@@ -478,7 +480,7 @@ onMounted(() => {
             icon="bolt"
             no-caps
             unelevated
-            label="Pay invoice"
+            :label="$t('walletManagement.actions.payInvoice')"
             :disable="!activeCanPay"
             :loading="payingConnectionId === activeConnection.id"
             @click="openPaymentDialog(activeConnection)"
@@ -487,7 +489,7 @@ onMounted(() => {
             class="wallet-active-card__secondary-button"
             outline
             no-caps
-            label="Balance"
+            :label="$t('walletManagement.actions.balance')"
             :loading="testingConnectionId === activeConnection.id"
             @click="testBalance(activeConnection)"
           />
@@ -495,7 +497,7 @@ onMounted(() => {
             class="wallet-active-card__secondary-button"
             outline
             no-caps
-            label="Info"
+            :label="$t('walletManagement.actions.info')"
             :loading="testingConnectionId === activeConnection.id"
             @click="testInfo(activeConnection)"
           />
@@ -503,22 +505,22 @@ onMounted(() => {
 
         <q-separator dark />
 
-        <q-expansion-item class="wallet-active-card__details" dark dense expand-separator label="Technical details">
+        <q-expansion-item class="wallet-active-card__details" dark dense expand-separator :label="$t('walletManagement.details.technicalDetails')">
           <div class="wallet-details-grid">
             <div>
-              <span>Wallet service</span>
+              <span>{{ $t('walletManagement.details.walletService') }}</span>
               <strong>{{ activeConnection.walletServicePubkey }}</strong>
             </div>
             <div>
-              <span>Client pubkey</span>
+              <span>{{ $t('walletManagement.details.clientPubkey') }}</span>
               <strong>{{ activeConnection.clientPubkey }}</strong>
             </div>
             <div>
-              <span>Relays</span>
+              <span>{{ $t('walletManagement.details.relays') }}</span>
               <strong>{{ activeConnection.relays.join(', ') }}</strong>
             </div>
             <div>
-              <span>Updated</span>
+              <span>{{ $t('walletManagement.details.updated') }}</span>
               <strong>{{ formatTimestamp(activeConnection.updatedAt) }}</strong>
             </div>
           </div>
@@ -529,16 +531,16 @@ onMounted(() => {
         <q-card class="dashboard-card wallet-secondary-card">
           <q-card-section class="dashboard-card-section wallet-secondary-card__header">
             <div>
-              <div class="text-h6">Other connections</div>
-              <div class="text-caption text-grey-7">Switch the active wallet when needed.</div>
+              <div class="text-h6">{{ $t('walletManagement.secondary.title') }}</div>
+              <div class="text-caption text-grey-7">{{ $t('walletManagement.secondary.caption') }}</div>
             </div>
-            <q-badge color="grey-2" text-color="grey-8" :label="`${secondaryConnections.length} standby`" />
+            <q-badge color="grey-2" text-color="grey-8" :label="$t('walletManagement.secondary.standbyCount', { count: secondaryConnections.length })" />
           </q-card-section>
 
           <q-card-section v-if="secondaryConnections.length === 0" class="wallet-secondary-card__empty">
             <q-icon name="account_balance_wallet" size="40px" color="grey-5" />
-            <div class="text-subtitle2">No standby wallets</div>
-            <p class="text-caption text-grey-7 q-mb-none">Import another NWC connection if you want a backup or alternate wallet.</p>
+            <div class="text-subtitle2">{{ $t('walletManagement.secondary.emptyTitle') }}</div>
+            <p class="text-caption text-grey-7 q-mb-none">{{ $t('walletManagement.secondary.emptyCaption') }}</p>
           </q-card-section>
 
           <q-list v-else separator>
@@ -565,23 +567,23 @@ onMounted(() => {
                     class="diogel-btn-primary"
                     dense
                     no-caps
-                    label="Make active"
+                    :label="$t('walletManagement.actions.makeActive')"
                     :disable="activationSavePending"
                     @click="makeActive(connection)"
                   />
-                  <q-btn dense flat no-caps color="negative" label="Remove" @click="confirmRemoveConnection(connection)" />
+                  <q-btn dense flat no-caps color="negative" :label="$t('walletManagement.actions.remove')" @click="confirmRemoveConnection(connection)" />
                 </div>
                 <div class="wallet-details-grid wallet-details-grid--light">
                   <div>
-                    <span>Wallet service</span>
+                    <span>{{ $t('walletManagement.details.walletService') }}</span>
                     <strong>{{ connection.walletServicePubkey }}</strong>
                   </div>
                   <div>
-                    <span>Client pubkey</span>
+                    <span>{{ $t('walletManagement.details.clientPubkey') }}</span>
                     <strong>{{ connection.clientPubkey }}</strong>
                   </div>
                   <div>
-                    <span>Relays</span>
+                    <span>{{ $t('walletManagement.details.relays') }}</span>
                     <strong>{{ connection.relays.join(', ') }}</strong>
                   </div>
                 </div>
@@ -595,9 +597,9 @@ onMounted(() => {
             <div class="wallet-safety-card__content">
               <q-icon name="lock" color="primary" size="28px" />
               <div>
-                <div class="text-subtitle1 text-weight-bold">Manual payments only</div>
+                <div class="text-subtitle1 text-weight-bold">{{ $t('walletManagement.safety.title') }}</div>
                 <p class="text-caption text-grey-7 q-mb-none">
-                  Websites cannot trigger NWC payments in this MVP. Every invoice still requires explicit approval.
+                  {{ $t('walletManagement.safety.caption') }}
                 </p>
               </div>
             </div>
@@ -609,9 +611,9 @@ onMounted(() => {
     <q-card v-else class="dashboard-card wallet-empty-card">
       <q-card-section class="text-center q-pa-xl">
         <q-icon color="grey-5" name="account_balance_wallet" size="4em" />
-        <div class="text-h6 text-grey-7 q-mt-md">No wallet connections yet</div>
+        <div class="text-h6 text-grey-7 q-mt-md">{{ $t('walletManagement.empty.title') }}</div>
         <p class="text-grey-6">
-          Import a Nostr Wallet Connect URI from a wallet such as Alby Hub to test balance checks and manual invoice payments.
+          {{ $t('walletManagement.empty.caption') }}
         </p>
       </q-card-section>
     </q-card>
@@ -619,9 +621,9 @@ onMounted(() => {
     <q-card class="dashboard-card wallet-history-card">
       <q-card-section class="dashboard-card-section wallet-history-card__header">
         <div>
-          <div class="text-h6">Payment history</div>
+          <div class="text-h6">{{ $t('walletManagement.history.title') }}</div>
           <div class="text-caption text-grey-7">
-            Stored inside the encrypted vault. Latest 100 payment attempts only.
+            {{ $t('walletManagement.history.caption') }}
           </div>
         </div>
         <q-btn flat round icon="refresh" :loading="historyLoading" @click="refreshPaymentHistory" />
@@ -630,7 +632,7 @@ onMounted(() => {
       <q-separator />
 
       <q-card-section v-if="paymentHistory.length === 0" class="wallet-history-card__empty">
-        No payment attempts recorded yet.
+        {{ $t('walletManagement.history.empty') }}
       </q-card-section>
 
       <q-list v-else separator>
@@ -644,19 +646,19 @@ onMounted(() => {
               <q-badge :color="entry.status === 'succeeded' ? 'positive' : 'negative'" :label="entry.status" />
             </q-item-label>
             <q-item-label caption>
-              {{ formatTimestamp(entry.createdAt) }} · Amount: {{ entry.amountMsat !== undefined ? formatMsat(entry.amountMsat) : 'unknown' }}
+              {{ formatTimestamp(entry.createdAt) }} · {{ $t('walletManagement.history.amount') }}: {{ entry.amountMsat !== undefined ? formatMsat(entry.amountMsat) : $t('walletManagement.history.unknown') }}
               <span v-if="entry.feesPaidMsat !== undefined">
-                · Fees: {{ formatMsat(entry.feesPaidMsat) }}
+                · {{ $t('walletManagement.history.fees') }}: {{ formatMsat(entry.feesPaidMsat) }}
               </span>
             </q-item-label>
             <q-item-label v-if="entry.paymentHash" caption>
-              Payment hash: {{ shortHex(entry.paymentHash) }}
+              {{ $t('walletManagement.history.paymentHash') }}: {{ shortHex(entry.paymentHash) }}
             </q-item-label>
             <q-item-label caption class="break-word">
-              Invoice: {{ entry.invoicePreview }}
+              {{ $t('walletManagement.history.invoice') }}: {{ entry.invoicePreview }}
             </q-item-label>
             <q-item-label v-if="entry.error" caption class="text-negative break-word">
-              Error: {{ entry.error }}
+              {{ $t('walletManagement.history.error') }}: {{ entry.error }}
             </q-item-label>
           </q-item-section>
         </q-item>
@@ -666,9 +668,9 @@ onMounted(() => {
     <q-dialog v-model="paymentDialogOpen" persistent>
       <q-card class="payment-approval-card">
         <q-card-section>
-          <div class="text-h6">Approve Lightning payment</div>
+          <div class="text-h6">{{ $t('walletManagement.payment.title') }}</div>
           <p class="text-body2 text-grey-7 q-mb-none">
-            This sends real money through the selected NWC wallet connection. Review it carefully before approving.
+            {{ $t('walletManagement.payment.caption') }}
           </p>
         </q-card-section>
 
@@ -676,7 +678,7 @@ onMounted(() => {
 
         <q-card-section class="q-gutter-md">
           <div v-if="selectedPaymentConnection">
-            <div class="text-caption text-grey-7">Wallet connection</div>
+            <div class="text-caption text-grey-7">{{ $t('walletManagement.payment.walletConnection') }}</div>
             <div class="text-body1 text-weight-medium">{{ selectedPaymentConnection.label }}</div>
             <div class="text-caption text-grey-7">
               {{ selectedPaymentConnection.lud16 || shortHex(selectedPaymentConnection.walletServicePubkey) }}
@@ -688,21 +690,21 @@ onMounted(() => {
             outlined
             type="textarea"
             autogrow
-            label="BOLT11 invoice"
+            :label="$t('walletManagement.payment.bolt11Invoice')"
             placeholder="lnbc..."
           />
 
           <q-card flat bordered class="q-pa-md payment-review-card">
-            <div class="text-caption payment-review-label">Parsed amount</div>
+            <div class="text-caption payment-review-label">{{ $t('walletManagement.payment.parsedAmount') }}</div>
             <div class="text-subtitle1 text-weight-bold payment-review-value">{{ parsedInvoiceAmount }}</div>
-            <div class="text-caption payment-review-label q-mt-sm">Invoice preview</div>
-            <div class="text-body2 break-word payment-review-value">{{ shortInvoice(paymentInvoice) || 'No invoice entered' }}</div>
+            <div class="text-caption payment-review-label q-mt-sm">{{ $t('walletManagement.payment.invoicePreview') }}</div>
+            <div class="text-body2 break-word payment-review-value">{{ shortInvoice(paymentInvoice) || $t('walletManagement.payment.noInvoiceEntered') }}</div>
           </q-card>
 
           <q-checkbox
             v-model="paymentApprovalChecked"
             color="negative"
-            label="I understand this will attempt to pay the invoice using this wallet connection."
+            :label="$t('walletManagement.payment.approvalLabel')"
           />
         </q-card-section>
 
@@ -710,7 +712,7 @@ onMounted(() => {
           <q-btn
             flat
             no-caps
-            label="Cancel"
+            :label="$t('walletManagement.actions.cancel')"
             :disable="payingConnectionId !== null"
             @click="paymentDialogOpen = false"
           />
@@ -718,7 +720,7 @@ onMounted(() => {
             unelevated
             no-caps
             color="negative"
-            label="Approve and pay"
+            :label="$t('walletManagement.actions.approveAndPay')"
             :loading="payingConnectionId !== null"
             :disable="!paymentInvoice.trim() || !paymentApprovalChecked"
             @click="approvePayment"
