@@ -11,6 +11,7 @@ import {
   removeNip47Connection,
   setActiveNip47Connection,
 } from 'src/services/nip47-service';
+import { parseBolt11AmountMsat, previewInvoice } from 'src/services/nip47-invoice';
 import type { Nip47ConnectionSummary, Nip47PaymentHistoryEntry } from 'src/types/nip47';
 
 const $q = useQuasar();
@@ -92,38 +93,21 @@ function toggleBalanceDisplayUnit(): void {
 }
 
 function parseBolt11Amount(invoice: string): string {
-  const normalized = invoice.trim().toLowerCase();
-  const match = /^ln(?:bc|tb|bcrt)(\d+[munp]?)?1/.exec(normalized);
-  const amount = match?.[1];
-  if (!amount) {
+  if (!invoice.trim()) {
     return 'Amount not encoded in invoice';
   }
 
-  const suffix = amount.at(-1);
-  const hasSuffix = suffix === 'm' || suffix === 'u' || suffix === 'n' || suffix === 'p';
-  const numericPart = hasSuffix ? amount.slice(0, -1) : amount;
-  const value = Number(numericPart);
-  if (!Number.isFinite(value)) {
-    return 'Unable to parse invoice amount';
+  const amountMsat = parseBolt11AmountMsat(invoice);
+  if (amountMsat === undefined) {
+    return 'Amount not encoded in invoice';
   }
 
-  const sats = suffix === 'm'
-    ? value * 100_000
-    : suffix === 'u'
-      ? value * 100
-      : suffix === 'n'
-        ? value * 0.1
-        : suffix === 'p'
-          ? value * 0.0001
-          : value * 100_000_000;
-
+  const sats = amountMsat / 1000;
   return `${sats.toLocaleString(undefined, { maximumFractionDigits: 4 })} sats`;
 }
 
 function shortInvoice(invoice: string): string {
-  const normalized = invoice.trim();
-  if (normalized.length <= 42) return normalized;
-  return `${normalized.slice(0, 24)}…${normalized.slice(-12)}`;
+  return previewInvoice(invoice);
 }
 
 function notifySuccess(message: string): void {

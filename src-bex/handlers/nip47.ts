@@ -27,6 +27,7 @@ import {
   appendNip47PaymentHistory,
   listNip47PaymentHistory,
 } from '../services/nip47-payment-history-store';
+import { parseBolt11AmountMsat, previewInvoice } from 'src/services/nip47-invoice';
 
 async function requireUnlockedVaultData(): Promise<VaultData> {
   const result = await getVaultData();
@@ -43,31 +44,6 @@ async function saveVaultData(vaultData: VaultData): Promise<void> {
   }
 }
 
-function previewInvoice(invoice: string): string {
-  const normalized = invoice.trim();
-  if (normalized.length <= 42) return normalized;
-  return `${normalized.slice(0, 24)}…${normalized.slice(-12)}`;
-}
-
-function parseInvoiceAmountMsat(invoice: string): number | undefined {
-  const normalized = invoice.trim().toLowerCase();
-  const match = /^ln(?:bc|tb|bcrt)(\d+[munp]?)?1/.exec(normalized);
-  const amount = match?.[1];
-  if (!amount) return undefined;
-
-  const suffix = amount.at(-1);
-  const hasSuffix = suffix === 'm' || suffix === 'u' || suffix === 'n' || suffix === 'p';
-  const numericPart = hasSuffix ? amount.slice(0, -1) : amount;
-  const value = Number(numericPart);
-  if (!Number.isFinite(value)) return undefined;
-
-  if (suffix === 'm') return Math.round(value * 100_000_000);
-  if (suffix === 'u') return Math.round(value * 100_000);
-  if (suffix === 'n') return Math.round(value * 100);
-  if (suffix === 'p') return Math.round(value * 0.1);
-  return Math.round(value * 100_000_000_000);
-}
-
 function buildPaymentHistoryEntry(params: {
   connection: Nip47Connection;
   invoice: string;
@@ -76,7 +52,7 @@ function buildPaymentHistoryEntry(params: {
   feesPaidMsat?: number;
   error?: string;
 }): Nip47PaymentHistoryEntry {
-  const amountMsat = parseInvoiceAmountMsat(params.invoice);
+  const amountMsat = parseBolt11AmountMsat(params.invoice);
   return {
     id: crypto.randomUUID(),
     connectionId: params.connection.id,
@@ -184,6 +160,13 @@ export async function handleNip47PayInvoice(
   const connection = findNip47Connection(vaultData, payload.connectionId);
   if (!connection) {
     throw new Error('NIP-47 connection not found');
+  }
+
+  // Defense-in-depth: the UI only offers payment when the wallet has advertised
+  // pay_invoice support, but enforce it here too in case this handler is ever
+  // invoked directly.
+  if (connection.capabilities.length > 0 && !connection.capabilities.includes('pay_invoice')) {
+    throw new Error('This wallet connection does not advertise pay_invoice support.');
   }
 
   const invoice = payload.invoice.trim();

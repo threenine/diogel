@@ -156,10 +156,22 @@ export class Nip47Client {
       },
       clientSecretBytes,
     );
-    const pendingResponse = this.waitForResponse(connection, clientPubkey, event.id, since, clientSecretBytes);
+    const pending = this.waitForResponse(connection, clientPubkey, event.id, since, clientSecretBytes);
 
-    await Promise.any(this.pool.publish(connection.relays, event, { maxWait: 5000 }));
-    return pendingResponse;
+    try {
+      await Promise.any(this.pool.publish(connection.relays, event, { maxWait: 5000 }));
+    } catch (error: unknown) {
+      // Publish failed on every relay: stop waiting for a response so the
+      // subscription/timeout don't linger, and avoid an unhandled rejection
+      // from the now-cancelled response promise.
+      pending.cancel();
+      void pending.promise.catch(() => undefined);
+      throw new Error(
+        `Failed to publish NIP-47 request to any relay: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    return pending.promise;
   }
 
   close(): void {
@@ -172,14 +184,17 @@ export class Nip47Client {
     requestEventId: string,
     since: number,
     clientSecretBytes: Uint8Array,
-  ): Promise<Nip47RpcResponse> {
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
+  ): { promise: Promise<Nip47RpcResponse>; cancel: () => void } {
+    let timeout: ReturnType<typeof setTimeout>;
+    let closer: { close: (reason?: string) => void };
+
+    const promise = new Promise<Nip47RpcResponse>((resolve, reject) => {
+      timeout = setTimeout(() => {
         closer.close('nip47 response timeout');
         reject(new Error('Timed out waiting for NIP-47 wallet response'));
       }, 15000);
 
-      const closer = this.pool.subscribe(
+      closer = this.pool.subscribe(
         connection.relays,
         {
           kinds: [NIP47_RESPONSE_KIND],
@@ -212,6 +227,14 @@ export class Nip47Client {
         },
       );
     });
+
+    return {
+      promise,
+      cancel: () => {
+        clearTimeout(timeout);
+        closer.close('nip47 request publish failed');
+      },
+    };
   }
 }
 
