@@ -214,17 +214,30 @@ async function importConnection(): Promise<void> {
   }
 }
 
-async function testInfo(connection: Nip47ConnectionSummary): Promise<void> {
-  testingConnectionId.value = connection.id;
+async function refreshConnectionInfo(connectionId: string): Promise<void> {
+  testingConnectionId.value = connectionId;
   try {
-    const info = await getNip47Info(connection.id);
+    const info = await getNip47Info(connectionId);
+    connections.value = sortConnections(
+      connections.value.map((item) => item.id === connectionId
+        ? {
+            ...item,
+            capabilities: info.capabilities,
+            lastInfoCheckedAt: info.checkedAt,
+            updatedAt: new Date().toISOString(),
+          }
+        : item),
+    );
     notifySuccess(`Wallet info loaded. Capabilities: ${info.capabilities.join(', ') || 'none advertised'}.`);
-    await refreshConnections();
   } catch (error: unknown) {
     notifyError(error);
   } finally {
     testingConnectionId.value = null;
   }
+}
+
+async function testInfo(connection: Nip47ConnectionSummary): Promise<void> {
+  await refreshConnectionInfo(connection.id);
 }
 
 async function testBalance(connection: Nip47ConnectionSummary): Promise<void> {
@@ -266,6 +279,7 @@ async function makeActive(connection: Nip47ConnectionSummary): Promise<void> {
       })),
     );
     notifySuccess(`${connection.label} is now the active wallet connection.`);
+    void refreshConnectionInfo(activeWallet.id);
   } catch (error: unknown) {
     connections.value = previousConnections;
     notifyError(error);
@@ -571,7 +585,6 @@ onMounted(() => {
                     :disable="activationSavePending"
                     @click="makeActive(connection)"
                   />
-                  <q-btn dense outline no-caps label="Info" :loading="testingConnectionId === connection.id" @click="testInfo(connection)" />
                   <q-btn dense flat no-caps color="negative" label="Remove" @click="confirmRemoveConnection(connection)" />
                 </div>
                 <div class="wallet-details-grid wallet-details-grid--light">
