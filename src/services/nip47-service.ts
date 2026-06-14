@@ -46,6 +46,15 @@ export async function removeNip47Connection(connectionId: string): Promise<void>
   throwIfError(response);
 }
 
+export async function setActiveNip47Connection(connectionId: string): Promise<Nip47ConnectionSummary> {
+  const response = await sendBexMessage('nip47.connections.setActive', { connectionId });
+  throwIfError(response);
+  if (!response || typeof response !== 'object' || !('id' in response)) {
+    throw new Error('Invalid NIP-47 active connection response');
+  }
+  return response;
+}
+
 export async function getNip47Info(connectionId: string): Promise<Nip47InfoResponse> {
   const response = await sendBexMessage('nip47.getInfo', { connectionId });
   throwIfError(response);

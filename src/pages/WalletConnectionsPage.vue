@@ -8,9 +8,12 @@ import {
   listNip47PaymentHistory,
   payNip47Invoice,
   removeNip47Connection,
+  setActiveNip47Connection,
 } from 'src/services/nip47-service';
+import { useQuasar } from 'quasar';
 import type { Nip47ConnectionSummary, Nip47PaymentHistoryEntry } from 'src/types/nip47';
 
+const $q = useQuasar();
 const connections = ref<Nip47ConnectionSummary[]>([]);
 const nwcUri = ref('');
 const label = ref('');
@@ -97,13 +100,23 @@ async function refreshConnections(): Promise<void> {
   loading.value = true;
   errorMessage.value = null;
   try {
-    connections.value = await listNip47Connections();
+    connections.value = sortConnections(await listNip47Connections());
     await refreshPaymentHistory();
   } catch (error: unknown) {
     setError(error);
   } finally {
     loading.value = false;
   }
+}
+
+function sortConnections(items: Nip47ConnectionSummary[]): Nip47ConnectionSummary[] {
+  return [...items].sort((left, right) => {
+    if (left.isActive !== right.isActive) {
+      return left.isActive ? -1 : 1;
+    }
+
+    return right.updatedAt.localeCompare(left.updatedAt);
+  });
 }
 
 async function importConnection(): Promise<void> {
@@ -159,6 +172,21 @@ async function testBalance(connection: Nip47ConnectionSummary): Promise<void> {
   }
 }
 
+async function makeActive(connection: Nip47ConnectionSummary): Promise<void> {
+  loading.value = true;
+  errorMessage.value = null;
+  successMessage.value = null;
+  try {
+    await setActiveNip47Connection(connection.id);
+    successMessage.value = `${connection.label} is now the active wallet connection.`;
+    await refreshConnections();
+  } catch (error: unknown) {
+    setError(error);
+  } finally {
+    loading.value = false;
+  }
+}
+
 function formatTimestamp(value: string): string {
   return new Date(value).toLocaleString();
 }
@@ -198,6 +226,23 @@ async function approvePayment(): Promise<void> {
   } finally {
     payingConnectionId.value = null;
   }
+}
+
+function confirmRemoveConnection(connection: Nip47ConnectionSummary): void {
+  $q.dialog({
+    title: 'Remove wallet connection?',
+    message: `Remove ${connection.label} from this encrypted vault? This does not affect the wallet itself, but Diogel will no longer be able to use this NWC connection.`,
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: 'Remove',
+      color: 'negative',
+      unelevated: true,
+      noCaps: true,
+    },
+  }).onOk(() => {
+    void removeConnection(connection);
+  });
 }
 
 async function removeConnection(connection: Nip47ConnectionSummary): Promise<void> {
@@ -289,6 +334,9 @@ onMounted(() => {
             <q-item v-for="connection in connections" :key="connection.id" class="q-py-md">
               <q-item-section>
                 <q-item-label class="text-weight-medium">{{ connection.label }}</q-item-label>
+                <q-item-label v-if="connection.isActive" caption>
+                  <q-badge color="positive" label="Active wallet" />
+                </q-item-label>
                 <q-item-label caption>
                   Wallet: {{ shortHex(connection.walletServicePubkey) }} · Client: {{ shortHex(connection.clientPubkey) }}
                 </q-item-label>
@@ -305,6 +353,16 @@ onMounted(() => {
 
               <q-item-section side>
                 <div class="row q-gutter-sm">
+                  <q-btn
+                    dense
+                    outline
+                    no-caps
+                    color="positive"
+                    label="Make active"
+                    :disable="connection.isActive"
+                    :loading="loading && !connection.isActive"
+                    @click="makeActive(connection)"
+                  />
                   <q-btn
                     dense
                     outline
@@ -340,7 +398,7 @@ onMounted(() => {
                     no-caps
                     color="negative"
                     label="Remove"
-                    @click="removeConnection(connection)"
+                    @click="confirmRemoveConnection(connection)"
                   />
                 </div>
               </q-item-section>

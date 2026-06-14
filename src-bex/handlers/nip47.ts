@@ -18,6 +18,7 @@ import {
   findNip47Connection,
   listNip47Connections,
   removeNip47Connection,
+  setActiveNip47Connection,
   summarizeNip47Connection,
   upsertNip47Connection,
 } from '../services/nip47-connection-store';
@@ -131,6 +132,20 @@ export async function handleNip47ConnectionRemove(
   const vaultData = await requireUnlockedVaultData();
   await saveVaultData(removeNip47Connection(vaultData, payload.connectionId));
   return { success: true, data: true };
+}
+
+export async function handleNip47ConnectionSetActive(
+  payload: { connectionId: string },
+): Promise<HandlerResult<Nip47ConnectionSummary>> {
+  const vaultData = await requireUnlockedVaultData();
+  const updatedVaultData = setActiveNip47Connection(vaultData, payload.connectionId);
+  const activeConnection = findNip47Connection(updatedVaultData, payload.connectionId);
+  if (!activeConnection) {
+    throw new Error('NIP-47 connection not found');
+  }
+
+  await saveVaultData(updatedVaultData);
+  return { success: true, data: summarizeNip47Connection(activeConnection) };
 }
 
 export async function handleNip47GetInfo(payload: { connectionId: string }): Promise<HandlerResult<Nip47InfoResponse>> {
