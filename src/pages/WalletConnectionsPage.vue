@@ -19,6 +19,7 @@ const nwcUri = ref('');
 const label = ref('');
 const loading = ref(false);
 const testingConnectionId = ref<string | null>(null);
+const activatingConnectionId = ref<string | null>(null);
 const balances = ref<Record<string, number>>({});
 const selectedPaymentConnection = ref<Nip47ConnectionSummary | null>(null);
 const paymentInvoice = ref('');
@@ -243,15 +244,21 @@ async function testBalance(connection: Nip47ConnectionSummary): Promise<void> {
 }
 
 async function makeActive(connection: Nip47ConnectionSummary): Promise<void> {
-  loading.value = true;
+  activatingConnectionId.value = connection.id;
   try {
-    await setActiveNip47Connection(connection.id);
+    const activeWallet = await setActiveNip47Connection(connection.id);
+    connections.value = sortConnections(
+      connections.value.map((item) => ({
+        ...item,
+        isActive: item.id === activeWallet.id,
+        updatedAt: item.id === activeWallet.id ? activeWallet.updatedAt : item.updatedAt,
+      })),
+    );
     notifySuccess(`${connection.label} is now the active wallet connection.`);
-    await refreshConnections();
   } catch (error: unknown) {
     notifyError(error);
   } finally {
-    loading.value = false;
+    activatingConnectionId.value = null;
   }
 }
 
@@ -549,7 +556,8 @@ onMounted(() => {
                     dense
                     no-caps
                     label="Make active"
-                    :loading="loading"
+                    :loading="activatingConnectionId === connection.id"
+                    :disable="activatingConnectionId !== null"
                     @click="makeActive(connection)"
                   />
                   <q-btn dense outline no-caps label="Info" :loading="testingConnectionId === connection.id" @click="testInfo(connection)" />
