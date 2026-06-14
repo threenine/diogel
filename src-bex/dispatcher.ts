@@ -27,6 +27,7 @@ import { handleRelayBrowserList, handleRelayBrowserGetStatus, handleRelayBrowser
 import {
   handleNip47ConnectionImport,
   handleNip47ConnectionRemove,
+  handleNip47ConnectionSetActive,
   handleNip47ConnectionsList,
   handleNip47GetBalance,
   handleNip47GetInfo,
@@ -248,6 +249,18 @@ export async function dispatchMessage<K extends BridgeAction>(
         const result = await handleNip47ConnectionRemove(payload as BridgeRequestMap['nip47.connections.remove']);
         if (result.success) {
           return true as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'nip47.connections.setActive': {
+      try {
+        const result = await handleNip47ConnectionSetActive(payload as BridgeRequestMap['nip47.connections.setActive']);
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
         }
         return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
       } catch (error: unknown) {

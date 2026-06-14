@@ -50,11 +50,19 @@ export async function sendBexMessage<T extends BridgeAction>(
 
   if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
     logService.log(LogLevel.DEBUG, `[VaultService] Using direct chrome.runtime.sendMessage for ${type}`);
-    return new Promise((resolve) => {
-      chrome.runtime.sendMessage({ type, payload }, (response) => {
-        resolve(response as BridgeResponsePayload<T>);
-      });
-    });
+    return await Promise.race([
+      new Promise<BridgeResponsePayload<T> | undefined>((resolve, reject) => {
+        chrome.runtime.sendMessage({ type, payload }, (response) => {
+          const runtimeError = chrome.runtime.lastError;
+          if (runtimeError) {
+            reject(new Error(runtimeError.message));
+            return;
+          }
+          resolve(response as BridgeResponsePayload<T> | undefined);
+        });
+      }),
+      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Direct background timeout for ${type}`)), 5000)),
+    ]);
   }
 
   throw new Error('No communication channel available (bridge or chrome.runtime)');

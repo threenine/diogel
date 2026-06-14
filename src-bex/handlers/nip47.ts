@@ -18,6 +18,7 @@ import {
   findNip47Connection,
   listNip47Connections,
   removeNip47Connection,
+  setActiveNip47Connection,
   summarizeNip47Connection,
   upsertNip47Connection,
 } from '../services/nip47-connection-store';
@@ -26,6 +27,7 @@ import {
   appendNip47PaymentHistory,
   listNip47PaymentHistory,
 } from '../services/nip47-payment-history-store';
+import { parseBolt11AmountMsat, previewInvoice } from 'src/services/nip47-invoice';
 
 async function requireUnlockedVaultData(): Promise<VaultData> {
   const result = await getVaultData();
@@ -42,29 +44,28 @@ async function saveVaultData(vaultData: VaultData): Promise<void> {
   }
 }
 
-function previewInvoice(invoice: string): string {
-  const normalized = invoice.trim();
-  if (normalized.length <= 42) return normalized;
-  return `${normalized.slice(0, 24)}…${normalized.slice(-12)}`;
+let nip47VaultMutationQueue: Promise<void> = Promise.resolve();
+
+async function waitForNip47VaultMutations(): Promise<void> {
+  await nip47VaultMutationQueue;
 }
 
-function parseInvoiceAmountMsat(invoice: string): number | undefined {
-  const normalized = invoice.trim().toLowerCase();
-  const match = /^ln(?:bc|tb|bcrt)(\d+[munp]?)?1/.exec(normalized);
-  const amount = match?.[1];
-  if (!amount) return undefined;
+async function mutateNip47Vault<T>(
+  mutator: (vaultData: VaultData) => { vaultData: VaultData; data: T } | Promise<{ vaultData: VaultData; data: T }>,
+): Promise<T> {
+  const runMutation = async (): Promise<T> => {
+    const vaultData = await requireUnlockedVaultData();
+    const result = await mutator(vaultData);
+    await saveVaultData(result.vaultData);
+    return result.data;
+  };
 
-  const suffix = amount.at(-1);
-  const hasSuffix = suffix === 'm' || suffix === 'u' || suffix === 'n' || suffix === 'p';
-  const numericPart = hasSuffix ? amount.slice(0, -1) : amount;
-  const value = Number(numericPart);
-  if (!Number.isFinite(value)) return undefined;
-
-  if (suffix === 'm') return Math.round(value * 100_000_000);
-  if (suffix === 'u') return Math.round(value * 100_000);
-  if (suffix === 'n') return Math.round(value * 100);
-  if (suffix === 'p') return Math.round(value * 0.1);
-  return Math.round(value * 100_000_000_000);
+  const mutation = nip47VaultMutationQueue.then(runMutation, runMutation);
+  nip47VaultMutationQueue = mutation.then(
+    () => undefined,
+    () => undefined,
+  );
+  return mutation;
 }
 
 function buildPaymentHistoryEntry(params: {
@@ -75,7 +76,7 @@ function buildPaymentHistoryEntry(params: {
   feesPaidMsat?: number;
   error?: string;
 }): Nip47PaymentHistoryEntry {
-  const amountMsat = parseInvoiceAmountMsat(params.invoice);
+  const amountMsat = parseBolt11AmountMsat(params.invoice);
   return {
     id: crypto.randomUUID(),
     connectionId: params.connection.id,
@@ -91,6 +92,7 @@ function buildPaymentHistoryEntry(params: {
 }
 
 export async function handleNip47ConnectionsList(): Promise<HandlerResult<Nip47ConnectionSummary[]>> {
+  await waitForNip47VaultMutations();
   const vaultData = await requireUnlockedVaultData();
   return {
     success: true,
@@ -101,36 +103,63 @@ export async function handleNip47ConnectionsList(): Promise<HandlerResult<Nip47C
 export async function handleNip47ConnectionImport(
   payload: ImportNip47ConnectionRequest,
 ): Promise<HandlerResult<Nip47ConnectionSummary>> {
-  const vaultData = await requireUnlockedVaultData();
   const parsed = parseNwcUri(payload.uri);
   const clientPubkey = getPublicKey(hexToBytes(parsed.clientSecret));
   const id = buildNip47ConnectionId(parsed.walletServicePubkey, clientPubkey);
-  const now = new Date().toISOString();
-  const existing = findNip47Connection(vaultData, id);
-  const connection: Nip47Connection = {
-    id,
-    label: payload.label?.trim() || existing?.label || parsed.lud16 || 'Nostr Wallet Connect',
-    walletServicePubkey: parsed.walletServicePubkey,
-    clientSecret: parsed.clientSecret,
-    clientPubkey,
-    relays: parsed.relays,
-    ...(parsed.lud16 ? { lud16: parsed.lud16 } : existing?.lud16 ? { lud16: existing.lud16 } : {}),
-    capabilities: existing?.capabilities ?? [],
-    createdAt: existing?.createdAt ?? now,
-    updatedAt: now,
-    isActive: existing?.isActive ?? true,
-  };
 
-  await saveVaultData(upsertNip47Connection(vaultData, connection));
+  const connection = await mutateNip47Vault((vaultData) => {
+    const now = new Date().toISOString();
+    const existing = findNip47Connection(vaultData, id);
+    const nextConnection: Nip47Connection = {
+      id,
+      label: payload.label?.trim() || existing?.label || parsed.lud16 || 'Nostr Wallet Connect',
+      walletServicePubkey: parsed.walletServicePubkey,
+      clientSecret: parsed.clientSecret,
+      clientPubkey,
+      relays: parsed.relays,
+      ...(parsed.lud16 ? { lud16: parsed.lud16 } : existing?.lud16 ? { lud16: existing.lud16 } : {}),
+      capabilities: existing?.capabilities ?? [],
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+      isActive: existing?.isActive ?? true,
+    };
+
+    return {
+      vaultData: upsertNip47Connection(vaultData, nextConnection),
+      data: nextConnection,
+    };
+  });
+
   return { success: true, data: summarizeNip47Connection(connection) };
 }
 
 export async function handleNip47ConnectionRemove(
   payload: { connectionId: string },
 ): Promise<HandlerResult<boolean>> {
-  const vaultData = await requireUnlockedVaultData();
-  await saveVaultData(removeNip47Connection(vaultData, payload.connectionId));
+  await mutateNip47Vault((vaultData) => ({
+    vaultData: removeNip47Connection(vaultData, payload.connectionId),
+    data: true,
+  }));
   return { success: true, data: true };
+}
+
+export async function handleNip47ConnectionSetActive(
+  payload: { connectionId: string },
+): Promise<HandlerResult<Nip47ConnectionSummary>> {
+  const activeConnection = await mutateNip47Vault((vaultData) => {
+    const updatedVaultData = setActiveNip47Connection(vaultData, payload.connectionId);
+    const connection = findNip47Connection(updatedVaultData, payload.connectionId);
+    if (!connection) {
+      throw new Error('NIP-47 connection not found');
+    }
+
+    return {
+      vaultData: updatedVaultData,
+      data: connection,
+    };
+  });
+
+  return { success: true, data: summarizeNip47Connection(activeConnection) };
 }
 
 export async function handleNip47GetInfo(payload: { connectionId: string }): Promise<HandlerResult<Nip47InfoResponse>> {
@@ -141,17 +170,26 @@ export async function handleNip47GetInfo(payload: { connectionId: string }): Pro
   }
 
   const info = await nip47Client.getInfo(connection);
-  const updatedConnection: Nip47Connection = {
-    ...connection,
-    capabilities: info.capabilities,
-    lastInfoCheckedAt: info.checkedAt,
-    updatedAt: new Date().toISOString(),
-  };
-  await saveVaultData(upsertNip47Connection(vaultData, updatedConnection));
+
+  await mutateNip47Vault((latestVaultData) => {
+    const latestConnection = findNip47Connection(latestVaultData, payload.connectionId) ?? connection;
+    const updatedConnection: Nip47Connection = {
+      ...latestConnection,
+      capabilities: info.capabilities,
+      lastInfoCheckedAt: info.checkedAt,
+      updatedAt: new Date().toISOString(),
+    };
+
+    return {
+      vaultData: upsertNip47Connection(latestVaultData, updatedConnection),
+      data: true,
+    };
+  });
   return { success: true, data: info };
 }
 
 export async function handleNip47GetBalance(payload: { connectionId: string }): Promise<HandlerResult<Nip47BalanceResponse>> {
+  await waitForNip47VaultMutations();
   const vaultData = await requireUnlockedVaultData();
   const connection = findNip47Connection(vaultData, payload.connectionId);
   if (!connection) {
@@ -171,6 +209,13 @@ export async function handleNip47PayInvoice(
     throw new Error('NIP-47 connection not found');
   }
 
+  // Defense-in-depth: the UI only offers payment when the wallet has advertised
+  // pay_invoice support, but enforce it here too in case this handler is ever
+  // invoked directly.
+  if (connection.capabilities.length > 0 && !connection.capabilities.includes('pay_invoice')) {
+    throw new Error('This wallet connection does not advertise pay_invoice support.');
+  }
+
   const invoice = payload.invoice.trim();
   if (!invoice) {
     throw new Error('Lightning invoice is required');
@@ -178,9 +223,9 @@ export async function handleNip47PayInvoice(
 
   try {
     const payment = await nip47Client.payInvoice(connection, invoice);
-    await saveVaultData(
-      appendNip47PaymentHistory(
-        vaultData,
+    await mutateNip47Vault((latestVaultData) => ({
+      vaultData: appendNip47PaymentHistory(
+        latestVaultData,
         buildPaymentHistoryEntry({
           connection,
           invoice,
@@ -189,13 +234,14 @@ export async function handleNip47PayInvoice(
           ...(payment.feesPaidMsat !== undefined ? { feesPaidMsat: payment.feesPaidMsat } : {}),
         }),
       ),
-    );
+      data: true,
+    }));
     return { success: true, data: payment };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    await saveVaultData(
-      appendNip47PaymentHistory(
-        vaultData,
+    await mutateNip47Vault((latestVaultData) => ({
+      vaultData: appendNip47PaymentHistory(
+        latestVaultData,
         buildPaymentHistoryEntry({
           connection,
           invoice,
@@ -203,12 +249,14 @@ export async function handleNip47PayInvoice(
           error: message,
         }),
       ),
-    );
+      data: true,
+    }));
     throw error;
   }
 }
 
 export async function handleNip47PaymentHistoryList(): Promise<HandlerResult<Nip47PaymentHistoryEntry[]>> {
+  await waitForNip47VaultMutations();
   const vaultData = await requireUnlockedVaultData();
   return {
     success: true,

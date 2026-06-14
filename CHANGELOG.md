@@ -2,7 +2,7 @@
 
 ## v0.0.27
 
-[compare changes](https://github.com/threenine/diogel/compare/v0.0.26...v0.0.27)
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.27...v0.0.27)
 
 ## v0.0.26
 

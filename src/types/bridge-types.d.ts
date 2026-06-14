@@ -93,6 +93,7 @@ export type BridgeAction =
   | 'nip47.connections.list'
   | 'nip47.connections.import'
   | 'nip47.connections.remove'
+  | 'nip47.connections.setActive'
   | 'nip47.getInfo'
   | 'nip47.getBalance'
   | 'nip47.payInvoice'
@@ -256,6 +257,11 @@ export interface BridgeRequestMap {
     action: 'nip47.connections.remove';
     connectionId: string;
   };
+  'nip47.connections.setActive': {
+    id: string;
+    action: 'nip47.connections.setActive';
+    connectionId: string;
+  };
   'nip47.getInfo': {
     id: string;
     action: 'nip47.getInfo';
@@ -305,6 +311,7 @@ export interface BridgeResponseMap {
   'nip47.connections.list': Nip47ConnectionSummary[];
   'nip47.connections.import': Nip47ConnectionSummary | { success: false; error: string };
   'nip47.connections.remove': boolean | { success: false; error: string };
+  'nip47.connections.setActive': Nip47ConnectionSummary | { success: false; error: string };
   'nip47.getInfo': Nip47InfoResponse | { success: false; error: string };
   'nip47.getBalance': Nip47BalanceResponse | { success: false; error: string };
   'nip47.payInvoice': Nip47PayInvoiceResponse | { success: false; error: string };
