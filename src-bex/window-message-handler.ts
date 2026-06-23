@@ -12,15 +12,19 @@ type LogContext = Record<string, unknown>;
 // Methods the injected window.nostr provider is permitted to invoke from page context.
 // Anything outside this set (e.g. internal bridge events such as
 // 'approval.respond') must never be reachable via postMessage from the page.
-const ALLOWED_PAGE_METHODS = new Set<string>([
-  'getPublicKey',
-  'signEvent',
-  'getRelays',
-  'nip04.encrypt',
-  'nip04.decrypt',
-  'nip44.encrypt',
-  'nip44.decrypt',
-]);
+const PAGE_METHOD_TO_BRIDGE_ACTION = {
+  getPublicKey: 'nostr.getPublicKey',
+  signEvent: 'nostr.signEvent',
+  getRelays: 'nostr.getRelays',
+  'nip04.encrypt': 'nostr.nip04.encrypt',
+  'nip04.decrypt': 'nostr.nip04.decrypt',
+  'nip44.encrypt': 'nostr.nip44.encrypt',
+  'nip44.decrypt': 'nostr.nip44.decrypt',
+  'diogel.getZapCapabilities': 'nip57.getCapabilities',
+  'diogel.sendZap': 'nip57.sendZap',
+} as const satisfies Record<string, BridgeAction>;
+
+const ALLOWED_PAGE_METHODS = new Set<string>(Object.keys(PAGE_METHOD_TO_BRIDGE_ACTION));
 
 export interface WindowMessageBridge {
   isConnected: boolean;
@@ -105,7 +109,7 @@ export async function handleDiogelWindowMessage(
   }
 
   try {
-    const methodAction = `nostr.${method}` as BridgeAction;
+    const methodAction = PAGE_METHOD_TO_BRIDGE_ACTION[method as keyof typeof PAGE_METHOD_TO_BRIDGE_ACTION];
     const bridgePayload = {
       ...(payload ?? {}),
       origin: pageOrigin,
