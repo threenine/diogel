@@ -20,6 +20,53 @@ const normalizeErrorMessage = (error) => {
   return String(error);
 };
 
+const callDiogelBridge = (type, payload) => {
+  if (DEBUG) console.log('[BEX] Provider calling:', type, payload);
+  const id = Math.random().toString(36).substring(2);
+  try {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        window.removeEventListener('message', handler);
+        console.error(`[BEX] Request timed out for ID ${id}: ${type}`);
+        reject(new Error(`Request timed out: ${type}`));
+      }, 30000); // 30 second timeout
+
+      const handler = (event) => {
+        if (
+          event.source === window &&
+          isSameWindowOrigin(event) &&
+          event.data &&
+          event.data.id === id &&
+          event.data.response
+        ) {
+          if (DEBUG) console.log(`[BEX] Provider received response for ID ${id}:`, event.data);
+          clearTimeout(timeout);
+          window.removeEventListener('message', handler);
+          if (event.data.error) {
+            reject(new Error(normalizeErrorMessage(event.data.error)));
+          } else {
+            resolve(event.data.result);
+          }
+        }
+      };
+      window.addEventListener('message', handler);
+      if (DEBUG) console.log(`[BEX] Provider posting message for ID ${id}:`, type);
+      window.postMessage(
+        {
+          id,
+          type: 'diogel-request',
+          method: type,
+          payload,
+        },
+        getCurrentWindowOrigin(),
+      );
+    });
+  } catch (e) {
+    console.error(`[BEX] Error in provider call for ID ${id}:`, e);
+    throw e;
+  }
+};
+
 const nostr = {
   name: 'Diogel',
   getPublicKey: async () => {
@@ -57,52 +104,7 @@ const nostr = {
   },
 
   // Internal call helper
-  call: (type, payload) => {
-    if (DEBUG) console.log('[BEX] Provider calling:', type, payload);
-    const id = Math.random().toString(36).substring(2);
-    try {
-      return new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          window.removeEventListener('message', handler);
-          console.error(`[BEX] Request timed out for ID ${id}: ${type}`);
-          reject(new Error(`Request timed out: ${type}`));
-        }, 30000); // 30 second timeout
-
-        const handler = (event) => {
-          if (
-            event.source === window &&
-            isSameWindowOrigin(event) &&
-            event.data &&
-            event.data.id === id &&
-            event.data.response
-          ) {
-            if (DEBUG) console.log(`[BEX] Provider received response for ID ${id}:`, event.data);
-            clearTimeout(timeout);
-            window.removeEventListener('message', handler);
-            if (event.data.error) {
-              reject(new Error(normalizeErrorMessage(event.data.error)));
-            } else {
-              resolve(event.data.result);
-            }
-          }
-        };
-        window.addEventListener('message', handler);
-        if (DEBUG) console.log(`[BEX] Provider posting message for ID ${id}:`, type);
-        window.postMessage(
-          {
-            id,
-            type: 'diogel-request',
-            method: type,
-            payload,
-          },
-          getCurrentWindowOrigin(),
-        );
-      });
-    } catch (e) {
-      console.error(`[BEX] Error in nostr.call for ID ${id}:`, e);
-      throw e;
-    }
-  },
+  call: callDiogelBridge,
 
   // Ping method to verify communication
   ping: () => {
@@ -134,8 +136,20 @@ const nostr = {
   },
 };
 
+const webln = {
+  enable: async () => callDiogelBridge('webln.enable', {}),
+  getInfo: async () => callDiogelBridge('webln.getInfo', {}),
+  sendPayment: async (paymentRequest) => callDiogelBridge('webln.sendPayment', { paymentRequest }),
+};
+
 window.nostr = nostr;
+if (!window.webln) {
+  window.webln = webln;
+} else {
+  window.diogelWebln = webln;
+}
 window.dispatchEvent(new CustomEvent('nostr-provider-ready'));
+window.dispatchEvent(new CustomEvent('webln:provider-ready'));
 if (DEBUG) console.log('[BEX] Nostr provider ready and events dispatched');
 window.dispatchEvent(
   new CustomEvent('nostr:registration', {

@@ -22,6 +22,9 @@ const PAGE_METHOD_TO_BRIDGE_ACTION = {
   'nip44.decrypt': 'nostr.nip44.decrypt',
   'diogel.getZapCapabilities': 'nip57.getCapabilities',
   'diogel.sendZap': 'nip57.sendZap',
+  'webln.enable': 'webln.enable',
+  'webln.getInfo': 'webln.getInfo',
+  'webln.sendPayment': 'webln.sendPayment',
 } as const satisfies Record<string, BridgeAction>;
 
 const ALLOWED_PAGE_METHODS = new Set<string>(Object.keys(PAGE_METHOD_TO_BRIDGE_ACTION));

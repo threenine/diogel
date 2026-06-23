@@ -27,6 +27,8 @@ const requestTypeLabels: Record<string, string> = {
   nip44_encrypt: 'NIP-44 encryption request',
   nip44_decrypt: 'NIP-44 decryption request',
   send_zap: 'Lightning zap payment request',
+  webln_enable: 'WebLN wallet access request',
+  webln_send_payment: 'WebLN payment request',
 };
 
 const nostrKindLabels: Record<number, string> = {

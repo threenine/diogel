@@ -16,6 +16,14 @@ import type {
   SendZapResult,
   ZapCapabilities,
 } from './nip57';
+import type {
+  WebLnEnableRequest,
+  WebLnGetInfoRequest,
+  WebLnGetInfoResponse,
+  WebLnPermissionGrant,
+  WebLnSendPaymentRequest,
+  WebLnSendPaymentResponse,
+} from './webln';
 
 /**
  * Common types shared between UI and Background/Content Script
@@ -68,6 +76,7 @@ export interface VaultData {
   nip47Connections?: Nip47Connection[];
   nip47PaymentHistory?: Nip47PaymentHistoryEntry[];
   nip57ZapHistory?: Nip57ZapHistoryEntry[];
+  webLnPermissions?: WebLnPermissionGrant[];
 }
 
 // Bridge action types
@@ -107,7 +116,10 @@ export type BridgeAction =
   | 'nip47.payments.list'
   | 'nip57.getCapabilities'
   | 'nip57.sendZap'
-  | 'nip57.zaps.list';
+  | 'nip57.zaps.list'
+  | 'webln.enable'
+  | 'webln.getInfo'
+  | 'webln.sendPayment';
 
 // Request/Response mapping
 export interface BridgeRequestMap {
@@ -306,6 +318,18 @@ export interface BridgeRequestMap {
     id: string;
     action: 'nip57.zaps.list';
   };
+  'webln.enable': {
+    id: string;
+    action: 'webln.enable';
+  } & WebLnEnableRequest;
+  'webln.getInfo': {
+    id: string;
+    action: 'webln.getInfo';
+  } & WebLnGetInfoRequest;
+  'webln.sendPayment': {
+    id: string;
+    action: 'webln.sendPayment';
+  } & WebLnSendPaymentRequest;
 }
 
 export interface BridgeResponseMap {
@@ -345,6 +369,9 @@ export interface BridgeResponseMap {
   'nip57.getCapabilities': ZapCapabilities | { success: false; error: string };
   'nip57.sendZap': SendZapResult | { success: false; error: string };
   'nip57.zaps.list': Nip57ZapHistoryEntry[] | { success: false; error: string };
+  'webln.enable': true | { success: false; error: string; code?: string };
+  'webln.getInfo': WebLnGetInfoResponse | { success: false; error: string; code?: string };
+  'webln.sendPayment': WebLnSendPaymentResponse | { success: false; error: string; code?: string };
 }
 
 export type BridgeRequest<K extends BridgeAction> = BridgeRequestMap[K];
