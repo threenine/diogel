@@ -552,9 +552,15 @@ async function requestApproval(
   try {
     const win = await chrome.windows.create({ url, type: 'popup', width: 450, height: 700, focused: true });
     if (win?.id === undefined) {
-      throw new Error('Failed to open approval window');
+      const error = new Error('Failed to open approval window');
+      const pendingApproval = getApprovalPromise();
+      if (pendingApproval) {
+        pendingApproval.reject(error);
+        approvalPromise = null;
+      }
+    } else {
+      windowId = win.id;
     }
-    windowId = win.id;
   } catch (error: unknown) {
     const pendingApproval = getApprovalPromise();
     if (pendingApproval) {
@@ -739,13 +745,13 @@ bridge.on('nip57.sendZap', ({ payload }) => (
         recipientPubkey: payload.request.target.recipientPubkey,
         error: 'User rejected the zap payment',
         code: 'USER_REJECTED',
-      } as BridgeResponsePayload<'nip57.sendZap'>;
+      };
     }
     return await dispatchMessage(
       'nip57.sendZap',
       createBridgeRequest('nip57.sendZap', { origin: payload.origin, request: payload.request, approved: true }),
       payload.origin,
-    ) as BridgeResponsePayload<'nip57.sendZap'>;
+    );
   })() as unknown as BridgeResponsePayload<'nip57.sendZap'>
 ));
 
@@ -769,7 +775,7 @@ bridge.on('webln.enable', ({ payload }) => (
       'webln.enable',
       createBridgeRequest('webln.enable', { origin: payload.origin, approved: true }),
       payload.origin,
-    ) as BridgeResponsePayload<'webln.enable'>;
+    );
   })() as unknown as BridgeResponsePayload<'webln.enable'>
 ));
 
@@ -804,6 +810,6 @@ bridge.on('webln.sendPayment', ({ payload }) => (
         approved: true,
       }),
       payload.origin,
-    ) as BridgeResponsePayload<'webln.sendPayment'>;
+    );
   })() as unknown as BridgeResponsePayload<'webln.sendPayment'>
 ));
