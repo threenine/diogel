@@ -32,6 +32,8 @@ import type {
   BridgeError,
   StoredKey,
 } from 'src/types/bridge';
+import type { SendZapRequest } from 'src/types/nip57';
+import type { WebLnSendPaymentRequest } from 'src/types/webln';
 import {
   handleVaultIsUnlocked,
   handleVaultGetData,
@@ -46,6 +48,7 @@ import {
   handleSignEvent,
 } from './handlers/nip07';
 import { loadSeedRelays } from 'src/services/relay-catalog';
+import { parseBolt11AmountMsat, previewInvoice } from 'src/services/nip47-invoice';
 import { dispatchMessage } from './dispatcher';
 import { createBridgeRequest } from 'src/types/bridge';
 
@@ -155,6 +158,15 @@ declare module '@quasar/app-vite' {
       BridgeResponsePayload<'nip47.payInvoice'>,
     ];
     'nip47.payments.list': [undefined, BridgeResponsePayload<'nip47.payments.list'>];
+    'nip57.getCapabilities': [{ origin: string }, BridgeResponsePayload<'nip57.getCapabilities'>];
+    'nip57.sendZap': [
+      { origin: string; request: SendZapRequest; approved?: boolean },
+      BridgeResponsePayload<'nip57.sendZap'>,
+    ];
+    'nip57.zaps.list': [undefined, BridgeResponsePayload<'nip57.zaps.list'>];
+    'webln.enable': [{ origin: string; approved?: boolean }, BridgeResponsePayload<'webln.enable'>];
+    'webln.getInfo': [{ origin: string }, BridgeResponsePayload<'webln.getInfo'>];
+    'webln.sendPayment': [WebLnSendPaymentRequest, BridgeResponsePayload<'webln.sendPayment'>];
   }
 }
 
@@ -355,6 +367,11 @@ const ORIGIN_SCOPED_ACTIONS = new Set([
   'nostr.nip04.decrypt',
   'nostr.nip44.encrypt',
   'nostr.nip44.decrypt',
+  'nip57.getCapabilities',
+  'nip57.sendZap',
+  'webln.enable',
+  'webln.getInfo',
+  'webln.sendPayment',
 ]);
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -386,6 +403,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 interface ApprovalRequestDetails {
   requestType: string;
   contentDescription?: string;
+  allowRemember?: boolean;
+  skipPermissionCheck?: boolean;
 }
 
 const trimApprovalContentDescription = (content?: string): string | undefined => {
@@ -411,6 +430,10 @@ const buildApprovalUrl = (
     query.set('contentDescription', details.contentDescription);
   }
 
+  if (details.allowRemember === false) {
+    query.set('allowRemember', 'false');
+  }
+
   if (path === 'login') {
     query.set('redirect', '/approve');
   }
@@ -427,8 +450,10 @@ async function requestApproval(
   eventKind: number,
   details: ApprovalRequestDetails,
 ): Promise<boolean> {
-  const permission = await checkPermission(origin, eventKind);
-  if (permission.granted) return true;
+  if (!details.skipPermissionCheck) {
+    const permission = await checkPermission(origin, eventKind);
+    if (permission.granted) return true;
+  }
 
   const isUnlockedStatus = await handleVaultIsUnlocked({}, '');
   if (!isUnlockedStatus.success || !isUnlockedStatus.data) {
@@ -501,7 +526,7 @@ async function requestApproval(
       clearTimeout(timeout);
       chrome.windows.onRemoved.removeListener(onRemovedHandler);
       void (async () => {
-        if (val.approved && val.duration !== 'once') {
+        if (val.approved && val.duration !== 'once' && details.allowRemember !== false && !details.skipPermissionCheck) {
           try {
             if (val.duration === 'always' || val.duration === '8h') {
               await grantPermission(origin, eventKind, val.duration);
@@ -683,3 +708,102 @@ bridge.on('relay.browser.getStatus', () => {
 bridge.on('relay.browser.refresh', ({ payload }) => {
   return dispatchMessage('relay.browser.refresh', createBridgeRequest('relay.browser.refresh', payload), '') as unknown as BridgeResponsePayload<'relay.browser.refresh'>;
 });
+
+bridge.on('nip57.getCapabilities', ({ payload }) => {
+  void resetAutoLockTimer();
+  return dispatchMessage(
+    'nip57.getCapabilities',
+    createBridgeRequest('nip57.getCapabilities', { origin: payload.origin }),
+    payload.origin,
+  ) as unknown as BridgeResponsePayload<'nip57.getCapabilities'>;
+});
+
+bridge.on('nip57.sendZap', ({ payload }) => (
+  (async () => {
+    void resetAutoLockTimer();
+    const amountMsat = payload.request.amountMsat ?? (payload.request.amountSats !== undefined ? payload.request.amountSats * 1000 : 0);
+    const amountSatsLabel = amountMsat > 0 ? `${amountMsat / 1000} sats` : 'unknown amount';
+    const contentDescription = trimApprovalContentDescription(
+      `Zap ${amountSatsLabel} to ${payload.request.target.recipientPubkey}${payload.request.comment ? ` — ${payload.request.comment}` : ''}`,
+    );
+    const approved = await requestApproval(payload.origin, 9734, {
+      requestType: 'send_zap',
+      ...(contentDescription ? { contentDescription } : {}),
+      allowRemember: false,
+      skipPermissionCheck: true,
+    });
+    if (!approved) {
+      return {
+        status: 'cancelled',
+        amountMsat,
+        recipientPubkey: payload.request.target.recipientPubkey,
+        error: 'User rejected the zap payment',
+        code: 'USER_REJECTED',
+      } as BridgeResponsePayload<'nip57.sendZap'>;
+    }
+    return await dispatchMessage(
+      'nip57.sendZap',
+      createBridgeRequest('nip57.sendZap', { origin: payload.origin, request: payload.request, approved: true }),
+      payload.origin,
+    ) as BridgeResponsePayload<'nip57.sendZap'>;
+  })() as unknown as BridgeResponsePayload<'nip57.sendZap'>
+));
+
+bridge.on('nip57.zaps.list', () => {
+  return dispatchMessage('nip57.zaps.list', createBridgeRequest('nip57.zaps.list', {}), '') as unknown as BridgeResponsePayload<'nip57.zaps.list'>;
+});
+
+bridge.on('webln.enable', ({ payload }) => (
+  (async () => {
+    void resetAutoLockTimer();
+    const approved = await requestApproval(payload.origin, -1, {
+      requestType: 'webln_enable',
+      contentDescription: 'Allow this site to use Diogel as a WebLN wallet provider. Payments will still require separate approval.',
+      allowRemember: true,
+      skipPermissionCheck: true,
+    });
+    if (!approved) {
+      throw new BackgroundBridgeError('PERMISSION_DENIED', 'User rejected WebLN access');
+    }
+    return await dispatchMessage(
+      'webln.enable',
+      createBridgeRequest('webln.enable', { origin: payload.origin, approved: true }),
+      payload.origin,
+    ) as BridgeResponsePayload<'webln.enable'>;
+  })() as unknown as BridgeResponsePayload<'webln.enable'>
+));
+
+bridge.on('webln.getInfo', ({ payload }) => {
+  void resetAutoLockTimer();
+  return dispatchMessage(
+    'webln.getInfo',
+    createBridgeRequest('webln.getInfo', { origin: payload.origin }),
+    payload.origin,
+  ) as unknown as BridgeResponsePayload<'webln.getInfo'>;
+});
+
+bridge.on('webln.sendPayment', ({ payload }) => (
+  (async () => {
+    void resetAutoLockTimer();
+    const amountMsat = parseBolt11AmountMsat(payload.paymentRequest);
+    const amountDescription = amountMsat !== undefined ? `${amountMsat / 1000} sats` : 'unknown amount';
+    const approved = await requestApproval(payload.origin, -1, {
+      requestType: 'webln_send_payment',
+      contentDescription: `Pay Lightning invoice for ${amountDescription}: ${previewInvoice(payload.paymentRequest)}`,
+      allowRemember: false,
+      skipPermissionCheck: true,
+    });
+    if (!approved) {
+      throw new BackgroundBridgeError('PERMISSION_DENIED', 'User rejected the WebLN payment');
+    }
+    return await dispatchMessage(
+      'webln.sendPayment',
+      createBridgeRequest('webln.sendPayment', {
+        origin: payload.origin,
+        paymentRequest: payload.paymentRequest,
+        approved: true,
+      }),
+      payload.origin,
+    ) as BridgeResponsePayload<'webln.sendPayment'>;
+  })() as unknown as BridgeResponsePayload<'webln.sendPayment'>
+));

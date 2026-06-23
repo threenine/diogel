@@ -34,6 +34,16 @@ import {
   handleNip47PayInvoice,
   handleNip47PaymentHistoryList,
 } from './handlers/nip47';
+import {
+  handleNip57GetCapabilities,
+  handleNip57SendZap,
+  handleNip57ZapHistoryList,
+} from './handlers/nip57';
+import {
+  handleWebLnEnable,
+  handleWebLnGetInfo,
+  handleWebLnSendPayment,
+} from './handlers/webln';
 
 /**
  * Dispatches messages to the appropriate handlers.
@@ -307,6 +317,78 @@ export async function dispatchMessage<K extends BridgeAction>(
     case 'nip47.payments.list': {
       try {
         const result = await handleNip47PaymentHistoryList();
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'nip57.getCapabilities': {
+      try {
+        const result = await handleNip57GetCapabilities();
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'nip57.sendZap': {
+      try {
+        const result = await handleNip57SendZap(payload as BridgeRequestMap['nip57.sendZap']);
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'nip57.zaps.list': {
+      try {
+        const result = await handleNip57ZapHistoryList();
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'webln.enable': {
+      try {
+        const result = await handleWebLnEnable(payload as BridgeRequestMap['webln.enable']);
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'webln.getInfo': {
+      try {
+        const result = await handleWebLnGetInfo(payload as BridgeRequestMap['webln.getInfo']);
+        if (result.success) {
+          return result.data as BridgeResponsePayload<K>;
+        }
+        return { success: false, error: result.error } as unknown as BridgeResponsePayload<K>;
+      } catch (error: unknown) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) } as unknown as BridgeResponsePayload<K>;
+      }
+    }
+
+    case 'webln.sendPayment': {
+      try {
+        const result = await handleWebLnSendPayment(payload as BridgeRequestMap['webln.sendPayment']);
         if (result.success) {
           return result.data as BridgeResponsePayload<K>;
         }

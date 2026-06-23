@@ -16,6 +16,7 @@ const rememberChoice = ref('once');
 const kindType = ref('Unknown request');
 const requestTypeLabel = ref('Signer request');
 const contentDescription = ref('');
+const allowRemember = ref(true);
 
 const requestTypeLabels: Record<string, string> = {
   get_public_key: 'Public key request',
@@ -25,6 +26,9 @@ const requestTypeLabels: Record<string, string> = {
   nip04_decrypt: 'NIP-04 decryption request',
   nip44_encrypt: 'NIP-44 encryption request',
   nip44_decrypt: 'NIP-44 decryption request',
+  send_zap: 'Lightning zap payment request',
+  webln_enable: 'WebLN wallet access request',
+  webln_send_payment: 'WebLN payment request',
 };
 
 const nostrKindLabels: Record<number, string> = {
@@ -76,6 +80,7 @@ onMounted(() => {
   requestTypeLabel.value = requestTypeLabels[requestType] ?? 'Signer request';
   kindType.value = getKindTypeLabel(getQueryString(route.query.kind));
   contentDescription.value = getQueryString(route.query.contentDescription) ?? '';
+  allowRemember.value = getQueryString(route.query.allowRemember) !== 'false';
 
   logService.log(LogLevel.DEBUG, 'SignerApproval mounted, origin:', { origin: origin.value });
 
@@ -178,7 +183,7 @@ async function reject() {
           </div>
         </div>
 
-        <div class="q-mt-lg q-px-sm">
+        <div v-if="allowRemember" class="q-mt-lg q-px-sm">
           <div class="text-caption text-grey-7 q-mb-sm">
             {{ t('approval.remember.label') }}
           </div>
@@ -192,6 +197,9 @@ async function reject() {
             options-dense
           />
         </div>
+        <q-banner v-else dense rounded class="q-mt-lg bg-orange-1 text-orange-10">
+          Payment requests are always one-time approvals. This site will not be granted automatic spending permission.
+        </q-banner>
       </q-card-section>
 
       <q-card-actions align="right" class="q-pb-md q-pr-md">

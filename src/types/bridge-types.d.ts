@@ -10,6 +10,20 @@ import type {
   Nip47PayInvoiceResponse,
   Nip47PaymentHistoryEntry,
 } from './nip47';
+import type {
+  Nip57ZapHistoryEntry,
+  SendZapRequest,
+  SendZapResult,
+  ZapCapabilities,
+} from './nip57';
+import type {
+  WebLnEnableRequest,
+  WebLnGetInfoRequest,
+  WebLnGetInfoResponse,
+  WebLnPermissionGrant,
+  WebLnSendPaymentRequest,
+  WebLnSendPaymentResponse,
+} from './webln';
 
 /**
  * Common types shared between UI and Background/Content Script
@@ -61,6 +75,8 @@ export interface VaultData {
   createdAt?: string;
   nip47Connections?: Nip47Connection[];
   nip47PaymentHistory?: Nip47PaymentHistoryEntry[];
+  nip57ZapHistory?: Nip57ZapHistoryEntry[];
+  webLnPermissions?: WebLnPermissionGrant[];
 }
 
 // Bridge action types
@@ -97,7 +113,13 @@ export type BridgeAction =
   | 'nip47.getInfo'
   | 'nip47.getBalance'
   | 'nip47.payInvoice'
-  | 'nip47.payments.list';
+  | 'nip47.payments.list'
+  | 'nip57.getCapabilities'
+  | 'nip57.sendZap'
+  | 'nip57.zaps.list'
+  | 'webln.enable'
+  | 'webln.getInfo'
+  | 'webln.sendPayment';
 
 // Request/Response mapping
 export interface BridgeRequestMap {
@@ -280,6 +302,34 @@ export interface BridgeRequestMap {
     id: string;
     action: 'nip47.payments.list';
   };
+  'nip57.getCapabilities': {
+    id: string;
+    action: 'nip57.getCapabilities';
+    origin: string;
+  };
+  'nip57.sendZap': {
+    id: string;
+    action: 'nip57.sendZap';
+    origin: string;
+    request: SendZapRequest;
+    approved?: boolean;
+  };
+  'nip57.zaps.list': {
+    id: string;
+    action: 'nip57.zaps.list';
+  };
+  'webln.enable': {
+    id: string;
+    action: 'webln.enable';
+  } & WebLnEnableRequest;
+  'webln.getInfo': {
+    id: string;
+    action: 'webln.getInfo';
+  } & WebLnGetInfoRequest;
+  'webln.sendPayment': {
+    id: string;
+    action: 'webln.sendPayment';
+  } & WebLnSendPaymentRequest;
 }
 
 export interface BridgeResponseMap {
@@ -316,6 +366,12 @@ export interface BridgeResponseMap {
   'nip47.getBalance': Nip47BalanceResponse | { success: false; error: string };
   'nip47.payInvoice': Nip47PayInvoiceResponse | { success: false; error: string };
   'nip47.payments.list': Nip47PaymentHistoryEntry[] | { success: false; error: string };
+  'nip57.getCapabilities': ZapCapabilities | { success: false; error: string };
+  'nip57.sendZap': SendZapResult | { success: false; error: string };
+  'nip57.zaps.list': Nip57ZapHistoryEntry[] | { success: false; error: string };
+  'webln.enable': true | { success: false; error: string; code?: string };
+  'webln.getInfo': WebLnGetInfoResponse | { success: false; error: string; code?: string };
+  'webln.sendPayment': WebLnSendPaymentResponse | { success: false; error: string; code?: string };
 }
 
 export type BridgeRequest<K extends BridgeAction> = BridgeRequestMap[K];
