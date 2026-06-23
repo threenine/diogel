@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.0.30
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.29...v0.0.30)
+
+### 🏡 Chore
+
+- Remove redundant type assertions in bridge responses for cleaner and consistent handler code ([56f839f](https://github.com/threenine/diogel/commit/56f839f))
+
+### ❤️ Contributors
+
+- Gary Woodfine <lnb0l9dc@duck.com>
+
 ## v0.0.29
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.28...v0.0.29)
