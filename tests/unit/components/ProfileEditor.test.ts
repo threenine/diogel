@@ -216,6 +216,33 @@ describe('ProfileEditor.vue', () => {
     expect(statusBlock.text()).toContain('profile.nip05StatusVerifiedTitle');
   });
 
+  it('discards stale verification result when identifier changes before request resolves', async () => {
+    let resolveVerify!: (result: { status: string; identifier: string; domain: string; name: string }) => void;
+    verifyIdentifierMock.mockImplementation(
+      () => new Promise(resolve => { resolveVerify = resolve; }),
+    );
+
+    const wrapper = await mountEditor();
+    const nip05Input = wrapper.find('[data-testid="q-input"][data-label="profile.nip05"] input');
+
+    await nip05Input.setValue('alice@example.com');
+    await flushComponent();
+
+    await wrapper.find('[data-testid="q-btn"][data-label="profile.nip05VerifyIdentifier"]').trigger('click');
+    await flushComponent(); // request is in flight, not yet resolved
+
+    // Change identifier while request is still in flight
+    await nip05Input.setValue('bob@example.com');
+    await flushComponent();
+
+    // Resolve the stale request for alice
+    resolveVerify({ status: 'verified', identifier: 'alice@example.com', domain: 'example.com', name: 'alice' });
+    await flushPromises();
+
+    // Stale result must not be applied under bob's identifier
+    expect(wrapper.find('.profile-editor__nip05-status--success').exists()).toBe(false);
+  });
+
   it('renders failure inline status for pubkey-mismatch', async () => {
     verifyIdentifierMock.mockResolvedValue({
       status: 'pubkey-mismatch',

@@ -119,6 +119,7 @@ const saving = ref(false);
 const nip05Verifying = ref(false);
 const nip05Status = ref<Nip05VerificationStatus | null>(null);
 const nip05Result = ref<Nip05VerificationResult | null>(null);
+let nip05RequestId = 0;
 
 function getNip05VerificationMessage(status: Nip05VerificationStatus): string {
   switch (status) {
@@ -192,9 +193,12 @@ async function verifyNip05() {
     return;
   }
 
+  const requestId = ++nip05RequestId;
   nip05Verifying.value = true;
   try {
     const result = await nip05Service.verifyIdentifier(identifier, props.storedKey.id);
+    if (requestId !== nip05RequestId) return;
+
     nip05Status.value = result.status;
     nip05Result.value = result;
 
@@ -203,7 +207,9 @@ async function verifyNip05() {
       message: getNip05VerificationMessage(result.status),
     });
   } finally {
-    nip05Verifying.value = false;
+    if (requestId === nip05RequestId) {
+      nip05Verifying.value = false;
+    }
   }
 }
 
@@ -295,8 +301,10 @@ onMounted(() => {
 watch(
   () => props.storedKey.id,
   () => {
+    nip05RequestId++;
     nip05Status.value = null;
     nip05Result.value = null;
+    nip05Verifying.value = false;
     void fetchProfile();
   },
 );
@@ -304,8 +312,10 @@ watch(
 watch(
   () => profile.value.nip05,
   () => {
+    nip05RequestId++;
     nip05Status.value = null;
     nip05Result.value = null;
+    nip05Verifying.value = false;
   },
 );
 </script>
@@ -537,6 +547,7 @@ watch(
 
   .diogel-input {
     flex: 1;
+    min-width: 0;
   }
 }
 
@@ -606,6 +617,14 @@ watch(
 
   .profile-editor__birthday-grid {
     grid-template-columns: 1fr;
+  }
+
+  .profile-editor__nip05-control {
+    flex-direction: column;
+
+    .diogel-input {
+      width: 100%;
+    }
   }
 }
 </style>
