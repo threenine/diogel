@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import type { NostrProfile, StoredKey } from '../types';
 import { profileService } from '../services/profile-service';
-import { nip05Service, parseNip05Identifier, type Nip05VerificationStatus } from '../services/nip05-service';
+import { nip05Service, parseNip05Identifier, type Nip05VerificationResult, type Nip05VerificationStatus } from '../services/nip05-service';
 
 defineOptions({ name: 'ProfileEditor' });
 
@@ -118,10 +118,7 @@ const loading = ref(false);
 const saving = ref(false);
 const nip05Verifying = ref(false);
 const nip05Status = ref<Nip05VerificationStatus | null>(null);
-
-function canVerifyNip05Identifier(identifier: string): boolean {
-  return parseNip05Identifier(identifier) !== null;
-}
+const nip05Result = ref<Nip05VerificationResult | null>(null);
 
 function getNip05VerificationMessage(status: Nip05VerificationStatus): string {
   switch (status) {
@@ -142,18 +139,52 @@ function getNip05VerificationMessage(status: Nip05VerificationStatus): string {
   }
 }
 
-function isNip05VerifyDisabled(): boolean {
-  if (nip05Verifying.value) {
-    return true;
-  }
+const hasNip05Identifier = computed(() => Boolean(profile.value.nip05?.trim()));
 
-  return !canVerifyNip05Identifier(profile.value.nip05 ?? '');
+const parsedNip05 = computed(() => parseNip05Identifier(profile.value.nip05 ?? ''));
+
+function isNip05VerifyDisabled(): boolean {
+  if (nip05Verifying.value) return true;
+  return parsedNip05.value === null;
 }
+
+type Nip05Tone = 'neutral' | 'checking' | 'success' | 'failure';
+
+const nip05Tone = computed((): Nip05Tone => {
+  if (nip05Verifying.value) return 'checking';
+  if (!nip05Status.value) return 'neutral';
+  if (nip05Status.value === 'verified') return 'success';
+  return 'failure';
+});
+
+const nip05StatusTitle = computed((): string => {
+  switch (nip05Tone.value) {
+    case 'checking': return t('profile.nip05StatusVerifying');
+    case 'success': return t('profile.nip05StatusVerifiedTitle');
+    case 'failure': return t('profile.nip05StatusFailureTitle');
+    default: return t('profile.nip05StatusIdle');
+  }
+});
+
+const nip05StatusDescription = computed((): string => {
+  if (nip05Tone.value === 'success') {
+    return nip05Result.value?.domain
+      ? t('profile.nip05StatusVerifiedDescriptionDomain', { domain: nip05Result.value.domain })
+      : t('profile.nip05StatusVerifiedDescription');
+  }
+  if (nip05Tone.value === 'failure' && nip05Status.value) {
+    return getNip05VerificationMessage(nip05Status.value);
+  }
+  return '';
+});
+
+const nip05VerifyButtonLabel = computed(() => t('profile.nip05VerifyIdentifier'));
 
 async function verifyNip05() {
   const identifier = profile.value.nip05 ?? '';
-  if (!canVerifyNip05Identifier(identifier)) {
+  if (parseNip05Identifier(identifier) === null) {
     nip05Status.value = 'malformed';
+    nip05Result.value = null;
     $q.notify({
       type: 'negative',
       message: getNip05VerificationMessage('malformed'),
@@ -165,6 +196,7 @@ async function verifyNip05() {
   try {
     const result = await nip05Service.verifyIdentifier(identifier, props.storedKey.id);
     nip05Status.value = result.status;
+    nip05Result.value = result;
 
     $q.notify({
       type: result.status === 'verified' ? 'positive' : 'negative',
@@ -264,6 +296,7 @@ watch(
   () => props.storedKey.id,
   () => {
     nip05Status.value = null;
+    nip05Result.value = null;
     void fetchProfile();
   },
 );
@@ -272,6 +305,7 @@ watch(
   () => profile.value.nip05,
   () => {
     nip05Status.value = null;
+    nip05Result.value = null;
   },
 );
 </script>
@@ -306,28 +340,49 @@ watch(
         class="diogel-input profile-editor__field"
         hide-bottom-space
       />
-      <q-input
-        v-model="profile.nip05"
-        :label="t('profile.nip05')"
-        outlined
-        dense
-        class="diogel-input profile-editor__field"
-        hide-bottom-space
-      >
-        <template #append>
+      <section class="profile-editor__nip05-card profile-editor__field--full">
+        <div class="profile-editor__nip05-header">
+          <div>
+            <div class="profile-editor__nip05-title">{{ t('profile.nip05IdentityTitle') }}</div>
+            <p class="profile-editor__nip05-description">
+              {{ t('profile.nip05IdentityDescription') }}
+            </p>
+          </div>
+          <span class="profile-editor__nip05-badge">{{ t('profile.nip05Badge') }}</span>
+        </div>
+
+        <div class="profile-editor__nip05-control">
+          <q-input
+            v-model="profile.nip05"
+            :label="t('profile.nip05')"
+            outlined
+            dense
+            class="diogel-input"
+            hide-bottom-space
+          />
           <q-btn
-            :label="t('profile.nip05Verify')"
+            :label="nip05VerifyButtonLabel"
             :loading="nip05Verifying"
             :disable="isNip05VerifyDisabled()"
             color="primary"
-            flat
+            outline
             dense
             no-caps
-            class="profile-editor__nip05-verify"
             @click="verifyNip05"
           />
-        </template>
-      </q-input>
+        </div>
+
+        <div
+          v-if="hasNip05Identifier"
+          class="profile-editor__nip05-status"
+          :class="`profile-editor__nip05-status--${nip05Tone}`"
+        >
+          <div class="profile-editor__nip05-status-title">{{ nip05StatusTitle }}</div>
+          <div v-if="nip05StatusDescription" class="profile-editor__nip05-status-description">
+            {{ nip05StatusDescription }}
+          </div>
+        </div>
+      </section>
       <q-input
         v-model="profile.lud16"
         :label="t('profile.lud16')"
@@ -423,14 +478,125 @@ watch(
   margin-bottom: 8px;
 }
 
+.profile-editor__birthday {
+  display: flex;
+  flex-direction: column;
+}
+
 .profile-editor__birthday-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.profile-editor__nip05-verify {
-  white-space: nowrap;
+.profile-editor__nip05-card {
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  background: rgba(249, 115, 22, 0.05);
+}
+
+.profile-editor__nip05-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.profile-editor__nip05-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+  color: var(--text-color);
+  margin-bottom: 4px;
+}
+
+.profile-editor__nip05-description {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.profile-editor__nip05-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: #f97316;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.profile-editor__nip05-control {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+
+  .diogel-input {
+    flex: 1;
+  }
+}
+
+.profile-editor__nip05-status {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+}
+
+.profile-editor__nip05-status-title {
+  font-weight: 600;
+}
+
+.profile-editor__nip05-status-description {
+  margin-top: 2px;
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+// Light mode status tones
+.profile-editor__nip05-status--neutral {
+  background: rgba(100, 116, 139, 0.08);
+  color: #475569;
+}
+
+.profile-editor__nip05-status--checking {
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+}
+
+.profile-editor__nip05-status--success {
+  background: rgba(22, 163, 74, 0.08);
+  color: #15803d;
+}
+
+.profile-editor__nip05-status--failure {
+  background: rgba(220, 38, 38, 0.08);
+  color: #b91c1c;
+}
+
+// Dark mode status tones — lighter text on dark backgrounds
+:global(.body--dark) .profile-editor__nip05-status--neutral {
+  background: rgba(100, 116, 139, 0.15);
+  color: #94a3b8;
+}
+
+:global(.body--dark) .profile-editor__nip05-status--checking {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+:global(.body--dark) .profile-editor__nip05-status--success {
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+}
+
+:global(.body--dark) .profile-editor__nip05-status--failure {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
 }
 
 @media (max-width: 720px) {

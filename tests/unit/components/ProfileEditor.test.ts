@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mount } from '@vue/test-utils';
+import { flushPromises, mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 
 import ProfileEditor from 'src/components/ProfileEditor.vue';
@@ -59,24 +59,24 @@ const storedKey: StoredKey = {
 const globalStubs = {
   'q-spinner': true,
   'q-form': {
-    template: '<form class="q-form-stub" @submit.prevent="$emit(\'submit\')"><slot /></form>',
+    template: '<form data-testid="q-form" @submit.prevent="$emit(\'submit\')"><slot /></form>',
     emits: ['submit'],
   },
   'q-input': {
     template:
-      '<label class="q-input-stub" :data-label="label"><input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><slot name="append" /></label>',
+      '<label data-testid="q-input" :data-label="label"><input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><slot name="append" /></label>',
     props: ['modelValue', 'label', 'rules', 'type'],
     emits: ['update:modelValue'],
   },
   'q-toggle': {
     template:
-      '<label class="q-toggle-stub" :data-label="label"><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" /></label>',
+      '<label data-testid="q-toggle" :data-label="label"><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" /></label>',
     props: ['modelValue', 'label'],
     emits: ['update:modelValue'],
   },
   'q-btn': {
     template:
-      '<button class="q-btn-stub" :data-label="label" :disabled="disable" @click="$emit(\'click\')"><slot /></button>',
+      '<button data-testid="q-btn" :data-label="label" :disabled="disable" @click="$emit(\'click\')"><slot /></button>',
     props: ['label', 'disable', 'loading', 'type'],
     emits: ['click'],
   },
@@ -113,10 +113,10 @@ describe('ProfileEditor.vue', () => {
   it('saves bot=true when enabled', async () => {
     const wrapper = await mountEditor();
 
-    const toggleInput = wrapper.find('.q-toggle-stub input');
+    const toggleInput = wrapper.find('[data-testid="q-toggle"] input');
     await toggleInput.setValue(true);
 
-    await wrapper.find('form.q-form-stub').trigger('submit');
+    await wrapper.find('form[data-testid="q-form"]').trigger('submit');
     await flushComponent();
 
     expect(saveProfileMock).toHaveBeenCalledWith(
@@ -134,7 +134,7 @@ describe('ProfileEditor.vue', () => {
     await birthdayInputs[0]!.setValue('1980');
     await birthdayInputs[1]!.setValue('5');
 
-    await wrapper.find('form.q-form-stub').trigger('submit');
+    await wrapper.find('form[data-testid="q-form"]').trigger('submit');
     await flushComponent();
 
     expect(saveProfileMock).toHaveBeenCalledWith(
@@ -151,7 +151,7 @@ describe('ProfileEditor.vue', () => {
   it('omits birthday when all birthday fields are empty', async () => {
     const wrapper = await mountEditor();
 
-    await wrapper.find('form.q-form-stub').trigger('submit');
+    await wrapper.find('form[data-testid="q-form"]').trigger('submit');
     await flushComponent();
 
     const savePayload = saveProfileMock.mock.calls[0]?.[1] as NostrProfile | undefined;
@@ -161,11 +161,78 @@ describe('ProfileEditor.vue', () => {
 
   it('does not auto-run NIP-05 verification on input change', async () => {
     const wrapper = await mountEditor();
-    const nip05Input = wrapper.find('.q-input-stub[data-label="profile.nip05"] input');
+    const nip05Input = wrapper.find('[data-testid="q-input"][data-label="profile.nip05"] input');
 
     await nip05Input.setValue('alice@example.com');
     await flushComponent();
 
     expect(verifyIdentifierMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps verify button disabled for a malformed NIP-05 identifier', async () => {
+    const wrapper = await mountEditor();
+    const nip05Input = wrapper.find('[data-testid="q-input"][data-label="profile.nip05"] input');
+
+    await nip05Input.setValue('not-a-valid-identifier');
+    await flushComponent();
+
+    const verifyBtn = wrapper.find('[data-testid="q-btn"][data-label="profile.nip05VerifyIdentifier"]');
+    expect(verifyBtn.attributes('disabled')).toBeDefined();
+  });
+
+  it('calls verifyIdentifier when verify button is clicked for a valid identifier', async () => {
+    const wrapper = await mountEditor();
+    const nip05Input = wrapper.find('[data-testid="q-input"][data-label="profile.nip05"] input');
+
+    await nip05Input.setValue('alice@example.com');
+    await flushComponent();
+
+    const verifyBtn = wrapper.find('[data-testid="q-btn"][data-label="profile.nip05VerifyIdentifier"]');
+    await verifyBtn.trigger('click');
+    await flushPromises();
+
+    expect(verifyIdentifierMock).toHaveBeenCalledWith('alice@example.com', storedKey.id);
+  });
+
+  it('renders verified inline status after successful verification', async () => {
+    verifyIdentifierMock.mockResolvedValue({
+      status: 'verified',
+      identifier: 'alice@example.com',
+      domain: 'example.com',
+      name: 'alice',
+    });
+
+    const wrapper = await mountEditor();
+    const nip05Input = wrapper.find('[data-testid="q-input"][data-label="profile.nip05"] input');
+
+    await nip05Input.setValue('alice@example.com');
+    await flushComponent();
+
+    await wrapper.find('[data-testid="q-btn"][data-label="profile.nip05VerifyIdentifier"]').trigger('click');
+    await flushPromises();
+
+    const statusBlock = wrapper.find('.profile-editor__nip05-status--success');
+    expect(statusBlock.exists()).toBe(true);
+    expect(statusBlock.text()).toContain('profile.nip05StatusVerifiedTitle');
+  });
+
+  it('renders failure inline status for pubkey-mismatch', async () => {
+    verifyIdentifierMock.mockResolvedValue({
+      status: 'pubkey-mismatch',
+      identifier: 'alice@example.com',
+    });
+
+    const wrapper = await mountEditor();
+    const nip05Input = wrapper.find('[data-testid="q-input"][data-label="profile.nip05"] input');
+
+    await nip05Input.setValue('alice@example.com');
+    await flushComponent();
+
+    await wrapper.find('[data-testid="q-btn"][data-label="profile.nip05VerifyIdentifier"]').trigger('click');
+    await flushPromises();
+
+    const statusBlock = wrapper.find('.profile-editor__nip05-status--failure');
+    expect(statusBlock.exists()).toBe(true);
+    expect(statusBlock.text()).toContain('profile.nip05StatusFailureTitle');
   });
 });

@@ -68,13 +68,13 @@ vi.mock('@noble/hashes/utils', () => ({
 const globalStubs = {
   'q-input': {
     template:
-      '<label class="q-input-stub" :data-label="label"><input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><slot name="prepend" /><slot name="append" /></label>',
+      '<label data-testid="q-input" :data-label="label"><input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)" /><slot name="prepend" /><slot name="append" /></label>',
     props: ['modelValue', 'label', 'rules'],
     emits: ['update:modelValue'],
   },
   'q-btn': {
     template:
-      '<button class="q-btn-stub" :data-label="label" :disabled="disable" @click="$emit(\'click\')"><slot /></button>',
+      '<button data-testid="q-btn" :data-label="label" :disabled="disable" @click="$emit(\'click\')"><slot /></button>',
     props: ['label', 'disable'],
     emits: ['click'],
   },
@@ -86,7 +86,7 @@ const globalStubs = {
     template: '<span><slot /></span>',
   },
   'view-stored-key': {
-    template: '<div class="view-stored-key-stub" />',
+    template: '<div data-testid="view-stored-key" />',
     props: ['storedKey'],
   },
 };
@@ -123,7 +123,7 @@ describe('ImportKeyForm.vue', () => {
 
     await flushComponent();
 
-    expect(wrapper.find('.view-stored-key-stub').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="view-stored-key"]').exists()).toBe(false);
     expect(saveKeyMock).not.toHaveBeenCalled();
   });
 
@@ -139,7 +139,7 @@ describe('ImportKeyForm.vue', () => {
     await wrapper.find('button[data-label="createAccount.importButton"]').trigger('click');
     await flushComponent();
 
-    expect(wrapper.find('.view-stored-key-stub').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="view-stored-key"]').exists()).toBe(true);
 
     await wrapper.find('button[data-label="createAccount.save"]').trigger('click');
 

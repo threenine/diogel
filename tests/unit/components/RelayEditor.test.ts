@@ -74,32 +74,32 @@ describe('RelayEditor.vue', () => {
 
   const globalStubs = {
     'q-input': {
-      template: '<div class="q-input-stub"><input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)"><slot name="append" /></div>',
+      template: '<div data-testid="q-input"><input :value="modelValue" @input="$emit(\'update:modelValue\', $event.target.value)"><slot name="append" /></div>',
       props: ['modelValue'],
       emits: ['update:modelValue'],
     },
     'q-btn': {
-      template: '<button class="q-btn-stub" :data-icon="icon" @click="$emit(\'click\')"><slot /></button>',
+      template: '<button data-testid="q-btn" :data-icon="icon" @click="$emit(\'click\')"><slot /></button>',
       props: ['icon']
     },
     'q-checkbox': {
-      template: '<input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />',
+      template: '<input data-testid="q-checkbox" type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)" />',
       props: ['modelValue', 'label'],
     },
     'q-list': {
-      template: '<div class="q-list-stub"><slot /></div>',
+      template: '<div data-testid="q-list"><slot /></div>',
     },
     'q-item': {
-      template: '<div class="q-item-stub"><slot /></div>',
+      template: '<div data-testid="q-item"><slot /></div>',
     },
     'q-item-section': {
-      template: '<div class="q-item-section-stub"><slot /></div>',
+      template: '<div data-testid="q-item-section"><slot /></div>',
     },
     'q-item-label': {
-      template: '<div class="q-item-label-stub"><slot /></div>',
+      template: '<div data-testid="q-item-label"><slot /></div>',
     },
     'q-badge': {
-      template: '<div class="q-badge-stub">{{ label }}<slot /></div>',
+      template: '<div data-testid="q-badge">{{ label }}<slot /></div>',
       props: ['label'],
     },
     'q-spinner': true,
@@ -169,7 +169,7 @@ describe('RelayEditor.vue', () => {
     await wrapper.vm.$nextTick();
 
     // Check URL input
-    const input = wrapper.find('.q-input-stub input');
+    const input = wrapper.find('[data-testid="q-input"] input');
     expect((input.element as HTMLInputElement).value).toBe('wss://selected-relay.com');
 
     // Check checkboxes
@@ -193,11 +193,11 @@ describe('RelayEditor.vue', () => {
     await wrapper.vm.$nextTick();
     await wrapper.vm.$nextTick();
 
-    const urlInput = wrapper.find('.q-input-stub input');
+    const urlInput = wrapper.find('[data-testid="q-input"] input');
     await urlInput.setValue('wss://manual-relay.com');
 
     // Write checkbox is initially false
-    const writeCheckbox = wrapper.find('input[type="checkbox"]');
+    const writeCheckbox = wrapper.find('[data-testid="q-checkbox"]');
     expect((writeCheckbox.element as HTMLInputElement).checked).toBe(false);
 
     // Trigger add
@@ -207,13 +207,13 @@ describe('RelayEditor.vue', () => {
     // relays update is sync in addRelay, but template might need a tick
     await wrapper.vm.$nextTick();
 
-    const items = wrapper.findAll('.q-item-stub');
+    const items = wrapper.findAll('[data-testid="q-item"]');
     expect(items.length).toBeGreaterThan(0);
     const lastItem = items[items.length - 1];
     expect(lastItem!.text()).toContain('wss://manual-relay.com');
 
     // It should show "relays.read" badge but NOT "relays.write" badge
-    const badges = lastItem!.findAll('.q-badge-stub');
+    const badges = lastItem!.findAll('[data-testid="q-badge"]');
     const badgeTexts = badges.map(b => b.text());
     expect(badgeTexts).toContain('relays.read');
     expect(badgeTexts).not.toContain('relays.write');
