@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.0.31
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.30...v0.0.31)
+
+### 🏡 Chore
+
+- **docs:** Remove NIP-02 contact list and feedback design documents ([9d5862f](https://github.com/threenine/diogel/commit/9d5862f))
+
+### ❤️ Contributors
+
+- Gary Woodfine <gary.woodfine@threenine.co.uk>
+
 ## v0.0.30
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.29...v0.0.30)
