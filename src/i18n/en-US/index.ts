@@ -112,7 +112,7 @@ export default {
     nip05IdentityTitle: 'Identity Verification',
     nip05IdentityDescription: 'Prove that a domain maps this identifier to your Nostr key.',
     nip05Badge: 'NIP-05',
-    nip05VerifyIdentifier: 'Verify identifier',
+    nip05VerifyIdentifier: 'Verify',
     nip05StatusLabel: 'Status',
     nip05StatusIdle: 'Not verified yet',
     nip05StatusVerifying: 'Checking identifier...',
