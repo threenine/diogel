@@ -3,10 +3,9 @@
 [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/inhkmeiabnknligdjngmoocohdonoboa?label=Chrome%20Web%20Store)](https://chromewebstore.google.com/detail/nostrame/inhkmeiabnknligdjngmoocohdonoboa)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-Diogel is a Quasar-based browser extension that injects a NIP-07-compatible window.nostr provider into web pages, 
+Diogel Porwr is a browser extension that injects a NIP-07-compatible `window.nostr` provider into web pages, 
 routes requests through a background script, enforces per-origin approval rules, signs with the currently active Nostr 
-identity stored inside an encrypted local vault, and provides a Vue/Pinia UI for account, vault, and settings 
-management.
+identity stored inside an encrypted local vault, and provides a Vue/Pinia UI for account, vault, and settings
 
 **Key Features:**
 
@@ -20,7 +19,7 @@ management.
 
 ##### Secure Key Storage
 
-- Keys are stored in a password protected encrypted vault with automatic locking.
+- Keys are stored in a password-protected encrypted vault with automatic locking.
 - Keys never leave the extension because apps only receive signatures
 
 #### NIP-07 Signing
