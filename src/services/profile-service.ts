@@ -37,6 +37,9 @@ export const profileService = {
     const updatedProfile = {
       ...latestProfile,
       ...profile,
+      // Ensure we don't accidentally overwrite with undefined if they were present in latestProfile
+      picture: profile.picture !== undefined ? profile.picture : latestProfile?.picture,
+      banner: profile.banner !== undefined ? profile.banner : latestProfile?.banner,
     };
 
     const eventTemplate = {

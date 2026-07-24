@@ -239,6 +239,8 @@ async function fetchProfile() {
         name: profileData.name || '',
         display_name: profileData.display_name || '',
         about: profileData.about || '',
+        picture: profileData.picture || '',
+        banner: profileData.banner || '',
         website: profileData.website || '',
         nip05: profileData.nip05 || '',
         lud16: profileData.lud16 || '',
