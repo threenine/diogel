@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.0.32
+
+[compare changes](https://github.com/threenine/diogel/compare/v0.0.31...v0.0.32)
+
+### 🩹 Fixes
+
+- **profile:** Prevent overwriting picture and banner with undefined during profile updates ([b18850b](https://github.com/threenine/diogel/commit/b18850b))
+
+### 🏡 Chore
+
+- **docs:** Update README with improved description and fix minor typos ([aa1db65](https://github.com/threenine/diogel/commit/aa1db65))
+
+### ❤️ Contributors
+
+- Gary Woodfine <gary.woodfine@threenine.co.uk>
+
 ## v0.0.31
 
 [compare changes](https://github.com/threenine/diogel/compare/v0.0.30...v0.0.31)
