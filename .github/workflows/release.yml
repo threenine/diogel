@@ -204,9 +204,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    concurrency:
-      group: porwr-release-publish-chrome
-      cancel-in-progress: false
     steps:
       - name: Download Chrome archive artifact
         uses: actions/download-artifact@v4
@@ -235,9 +232,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    concurrency:
-      group: porwr-release-publish-firefox
-      cancel-in-progress: false
     steps:
       - name: Download Firefox archive artifact
         uses: actions/download-artifact@v4
