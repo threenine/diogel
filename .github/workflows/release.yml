@@ -1,0 +1,253 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: >-
+          Existing release tag (e.g. v0.1.0) or ref to build/package.
+          Required for manual runs; ignored on push.
+        required: true
+        type: string
+      publish:
+        description: 'Publish the built archives to the Chrome Web Store and Firefox Add-ons.'
+        required: false
+        type: boolean
+        default: false
+
+# Only one release pipeline may run at a time, repo-wide. Simultaneous merges to
+# master, manual dispatches, and reruns are queued rather than run in parallel so
+# they cannot create duplicate tags, releases, or store submissions.
+concurrency:
+  group: porwr-release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  # Maintains the release-please PR (version bump + CHANGELOG.md) against master and,
+  # when a release PR is merged, creates the tag and GitHub release for that commit.
+  release-please:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      sha: ${{ steps.release.outputs.sha }}
+    steps:
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          target-branch: master
+
+  # Normalises the two trigger shapes (automatic release-please merge vs. manual
+  # workflow_dispatch) into one set of outputs the rest of the workflow consumes.
+  resolve:
+    needs: [release-please]
+    if: |
+      always() &&
+      (needs.release-please.result == 'success' || needs.release-please.result == 'skipped')
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.set.outputs.run }}
+      tag: ${{ steps.set.outputs.tag }}
+      sha: ${{ steps.set.outputs.sha }}
+      publish: ${{ steps.set.outputs.publish }}
+      attach_to_release: ${{ steps.set.outputs.attach_to_release }}
+    steps:
+      - name: Determine what to build
+        id: set
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+            echo "sha=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+            echo "publish=$INPUT_PUBLISH" >> "$GITHUB_OUTPUT"
+            echo "attach_to_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=${{ needs.release-please.outputs.release_created == 'true' }}" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ needs.release-please.outputs.tag_name }}" >> "$GITHUB_OUTPUT"
+            echo "sha=${{ needs.release-please.outputs.sha }}" >> "$GITHUB_OUTPUT"
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "attach_to_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Builds the default Quasar app plus the Chrome and Firefox extensions from the
+  # exact released commit, validates the embedded manifest versions, packages
+  # deterministic archives, and uploads them as workflow artifacts (and, for a real
+  # release, attaches them to the GitHub release).
+  build:
+    needs: [release-please, resolve]
+    if: needs.resolve.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve release version
+        id: version
+        env:
+          TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          VERSION="${TAG#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          if [ "$VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::Requested tag $TAG (version $VERSION) does not match package.json version $PKG_VERSION"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build default Quasar app
+        run: npm run build
+
+      - name: Build Chrome extension
+        run: npm run build:chrome
+
+      - name: Build Firefox extension
+        run: npm run build:firefox
+
+      - name: Validate extension manifest versions
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          for dir in dist/bex-chrome dist/bex-firefox; do
+            MANIFEST_VERSION="$(node -p "require('./$dir/manifest.json').version")"
+            if [ "$MANIFEST_VERSION" != "$VERSION" ]; then
+              echo "::error::$dir/manifest.json version ($MANIFEST_VERSION) does not match released version ($VERSION)"
+              exit 1
+            fi
+            echo "$dir manifest version OK: $MANIFEST_VERSION"
+          done
+
+      - name: Package deterministic archives
+        id: package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          CHROME_ZIP="diogel-chrome-v${VERSION}.zip"
+          FIREFOX_ZIP="diogel-firefox-v${VERSION}.zip"
+
+          package() {
+            local src_dir="$1" out_name="$2"
+            # Quasar auto-generates its own zip inside the BEX output dir; drop it so
+            # our archive only contains the extension payload.
+            rm -f "$src_dir"/Packaged.*.zip
+            # Normalise mtimes so the resulting archive is byte-for-byte reproducible
+            # for a given set of file contents.
+            find "$src_dir" -type f -exec touch -h -d '2020-01-01T00:00:00Z' {} +
+            (
+              cd "$src_dir"
+              find . -type f | LC_ALL=C sort | zip -X -q "$GITHUB_WORKSPACE/$out_name" -@
+            )
+          }
+
+          package dist/bex-chrome "$CHROME_ZIP"
+          package dist/bex-firefox "$FIREFOX_ZIP"
+
+          echo "chrome_zip=$CHROME_ZIP" >> "$GITHUB_OUTPUT"
+          echo "firefox_zip=$FIREFOX_ZIP" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Chrome archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: diogel-chrome
+          path: ${{ steps.package.outputs.chrome_zip }}
+          if-no-files-found: error
+
+      - name: Upload Firefox archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: diogel-firefox
+          path: ${{ steps.package.outputs.firefox_zip }}
+          if-no-files-found: error
+
+      - name: Attach archives to GitHub release
+        if: needs.resolve.outputs.attach_to_release == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          CHROME_ZIP: ${{ steps.package.outputs.chrome_zip }}
+          FIREFOX_ZIP: ${{ steps.package.outputs.firefox_zip }}
+        run: |
+          gh release upload "$TAG" "$CHROME_ZIP" "$FIREFOX_ZIP" --clobber
+
+  # Publishes the validated Chrome archive. Runs independently of the Firefox job so
+  # a store-side failure on one side never blocks or duplicates the other.
+  publish-chrome:
+    needs: [resolve, build]
+    if: needs.resolve.outputs.run == 'true' && needs.resolve.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download Chrome archive artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: diogel-chrome
+
+      - name: Locate archive
+        id: locate
+        run: echo "zip=$(ls diogel-chrome-*.zip)" >> "$GITHUB_OUTPUT"
+
+      - name: Upload & Publish to Chrome Web Store
+        uses: mnao305/chrome-extension-upload@fdfe79400af990f5145a319e834aee64907ccff4 # v6.0.0
+        with:
+          file-path: ${{ steps.locate.outputs.zip }}
+          extension-id: ${{ secrets.CWS_EXTENSION_ID }}
+          client-id: ${{ secrets.CWS_CLIENT_ID }}
+          client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}
+          publish: true
+
+  # Publishes the validated Firefox archive. Independent of publish-chrome for the
+  # same reason: partial store failures must never block or duplicate a release.
+  publish-firefox:
+    needs: [resolve, build]
+    if: needs.resolve.outputs.run == 'true' && needs.resolve.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Download Firefox archive artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: diogel-firefox
+
+      - name: Locate archive
+        id: locate
+        run: echo "zip=$(ls diogel-firefox-*.zip)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to AMO (Firefox Add-ons)
+        uses: browser-actions/release-firefox-addon@f8026bff59385bee825dbf33b0887570f196f804 # v0.2.1
+        with:
+          addon-id: ${{ secrets.AMO_ADDON_ID }}
+          addon-path: ${{ steps.locate.outputs.zip }}
+          auth-api-issuer: ${{ secrets.AMO_API_ISSUER }}
+          auth-api-secret: ${{ secrets.AMO_API_SECRET }}
+          channel: listed
+          release-note: "Version ${{ needs.resolve.outputs.tag }}"
