@@ -17,8 +17,7 @@
     "postinstall": "quasar prepare",
     "build:chrome": "quasar build -m bex -T chrome",
     "build:firefox": "quasar build -m bex -T firefox",
-    "icons:bex": "icongenie generate -m bex -i public/images/light/diogel.png",
-    "release": "npm run build && npm run build:chrome && changelogen --release && git push --follow-tags"
+    "icons:bex": "icongenie generate -m bex -i public/images/light/diogel.png"
   },
   "dependencies": {
     "@noble/ciphers": "^0.5.3",
