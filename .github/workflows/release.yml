@@ -66,12 +66,15 @@ jobs:
     steps:
       - name: Determine what to build
         id: set
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "run=true" >> "$GITHUB_OUTPUT"
-            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
-            echo "sha=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
-            echo "publish=${{ inputs.publish }}" >> "$GITHUB_OUTPUT"
+            echo "tag=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+            echo "sha=$INPUT_TAG" >> "$GITHUB_OUTPUT"
+            echo "publish=$INPUT_PUBLISH" >> "$GITHUB_OUTPUT"
             echo "attach_to_release=false" >> "$GITHUB_OUTPUT"
           else
             echo "run=${{ needs.release-please.outputs.release_created == 'true' }}" >> "$GITHUB_OUTPUT"
@@ -108,8 +111,9 @@ jobs:
 
       - name: Resolve release version
         id: version
+        env:
+          TAG: ${{ needs.resolve.outputs.tag }}
         run: |
-          TAG="${{ needs.resolve.outputs.tag }}"
           VERSION="${TAG#v}"
           PKG_VERSION="$(node -p "require('./package.json').version")"
           if [ "$VERSION" != "$PKG_VERSION" ]; then
@@ -141,9 +145,10 @@ jobs:
 
       - name: Package deterministic archives
         id: package
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
           set -euo pipefail
-          VERSION="${{ steps.version.outputs.version }}"
           CHROME_ZIP="diogel-chrome-v${VERSION}.zip"
           FIREFOX_ZIP="diogel-firefox-v${VERSION}.zip"
 
@@ -185,12 +190,11 @@ jobs:
         if: needs.resolve.outputs.attach_to_release == 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.resolve.outputs.tag }}
+          CHROME_ZIP: ${{ steps.package.outputs.chrome_zip }}
+          FIREFOX_ZIP: ${{ steps.package.outputs.firefox_zip }}
         run: |
-          TAG="${{ needs.resolve.outputs.tag }}"
-          gh release upload "$TAG" \
-            "${{ steps.package.outputs.chrome_zip }}" \
-            "${{ steps.package.outputs.firefox_zip }}" \
-            --clobber
+          gh release upload "$TAG" "$CHROME_ZIP" "$FIREFOX_ZIP" --clobber
 
   # Publishes the validated Chrome archive. Runs independently of the Firefox job so
   # a store-side failure on one side never blocks or duplicates the other.
@@ -198,6 +202,8 @@ jobs:
     needs: [resolve, build]
     if: needs.resolve.outputs.run == 'true' && needs.resolve.outputs.publish == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     concurrency:
       group: porwr-release-publish-chrome
       cancel-in-progress: false
@@ -227,6 +233,8 @@ jobs:
     needs: [resolve, build]
     if: needs.resolve.outputs.run == 'true' && needs.resolve.outputs.publish == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     concurrency:
       group: porwr-release-publish-firefox
       cancel-in-progress: false
