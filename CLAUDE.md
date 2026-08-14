@@ -103,6 +103,9 @@ provider-side call in `nostr-provider.js`.
 
 ## TypeScript conventions
 
+See [CODINGSTANDARDS.md](CODINGSTANDARDS.md) for the full lint/format, TypeScript
+discipline, and Domain-Driven Design standards. Highlights:
+
 - Strict mode is on. **Never use `any`** (`@typescript-eslint/no-explicit-any` is an
   error) — use exact types, type guards, discriminated unions, generics, or `unknown`
   + narrowing. For awkward third-party types, add adapters/ambient declarations under
