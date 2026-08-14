@@ -46,48 +46,10 @@ Quasar + Vue 3 + TypeScript codebase and its Browser Extension (BEX) targets.
 
 #### Testing
 
-Currently `package.json` defines `"test": "echo \"No test specified\" && exit 0"` and there is no dedicated test
-framework wired up. You can still write and run lightweight tests immediately using Node’s built-in test runner (
-`node:test`), which requires no extra dependencies and works with the engine range declared in this project.
-
-- One-off test execution (demonstrated and verified):
-  1. Create a temporary file at the project root, for example `tmp-sample.test.mjs` with:
-
-     ```js
-     import test from 'node:test';
-     import assert from 'node:assert/strict';
-
-     test('math sanity', () => {
-       assert.equal(1 + 1, 2);
-     });
-     ```
-
-  2. Run it: `node --test tmp-sample.test.mjs`
-     - Verified output (example):
-       - tests 1, pass 1, fail 0
-  3. Delete the temporary file after use to keep the repo clean.
-
-- Suggested npm script (optional): add to `package.json` if you want a convenience runner without adding a new
-  framework:
-  - `"test": "node --test \"src/**/*.test.{js,mjs,cjs,ts}\""`
-  - With this in place, place small focused tests alongside code (e.g., `src/utils/foo.test.ts`) and run with
-    `npm test`.
-
-- Adopting Vitest (optional, when the test surface grows):
-  - Pros: Jest-like API, watch mode, rich reporters, tight Vite integration, better TS ergonomics for large suites.
-  - Minimal steps (not yet applied to this repo):
-    - `npm i -D vitest @vitest/ui @vitest/coverage-v8 jsdom` (if you need DOM APIs)
-    - Create `vitest.config.ts` aligned with `quasar.config.ts` aliases and Vue plugin.
-    - Add scripts: `"test": "vitest", "test:run": "vitest run"`
-    - Add a sample `*.spec.ts` under `src/` and run `npm test`.
-
-Guidelines for adding tests (irrespective of runner):
-
-- Co-locate tests next to implementation where it increases clarity; otherwise use `tests/` with the same module
-  boundaries.
-- Keep tests deterministic; mock network (`axios`) at the module boundary.
-- For Vue SFCs, prefer component-level tests only after extracting logic into composables/stores where feasible; this
-  keeps UI tests lean.
+Vitest + jsdom is wired up and in active use (config: `vitest.config.ts`, setup:
+`tests/setup.ts`). Run the full suite with `npm run test:run`, or `npm run test` for watch
+mode. See [CODINGSTANDARDS.md](../CODINGSTANDARDS.md) for the canonical testing
+conventions (test locations, crypto/network mocking, determinism).
 
 #### Development notes and code style
 
