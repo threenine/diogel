@@ -96,6 +96,17 @@ describe('normalizeRelayUrl', () => {
     expect(normalizeRelayUrl('wss://').valid).toBe(false);
     expect(normalizeRelayUrl('wss://.').valid).toBe(false);
   });
+
+  it('should reject URLs with a fragment', () => {
+    const result = normalizeRelayUrl('wss://relay.damus.io/#fragment');
+    expect(result.valid).toBe(false);
+    expect(result.error).toContain('fragment');
+  });
+
+  it('should reject URLs with a fragment even when otherwise well-formed with a path', () => {
+    const result = normalizeRelayUrl('wss://relay.damus.io/path#section');
+    expect(result.valid).toBe(false);
+  });
 });
 
 describe('isRestrictedHostname', () => {
