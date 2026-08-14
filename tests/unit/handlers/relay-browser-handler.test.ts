@@ -1,7 +1,12 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleRelayBrowserList, handleRelayBrowserGetStatus } from 'app/src-bex/handlers/relay-browser-handler';
+import {
+  handleRelayBrowserList,
+  handleRelayBrowserGetStatus,
+  handleRelayBrowserRefresh,
+} from 'app/src-bex/handlers/relay-browser-handler';
 import { relayCatalogService } from 'src/services/relay-catalog';
+import { relayBrowserOrchestrator } from 'src/services/relay-browser-orchestrator';
 import type { RelayCatalogEntry } from 'src/types/relay';
 
 // Mock dependencies
@@ -9,6 +14,12 @@ vi.mock('src/services/relay-catalog', () => ({
   relayCatalogService: {
     getEntries: vi.fn(),
     getDiscoveryState: vi.fn(),
+  },
+}));
+
+vi.mock('src/services/relay-browser-orchestrator', () => ({
+  relayBrowserOrchestrator: {
+    refreshCatalog: vi.fn(),
   },
 }));
 
@@ -92,6 +103,55 @@ describe('RelayBrowserHandler', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         expect(result.error).toBe('Read error');
+      }
+    });
+  });
+
+  describe('handleRelayBrowserRefresh', () => {
+    it('returns success immediately without awaiting the refresh, forwarding the force flag', async () => {
+      let resolveRefresh!: () => void;
+      vi.mocked(relayBrowserOrchestrator.refreshCatalog).mockReturnValue(
+        new Promise((resolve) => {
+          resolveRefresh = resolve;
+        }),
+      );
+
+      const result = await handleRelayBrowserRefresh({ force: true });
+
+      expect(result).toEqual({ success: true, data: undefined });
+      expect(relayBrowserOrchestrator.refreshCatalog).toHaveBeenCalledWith(true);
+
+      resolveRefresh();
+    });
+
+    it('defaults force to false when no payload is given', async () => {
+      vi.mocked(relayBrowserOrchestrator.refreshCatalog).mockResolvedValue(undefined);
+
+      await handleRelayBrowserRefresh();
+
+      expect(relayBrowserOrchestrator.refreshCatalog).toHaveBeenCalledWith(false);
+    });
+
+    it('does not propagate a rejection from the background refresh (fire-and-forget)', async () => {
+      vi.mocked(relayBrowserOrchestrator.refreshCatalog).mockRejectedValue(new Error('refresh failed'));
+
+      const result = await handleRelayBrowserRefresh({ force: false });
+      expect(result).toEqual({ success: true, data: undefined });
+
+      // Let the fire-and-forget .catch() run before the test ends.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    it('returns failure when triggering the refresh throws synchronously', async () => {
+      vi.mocked(relayBrowserOrchestrator.refreshCatalog).mockImplementation(() => {
+        throw new Error('orchestrator unavailable');
+      });
+
+      const result = await handleRelayBrowserRefresh({ force: true });
+
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe('orchestrator unavailable');
       }
     });
   });
