@@ -101,26 +101,7 @@ provider-side call in `nostr-provider.js`.
 - i18n messages live under `src/i18n/en-US`; the unplugin only picks up files under
   `src/i18n/`.
 
-## TypeScript conventions
+## TypeScript conventions and testing
 
-See [CODINGSTANDARDS.md](CODINGSTANDARDS.md) for the full lint/format, TypeScript
-discipline, and Domain-Driven Design standards. Highlights:
-
-- Strict mode is on. **Never use `any`** (`@typescript-eslint/no-explicit-any` is an
-  error) — use exact types, type guards, discriminated unions, generics, or `unknown`
-  + narrowing. For awkward third-party types, add adapters/ambient declarations under
-  `src/types/`.
-- Use `<script setup lang="ts">` for all SFCs.
-- ESLint scope is `./src*/**/*.{ts,js,cjs,mjs,vue}` (covers both `src/` and `src-bex/`);
-  Prettier is the sole formatter (no conflicting stylistic ESLint rules).
-
-## Testing
-
-- Vitest + jsdom, config in `vitest.config.ts`, setup in `tests/setup.ts`.
-- Test locations: `tests/unit/**` (mirrors `src`/`src-bex` module structure: `services/`,
-  `components/`, `pages/`, `stores/`, `composables/`, `utils/`) and co-located
-  `*.spec.ts` under `src/`/`src-bex/`.
-- Mock crypto via `tests/unit/mocks/crypto.ts`; mock network (axios) at the module
-  boundary; keep tests deterministic.
-- Path aliases available in tests (see `vitest.config.ts`): `src`, `components`,
-  `app`, `src-bex`.
+See [CODINGSTANDARDS.md](CODINGSTANDARDS.md) for lint/format, TypeScript discipline,
+testing conventions, and Domain-Driven Design standards.

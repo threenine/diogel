@@ -92,8 +92,8 @@ justify one.
 - Vitest + jsdom is the test framework; config is `vitest.config.ts`, setup is
   `tests/setup.ts`. Run with `npm run test` (watch) or `npm run test:run` (single run).
 - Tests live under `tests/unit/**` (mirroring the `src`/`src-bex` module structure:
-  `services/`, `components/`, `pages/`, `stores/`, `composables/`, `utils/`) or as
-  co-located `*.spec.ts` files under `src/`/`src-bex/`.
+  `services/`, `components/`, `pages/`, `stores/`, `composables/`, `utils/`,
+  `handlers/`) or as co-located `*.spec.ts` files under `src/`/`src-bex/`.
 - Mock crypto via `tests/unit/mocks/crypto.ts`; mock network (Axios) at the module boundary.
   Keep tests deterministic.
 
