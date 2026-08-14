@@ -21,6 +21,7 @@ management) is built with Vue 3 + Pinia + Quasar components.
 - Typecheck: `npm run typecheck` (`vue-tsc --noEmit`, strict mode)
 - Tests (watch): `npm run test`
 - Tests (single run): `npm run test:run`
+- Tests (coverage): `npm run test:coverage`
 - Single test file: `npx vitest run tests/unit/services/auto-lock.test.ts`
 - Single test by name: `npx vitest run -t "test name pattern"`
 - Generate BEX icons: `npm run icons:bex` (use `nvm use` first to match Node version)
