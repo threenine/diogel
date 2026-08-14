@@ -61,9 +61,12 @@ justify one.
    changes, and enforce invariants at the aggregate root. Code outside the aggregate should
    not mutate its internals directly.
 4. **Avoid primitive obsession** — Don't pass raw `string`/`number` for domain concepts that
-   carry business rules (an npub, a relay URL, a satoshi amount). Use a named type alias or
-   branded type (e.g. `type RelayUrl = string & { readonly __brand: 'RelayUrl' }`) so the
-   type system — not convention — prevents misuse.
+   carry business rules (a pubkey, a relay URL, a satoshi amount). Use a named type alias or
+   branded type so the type system — not convention — prevents misuse. `src/types/pubkey.ts`
+   (`Pubkey`, `createPubkey`) and `src/types/relay-url.ts` (`RelayUrl`, `createRelayUrl`) are
+   the established pattern: a branded type plus a factory function that validates and
+   normalizes, returning `null` on invalid input rather than throwing. Follow this shape for
+   new domain concepts.
 
 ### Architectural structure
 
