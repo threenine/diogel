@@ -13,6 +13,7 @@ export interface RelayUrlResult {
  * - reject empty values
  * - accept only ws:// and wss:// URLs
  * - reject malformed URLs
+ * - reject URLs with a fragment (the WebSocket constructor throws on these)
  * - normalize hostname casing where safe
  * - normalize trailing slash handling consistently
  * - derive hostname for display/sorting
@@ -71,6 +72,16 @@ export function normalizeRelayUrl(input: string | null | undefined): RelayUrlRes
       return {
         valid: false,
         error: 'URL must contain a valid hostname',
+      };
+    }
+
+    // The WebSocket constructor throws a SyntaxError for any URL containing a
+    // fragment, so a URL with one is not actually usable as a relay URL even
+    // though it parses successfully.
+    if (url.hash) {
+      return {
+        valid: false,
+        error: 'URL must not contain a fragment',
       };
     }
 

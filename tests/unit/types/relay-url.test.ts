@@ -29,4 +29,8 @@ describe('createRelayUrl', () => {
   it('returns null for a malformed URL', () => {
     expect(createRelayUrl('not a url')).toBeNull();
   });
+
+  it('returns null for a URL with a fragment, since WebSocket() throws on those', () => {
+    expect(createRelayUrl('wss://relay.damus.io/#fragment')).toBeNull();
+  });
 });
