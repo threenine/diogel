@@ -1,11 +1,17 @@
 <script lang="ts" setup>
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import useAccountStore from '../stores/account-store';
 import ProfileView from '../components/ProfileView.vue';
+import CurrentRequest from '../components/sidebar/CurrentRequest.vue';
+import PendingRequestList from '../components/sidebar/PendingRequestList.vue';
+import SidebarUnlock from '../components/sidebar/SidebarUnlock.vue';
 import { useActiveTab } from '../composables/useActiveTab';
+import { useApprovalQueue } from '../composables/useApprovalQueue';
 import { useVault } from '../composables/useVault';
+import useVaultStore from '../stores/vault-store';
+import type { ApprovalDuration } from 'app/src-bex/types/background';
 
 defineOptions({ name: 'SidebarHome' });
 
@@ -13,6 +19,36 @@ const { t } = useI18n();
 const accountStore = useAccountStore();
 const { activeOrigin } = useActiveTab();
 const { handleLock } = useVault();
+const vaultStore = useVaultStore();
+const { pending, current, content, decide, refresh } = useApprovalQueue();
+
+const busy = ref(false);
+
+/**
+ * Body precedence from the interaction specification §3: unlock, then the current request, then
+ * the pending list, then the idle view.
+ */
+const showUnlock = computed(() => !vaultStore.isUnlocked);
+
+async function onDecide(id: string, approved: boolean, duration: ApprovalDuration): Promise<void> {
+  busy.value = true;
+  try {
+    await decide(id, approved, duration);
+  } finally {
+    busy.value = false;
+  }
+}
+
+async function onSelect(id: string): Promise<void> {
+  await sendPresent(id);
+}
+
+async function sendPresent(id: string): Promise<void> {
+  const target = pending.value.find((request) => request.id === id);
+  if (!target) return;
+  current.value = target;
+  await refresh();
+}
 
 const activeStoredKey = computed(() => {
   const activeAlias = accountStore.activeKey;
@@ -32,10 +68,29 @@ onMounted(async () => {
 
 <template>
   <q-page class="sidebar-home">
-    <!--
-      Idle view. The unlock view and the request views take precedence over this body when they
-      exist; those regions belong to #114 and #115 (specification section 3).
-    -->
+    <!-- Unlock takes precedence over everything, and names any waiting request (S5, S15). -->
+    <SidebarUnlock
+      v-if="showUnlock"
+      :waiting-request="current"
+      @reject="(id) => onDecide(id, false, 'once')"
+    />
+
+    <template v-else-if="current">
+      <CurrentRequest
+        :request="current"
+        :content="content"
+        :busy="busy"
+        @decide="onDecide"
+      />
+      <PendingRequestList
+        :requests="pending"
+        :current-id="current.id"
+        @select="onSelect"
+      />
+    </template>
+
+    <template v-else>
+    <!-- Idle view: shown only when the vault is unlocked and nothing is waiting. -->
     <section v-if="activeOrigin" class="sidebar-home__context" :aria-label="t('sidebar.activeSite.ariaLabel')">
       <div class="sidebar-home__context-label">{{ t('sidebar.activeSite.label') }}</div>
       <div class="sidebar-home__context-origin">{{ activeOrigin }}</div>
@@ -65,6 +120,7 @@ onMounted(async () => {
         @click="openInTab('/keys')"
       />
     </div>
+    </template>
   </q-page>
 </template>
 

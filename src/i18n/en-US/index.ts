@@ -515,7 +515,52 @@ export default {
       results_per_page: 'Results per page',
     },
   },
+  request: {
+    kind: 'Event kind',
+    approve: 'Approve',
+    reject: 'Reject',
+    origin: {
+      label: 'Requesting site',
+      ariaLabel: 'Requesting site and signing account',
+      insecure: 'This site is not using a secure connection.',
+    },
+    account: {
+      label: 'Signing account',
+      none: 'No active account',
+    },
+    preview: {
+      ariaLabel: 'What you are being asked to sign',
+      formatted: 'Summary',
+      raw: 'Raw',
+      full: 'Full event',
+      counterparty: 'Counterparty: {pubkey}',
+      expand: 'Show all {count} characters',
+      collapse: 'Show less',
+    },
+    durations: {
+      label: 'Remember this choice',
+      once: 'Just this once',
+      eightHours: 'For the next 8 hours',
+      always: 'Always for this site',
+      onceOnly: 'This request can only be approved once.',
+    },
+    pending: {
+      title: '{count} requests waiting',
+    },
+    states: {
+      expired: 'This request expired before it was answered. The site must ask again.',
+      interrupted: 'This request was interrupted and can no longer be approved. The site must ask again.',
+    },
+  },
   sidebar: {
+    unlock: {
+      ariaLabel: 'Unlock your vault',
+      title: 'Unlock Vault',
+      password: 'Password',
+      action: 'Unlock',
+      waiting: '{origin} is waiting for a decision.',
+      noAutoApprove: 'Unlocking does not approve it. You will still be asked.',
+    },
     activeSite: {
       label: 'Current tab',
       ariaLabel: 'Site in the active tab',

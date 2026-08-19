@@ -16,6 +16,7 @@ import { REQUEST_EXPIRY_MINUTES } from 'src/services/storage-service';
 import { LogLevel, logService } from 'src/services/log-service';
 import {
   TERMINAL_REQUEST_STATES,
+  type ApprovalRequestContent,
   type ApprovalDecision,
   type ApprovalRequestRecord,
   type ApprovalRequestState,
@@ -42,6 +43,24 @@ interface PendingCallback {
  * whose callback is gone must never be signable (D7).
  */
 const liveCallbacks = new Map<string, PendingCallback>();
+
+/**
+ * Reviewable content, keyed by request id.
+ *
+ * Deliberately memory-only and dropped as soon as a request reaches a terminal state. Event
+ * content, plaintext, ciphertext, and invoices must never reach durable storage (D6, SR-14), so
+ * the panel reads them from the live worker or not at all.
+ */
+const requestContent = new Map<string, ApprovalRequestContent>();
+
+const forgetRequest = (id: string): void => {
+  liveCallbacks.delete(id);
+  requestContent.delete(id);
+};
+
+/** Reviewable detail for a request, or null once it has been resolved or the worker restarted. */
+export const getRequestContent = (id: string): ApprovalRequestContent | null =>
+  requestContent.get(id) ?? null;
 
 const isTerminal = (state: ApprovalRequestState): boolean =>
   TERMINAL_REQUEST_STATES.includes(state);
@@ -96,7 +115,7 @@ const loadQueue = async (now: number = Date.now()): Promise<ApprovalRequestRecor
     await writeRecords(records.map(toDurableRecord));
     for (const record of expired) {
       const callback = liveCallbacks.get(record.id);
-      liveCallbacks.delete(record.id);
+      forgetRequest(record.id);
       callback?.settle({ approved: false, duration: 'once' });
     }
   }
@@ -175,6 +194,7 @@ export const requeuePresented = async (now: number = Date.now()): Promise<void> 
  */
 export const enqueueRequest = async (
   input: EnqueueRequestInput,
+  content: ApprovalRequestContent = { allowRemember: true },
   now: number = Date.now(),
 ): Promise<{ record: ApprovalRequestRecord; decision: Promise<ApprovalDecision> }> => {
   const expiryMinutes = await resolveExpiryMinutes();
@@ -193,6 +213,8 @@ export const enqueueRequest = async (
 
   const records = await loadQueue(now);
   await writeRecords([...records, record].map(toDurableRecord));
+
+  requestContent.set(record.id, content);
 
   const decision = new Promise<ApprovalDecision>((resolve, reject) => {
     liveCallbacks.set(record.id, {
@@ -243,7 +265,7 @@ export const submitDecision = async (
   );
 
   const callback = liveCallbacks.get(id);
-  liveCallbacks.delete(id);
+  forgetRequest(id);
   callback?.settle(decision);
 
   return { applied: true, record: updated };
@@ -264,6 +286,7 @@ export const reconcileInterruptedRequests = async (
   const next = records.map((record) => {
     if (isTerminal(record.state) || liveCallbacks.has(record.id)) return record;
     const updated: ApprovalRequestRecord = { ...record, state: 'interrupted' };
+    forgetRequest(record.id);
     interrupted.push(updated);
     return updated;
   });
@@ -290,4 +313,5 @@ export const pruneResolvedRequests = async (now: number = Date.now()): Promise<v
 /** Test seam: clear in-memory callbacks. Not used by production code. */
 export const __resetLiveCallbacksForTests = (): void => {
   liveCallbacks.clear();
+  requestContent.clear();
 };

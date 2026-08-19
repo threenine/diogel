@@ -87,6 +87,23 @@ export interface ApprovalRequestRecord {
   state: ApprovalRequestState;
 }
 
+/**
+ * Reviewable detail for a queued request.
+ *
+ * Memory-only, never persisted: event content, plaintext, ciphertext, and invoices are excluded
+ * from durable storage by D6, and the panel reads them from the live service worker instead.
+ */
+export interface ApprovalRequestContent {
+  /** Short human-readable summary shown before the user expands anything. */
+  contentDescription?: string;
+  /** The complete unsigned event, for `sign_event` requests only. */
+  event?: UnsignedEvent;
+  /** Counterparty for encryption and decryption requests. Never the plaintext itself. */
+  counterpartyPubkey?: string;
+  /** Whether durations beyond `once` may be offered at all (payments never may). */
+  allowRemember: boolean;
+}
+
 /** Approval durations the user can choose. */
 export type ApprovalDuration = 'once' | '8h' | 'always';
 

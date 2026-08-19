@@ -11,7 +11,6 @@ const { t } = useI18n();
 const route = useRoute();
 
 const origin = ref('');
-const faviconUrl = ref('');
 const rememberChoice = ref('once');
 const kindType = ref('Unknown request');
 const requestTypeLabel = ref('Signer request');
@@ -84,15 +83,6 @@ onMounted(() => {
 
   logService.log(LogLevel.DEBUG, 'SignerApproval mounted, origin:', { origin: origin.value });
 
-  if (origin.value !== 'Unknown') {
-    try {
-      const url = new URL(origin.value);
-      faviconUrl.value = `https://www.google.com/s2/favicons?domain=${url.hostname}&sz=64`;
-    } catch (e) {
-      logService.log(LogLevel.ERROR, 'Failed to parse origin for favicon:', { error: e });
-    }
-  }
-
   if (!$q.bex) {
     logService.log(LogLevel.ERROR, 'BEX bridge NOT available');
   }
@@ -149,13 +139,9 @@ async function reject() {
 
       <q-card-section class="q-pt-none">
         <div class="row items-center q-mb-md">
+          <!-- No remote lookup: an approval must not disclose the site to a third party (D13). -->
           <q-avatar size="48px" class="q-mr-md" bordered>
-            <q-img v-if="faviconUrl" :src="faviconUrl">
-              <template #error>
-                <q-icon name="public" size="32px" color="grey-7" />
-              </template>
-            </q-img>
-            <q-icon v-else name="public" size="32px" color="grey-7" />
+            <q-icon name="public" size="32px" color="grey-7" />
           </q-avatar>
           <div>
             <div class="text-caption text-grey-7">
