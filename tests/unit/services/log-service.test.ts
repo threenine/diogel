@@ -63,10 +63,12 @@ describe('LogService', () => {
         hostname: 'host1',
         account: 'acc1',
         dateTime: expect.any(String),
+        // Logged on the terminal transition now, so the row records what happened.
+        outcome: 'unknown',
       })
     );
     expect(console.debug).toHaveBeenCalledWith(
-      expect.stringContaining('[DEBUG] Approval granted for kind 1 on host1'),
+      expect.stringContaining('[DEBUG] Approval unknown for kind 1 on host1'),
       { account: 'acc1' }
     );
   });

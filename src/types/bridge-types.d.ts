@@ -1,4 +1,9 @@
 import type { StoredKey } from './index.d';
+import type {
+  ApprovalDuration,
+  ApprovalRequestRecord,
+  DecisionResult,
+} from 'app/src-bex/types/background';
 import type { RelayCatalogEntry, RelayDiscoveryState } from './relay';
 import type {
   ImportNip47ConnectionRequest,
@@ -102,7 +107,12 @@ export type BridgeAction =
   | 'vault.export'
   | 'vault.import'
   | 'activity.mark'
-  | 'nostr.approval.respond'
+  | 'nostr.requests.list'
+  | 'nostr.requests.current'
+  | 'nostr.requests.count'
+  | 'nostr.requests.present'
+  | 'nostr.requests.respond'
+  | 'nostr.requests.requeuePresented'
   | 'relay.browser.list'
   | 'relay.browser.getStatus'
   | 'relay.browser.refresh'
@@ -246,12 +256,33 @@ export interface BridgeRequestMap {
     id: string;
     action: 'activity.mark';
   };
-  'nostr.approval.respond': {
+  'nostr.requests.list': {
     id: string;
-    action: 'nostr.approval.respond';
+    action: 'nostr.requests.list';
+  };
+  'nostr.requests.current': {
+    id: string;
+    action: 'nostr.requests.current';
+  };
+  'nostr.requests.count': {
+    id: string;
+    action: 'nostr.requests.count';
+  };
+  'nostr.requests.present': {
+    id: string;
+    action: 'nostr.requests.present';
+    requestId: string;
+  };
+  'nostr.requests.respond': {
+    id: string;
+    action: 'nostr.requests.respond';
+    requestId: string;
     approved: boolean;
-    duration: string;
-    requestId?: string;
+    duration: ApprovalDuration;
+  };
+  'nostr.requests.requeuePresented': {
+    id: string;
+    action: 'nostr.requests.requeuePresented';
   };
   'relay.browser.list': {
     id: string;
@@ -354,7 +385,12 @@ export interface BridgeResponseMap {
   'vault.export': { success: boolean; encryptedData?: string; error?: string };
   'vault.import': { success: boolean; error?: string };
   'activity.mark': boolean | void;
-  'nostr.approval.respond': boolean | { success: boolean };
+  'nostr.requests.list': ApprovalRequestRecord[];
+  'nostr.requests.current': ApprovalRequestRecord | null;
+  'nostr.requests.count': number;
+  'nostr.requests.present': ApprovalRequestRecord | null;
+  'nostr.requests.respond': DecisionResult;
+  'nostr.requests.requeuePresented': void;
   'relay.browser.list': RelayCatalogEntry[];
   'relay.browser.getStatus': RelayDiscoveryState | null;
   'relay.browser.refresh': boolean | { success: false; error: string };

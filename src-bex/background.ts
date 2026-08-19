@@ -14,15 +14,24 @@ import {
   storageService,
 } from 'src/services/storage-service';
 import {
-  REQUEST_TIMEOUT_MS,
-} from './constants';
-import {
   startAutoLockTimer,
   resetAutoLockTimer,
   restoreLastActivity,
   checkAutoLock,
 } from './services/auto-lock';
 import { initializePanelSurface, resolvePanelSurface } from './services/panel-surface';
+import {
+  enqueueRequest,
+  getCurrentRequest,
+  getPendingCount,
+  listPendingRequests,
+  markPresented,
+  pruneResolvedRequests,
+  reconcileInterruptedRequests,
+  requeuePresented,
+  submitDecision,
+} from './services/request-queue';
+import type { ApprovalDuration } from './types/background';
 import type {
   BridgeResponsePayload,
   VaultData,
@@ -120,7 +129,15 @@ declare module '@quasar/app-vite' {
       { pubkey: string; ciphertext: string; origin: string },
       BridgeResponsePayload<'nostr.nip44.decrypt'>,
     ];
-    'nostr.approval.respond': [{ approved: boolean; duration: string }, BridgeResponsePayload<'nostr.approval.respond'>];
+    'nostr.requests.list': [undefined, BridgeResponsePayload<'nostr.requests.list'>];
+    'nostr.requests.current': [undefined, BridgeResponsePayload<'nostr.requests.current'>];
+    'nostr.requests.count': [undefined, BridgeResponsePayload<'nostr.requests.count'>];
+    'nostr.requests.present': [{ id: string }, BridgeResponsePayload<'nostr.requests.present'>];
+    'nostr.requests.respond': [
+      { id: string; approved: boolean; duration: ApprovalDuration },
+      BridgeResponsePayload<'nostr.requests.respond'>,
+    ];
+    'nostr.requests.requeuePresented': [undefined, BridgeResponsePayload<'nostr.requests.requeuePresented'>];
     'vault.unlock': [{ password: string }, BridgeResponsePayload<'vault.unlock'>];
     'vault.lock': [undefined, BridgeResponsePayload<'vault.lock'>];
     'vault.create': [
@@ -217,6 +234,9 @@ if (typeof self !== 'undefined') {
   });
 }
 
+// Auto-lock activity is deliberately not reset by site-initiated requests (ADR D15). A page
+// making periodic requests must not hold the vault unlocked past the user's configured
+// interval; only interaction with a Porwr surface counts as activity.
 const getHostname = (origin: string): string => {
   try {
     return new URL(origin).hostname;
@@ -225,26 +245,33 @@ const getHostname = (origin: string): string => {
   }
 };
 
-interface ApprovalResponse {
-  approved: boolean;
-  duration: string;
-}
+bridge.on('nostr.requests.list', () => {
+  return listPendingRequests() as unknown as BridgeResponsePayload<'nostr.requests.list'>;
+});
 
-interface ApprovalPromise {
-  resolve: (value: ApprovalResponse) => void;
-  reject: (reason?: unknown) => void;
-}
+bridge.on('nostr.requests.current', () => {
+  return getCurrentRequest() as unknown as BridgeResponsePayload<'nostr.requests.current'>;
+});
 
-const getApprovalPromise = (): ApprovalPromise | null => approvalPromise;
+bridge.on('nostr.requests.count', () => {
+  return getPendingCount() as unknown as BridgeResponsePayload<'nostr.requests.count'>;
+});
 
-let approvalPromise: ApprovalPromise | null = null;
+bridge.on('nostr.requests.present', ({ payload }) => {
+  return markPresented(payload.id) as unknown as BridgeResponsePayload<'nostr.requests.present'>;
+});
 
-bridge.on('nostr.approval.respond', ({ payload }) => {
-  if (approvalPromise) {
-    approvalPromise.resolve({ approved: payload.approved, duration: payload.duration });
-    approvalPromise = null;
-  }
-  return true;
+// Decisions name a request id. The queue refuses unknown, already-terminal, and expired ids, so
+// a panel acting on stale state changes nothing (ADR D5).
+bridge.on('nostr.requests.respond', ({ payload }) => {
+  return submitDecision(payload.id, {
+    approved: payload.approved,
+    duration: payload.duration,
+  }) as unknown as BridgeResponsePayload<'nostr.requests.respond'>;
+});
+
+bridge.on('nostr.requests.requeuePresented', () => {
+  return requeuePresented() as unknown as BridgeResponsePayload<'nostr.requests.requeuePresented'>;
 });
 
 bridge.on('vault.unlock', ({ payload }) => {
@@ -348,6 +375,10 @@ async function initialize(): Promise<void> {
       });
     });
     await initializePanelSurface();
+    // A restarted worker has lost every live callback, so anything still pending is interrupted
+    // and can never be approved (ADR D7).
+    await reconcileInterruptedRequests();
+    await pruneResolvedRequests();
   } catch (error: unknown) {
     logService.log(LogLevel.ERROR, '[BEX] Initialization error:', {
       error: error instanceof Error ? error.message : String(error),
@@ -429,38 +460,6 @@ const trimApprovalContentDescription = (content?: string): string | undefined =>
   return normalized.length > 240 ? `${normalized.slice(0, 237)}...` : normalized;
 };
 
-const buildApprovalUrl = (
-  path: 'approve' | 'login',
-  origin: string,
-  eventKind: number,
-  details: ApprovalRequestDetails,
-  approvalVaultLocked = false,
-): string => {
-  const query = new URLSearchParams({
-    origin,
-    kind: String(eventKind),
-    requestType: details.requestType,
-  });
-
-  if (details.contentDescription) {
-    query.set('contentDescription', details.contentDescription);
-  }
-
-  if (details.allowRemember === false) {
-    query.set('allowRemember', 'false');
-  }
-
-  if (path === 'login') {
-    query.set('redirect', '/approve');
-  }
-
-  if (approvalVaultLocked) {
-    query.set('approvalVaultLocked', 'true');
-  }
-
-  return chrome.runtime.getURL(`www/index.html#/${path}?${query.toString()}`);
-};
-
 async function requestApproval(
   origin: string,
   eventKind: number,
@@ -471,125 +470,53 @@ async function requestApproval(
     if (permission.granted) return true;
   }
 
-  const isUnlockedStatus = await handleVaultIsUnlocked({}, '');
-  if (!isUnlockedStatus.success || !isUnlockedStatus.data) {
-    try {
-      const loginUrl = buildApprovalUrl('login', origin, eventKind, details, true);
-      const win = await chrome.windows.create({ url: loginUrl, type: 'popup', width: 450, height: 700, focused: true });
-      const windowId = win?.id;
-      if (windowId === undefined) {
-        return false;
-      }
-
-      return new Promise<boolean>((resolve) => {
-        const checkStatus = setInterval(() => {
-          void handleVaultIsUnlocked({}, '').then((status) => {
-            if (status.success && status.data) {
-              clearInterval(checkStatus);
-              chrome.windows.onRemoved.removeListener(onRemoved);
-              void requestApproval(origin, eventKind, details).then(resolve);
-            }
-          });
-        }, 1000);
-
-        const onRemoved = (closedWindowId: number) => {
-          if (closedWindowId === windowId) {
-            clearInterval(checkStatus);
-            chrome.windows.onRemoved.removeListener(onRemoved);
-            resolve(false);
-          }
-        };
-        chrome.windows.onRemoved.addListener(onRemoved);
-      });
-    } catch {
-      return false;
-    }
-  }
-
-  if (approvalPromise) throw new Error('Another approval request is already pending');
-
-  const url = buildApprovalUrl('approve', origin, eventKind, details);
-  let windowId: number | undefined;
-
-  const promise = new Promise<ApprovalResponse>((resolve, reject) => {
-    approvalPromise = { resolve, reject };
-    const timeout = setTimeout(() => {
-      if (approvalPromise) {
-        approvalPromise.reject(new Error('Approval request timed out'));
-        approvalPromise = null;
-        if (windowId !== undefined) void chrome.windows.remove(windowId);
-      }
-    }, REQUEST_TIMEOUT_MS);
-
-    const currentApprovalPromise = approvalPromise;
-    if (!currentApprovalPromise) {
-      reject(new Error('Approval request state was not initialized'));
-      return;
-    }
-
-    const originalResolve = currentApprovalPromise.resolve;
-    const originalReject = currentApprovalPromise.reject;
-
-    const onRemovedHandler = (closedWindowId: number) => {
-      if (closedWindowId === windowId && approvalPromise) {
-        approvalPromise.resolve({ approved: false, duration: 'once' });
-        approvalPromise = null;
-      }
-    };
-    chrome.windows.onRemoved.addListener(onRemovedHandler);
-
-    approvalPromise.resolve = (val: ApprovalResponse) => {
-      clearTimeout(timeout);
-      chrome.windows.onRemoved.removeListener(onRemovedHandler);
-      void (async () => {
-        if (val.approved && val.duration !== 'once' && details.allowRemember !== false && !details.skipPermissionCheck) {
-          try {
-            if (val.duration === 'always' || val.duration === '8h') {
-              await grantPermission(origin, eventKind, val.duration);
-            } else {
-              logService.log(LogLevel.WARN, `[BEX] Received unsupported approval duration: ${val.duration}`);
-            }
-          } catch (error: unknown) {
-            logService.log(LogLevel.ERROR, '[BEX] Failed to grant permission', {
-              error: error instanceof Error ? error.message : String(error),
-            });
-          }
-        }
-        originalResolve(val);
-      })();
-    };
-    approvalPromise.reject = (err: unknown) => {
-      clearTimeout(timeout);
-      chrome.windows.onRemoved.removeListener(onRemovedHandler);
-      originalReject(err);
-    };
+  const activeStoredKey = await getActiveStoredKey();
+  const { record, decision } = await enqueueRequest({
+    origin,
+    requestType: details.requestType,
+    eventKind,
+    accountAlias: activeStoredKey?.alias ?? null,
+    // StoredKey carries no public key, and deriving one would need an unlocked vault and key
+    // material for a display field. #116 owns the account dimension and populates this.
+    accountPubkey: null,
   });
 
-  try {
-    const win = await chrome.windows.create({ url, type: 'popup', width: 450, height: 700, focused: true });
-    if (win?.id === undefined) {
-      const error = new Error('Failed to open approval window');
-      const pendingApproval = getApprovalPromise();
-      if (pendingApproval) {
-        pendingApproval.reject(error);
-        approvalPromise = null;
-      }
-    } else {
-      windowId = win.id;
-    }
-  } catch (error: unknown) {
-    const pendingApproval = getApprovalPromise();
-    if (pendingApproval) {
-      pendingApproval.reject(error);
-      approvalPromise = null;
+  // A locked vault no longer opens its own window: the panel presents the unlock view with the
+  // waiting request, and unlocking still requires an explicit decision afterwards (ADR D14).
+  const outcome = await decision;
+
+  const approved = outcome.approved;
+  const durationLabel: ApprovalDuration = outcome.duration;
+
+  if (
+    approved &&
+    durationLabel !== 'once' &&
+    details.allowRemember !== false &&
+    !details.skipPermissionCheck
+  ) {
+    try {
+      await grantPermission(origin, eventKind, durationLabel);
+    } catch (error: unknown) {
+      logService.log(LogLevel.ERROR, '[BEX] Failed to grant permission', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
-  return promise.then((res) => res.approved);
+
+  // Logged on the terminal transition rather than when the site asked, so a rejection is not
+  // recorded as an approval.
+  void logService.logApproval(
+    eventKind === -1 ? details.requestType : eventKind,
+    getHostname(origin),
+    record.accountAlias,
+    approved ? 'approved' : 'rejected',
+  );
+
+  return approved;
 }
 
 bridge.on('nostr.getPublicKey', ({ payload: { origin } }) => (
   (async () => {
-    void resetAutoLockTimer();
     const result = await handleGetPublicKey({}, origin);
     if (!result.success) {
       throw new BackgroundBridgeError(
@@ -609,7 +536,6 @@ bridge.on('nostr.getPublicKey', ({ payload: { origin } }) => (
 
 bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => (
   (async () => {
-    void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
     const contentDescription = trimApprovalContentDescription(event.content);
@@ -641,7 +567,6 @@ bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => (
 
 bridge.on('nostr.getRelays', ({ payload: { origin } }) => (
   (async () => {
-    void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin, -1, { requestType: 'get_relays' });
@@ -656,7 +581,6 @@ bridge.on('nostr.getRelays', ({ payload: { origin } }) => (
 
 bridge.on('nostr.nip04.encrypt', ({ payload }) => (
   (async () => {
-    void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_encrypt', getHostname(payload.origin), activeStoredKey?.alias);
     const approved = await requestApproval(payload.origin, -1, { requestType: 'nip04_encrypt' });
@@ -671,7 +595,6 @@ bridge.on('nostr.nip04.encrypt', ({ payload }) => (
 
 bridge.on('nostr.nip04.decrypt', ({ payload }) => (
   (async () => {
-    void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_decrypt', getHostname(payload.origin), activeStoredKey?.alias);
     const approved = await requestApproval(payload.origin, -1, { requestType: 'nip04_decrypt' });
@@ -686,7 +609,6 @@ bridge.on('nostr.nip04.decrypt', ({ payload }) => (
 
 bridge.on('nostr.nip44.encrypt', ({ payload }) => (
   (async () => {
-    void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip44_encrypt', getHostname(payload.origin), activeStoredKey?.alias);
     const approved = await requestApproval(payload.origin, -1, { requestType: 'nip44_encrypt' });
@@ -701,7 +623,6 @@ bridge.on('nostr.nip44.encrypt', ({ payload }) => (
 
 bridge.on('nostr.nip44.decrypt', ({ payload }) => (
   (async () => {
-    void resetAutoLockTimer();
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip44_decrypt', getHostname(payload.origin), activeStoredKey?.alias);
     const approved = await requestApproval(payload.origin, -1, { requestType: 'nip44_decrypt' });
@@ -732,7 +653,6 @@ bridge.on('relay.browser.refresh', ({ payload }) => {
 });
 
 bridge.on('nip57.getCapabilities', ({ payload }) => {
-  void resetAutoLockTimer();
   return dispatchMessage(
     'nip57.getCapabilities',
     createBridgeRequest('nip57.getCapabilities', { origin: payload.origin }),
@@ -742,7 +662,6 @@ bridge.on('nip57.getCapabilities', ({ payload }) => {
 
 bridge.on('nip57.sendZap', ({ payload }) => (
   (async () => {
-    void resetAutoLockTimer();
     const amountMsat = payload.request.amountMsat ?? (payload.request.amountSats !== undefined ? payload.request.amountSats * 1000 : 0);
     const amountSatsLabel = amountMsat > 0 ? `${amountMsat / 1000} sats` : 'unknown amount';
     const contentDescription = trimApprovalContentDescription(
@@ -777,7 +696,6 @@ bridge.on('nip57.zaps.list', () => {
 
 bridge.on('webln.enable', ({ payload }) => (
   (async () => {
-    void resetAutoLockTimer();
     const approved = await requestApproval(payload.origin, -1, {
       requestType: 'webln_enable',
       contentDescription: 'Allow this site to use Diogel as a WebLN wallet provider. Payments will still require separate approval.',
@@ -796,7 +714,6 @@ bridge.on('webln.enable', ({ payload }) => (
 ));
 
 bridge.on('webln.getInfo', ({ payload }) => {
-  void resetAutoLockTimer();
   return dispatchMessage(
     'webln.getInfo',
     createBridgeRequest('webln.getInfo', { origin: payload.origin }),
@@ -806,7 +723,6 @@ bridge.on('webln.getInfo', ({ payload }) => {
 
 bridge.on('webln.sendPayment', ({ payload }) => (
   (async () => {
-    void resetAutoLockTimer();
     const amountMsat = parseBolt11AmountMsat(payload.paymentRequest);
     const amountDescription = amountMsat !== undefined ? `${amountMsat / 1000} sats` : 'unknown amount';
     const approved = await requestApproval(payload.origin, -1, {

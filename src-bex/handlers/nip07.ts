@@ -9,7 +9,6 @@ import { hexToBytes } from '@noble/hashes/utils';
 import { isVaultUnlocked, getVaultData } from '../vault';
 import { NOSTR_ACTIVE, storageService } from 'src/services/storage-service';
 import { checkPermission } from './permission-handler';
-import { resetAutoLockTimer } from '../services/auto-lock';
 import { logService } from 'src/services/log-service';
 import { ErrorCode } from 'src/types/error-codes.d';
 
@@ -45,7 +44,6 @@ export const handleGetPublicKey = logWrapper(async (
     return { success: false, error: 'No active account', code: ErrorCode.SIG_NO_ACTIVE_KEY };
   }
 
-  void resetAutoLockTimer();
 
   return { success: true, data: account.id };
 }, 'getPublicKey');
@@ -82,7 +80,6 @@ export const handleSignEvent = logWrapper(async (
     const sk = hexToBytes(account.account.privkey);
     const signed = finalizeEvent(payload.event, sk);
 
-    void resetAutoLockTimer();
 
     return { success: true, data: signed };
   } catch (error: unknown) {

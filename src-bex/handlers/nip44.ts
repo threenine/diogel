@@ -1,6 +1,5 @@
 import { nip44 } from 'nostr-tools';
 import type { HandlerResult } from '../types/background';
-import { resetAutoLockTimer } from '../services/auto-lock';
 import { getActiveSecretKey } from './active-key';
 
 export async function handleNip44Encrypt(
@@ -14,7 +13,6 @@ export async function handleNip44Encrypt(
     const conversationKey = nip44.getConversationKey(secretKey, payload.pubkey);
     const ciphertext = nip44.encrypt(payload.plaintext, conversationKey);
 
-    void resetAutoLockTimer();
 
     return { success: true, data: ciphertext };
   } catch (error: unknown) {
@@ -36,7 +34,6 @@ export async function handleNip44Decrypt(
     const conversationKey = nip44.getConversationKey(secretKey, payload.pubkey);
     const plaintext = nip44.decrypt(payload.ciphertext, conversationKey);
 
-    void resetAutoLockTimer();
 
     return { success: true, data: plaintext };
   } catch (error: unknown) {

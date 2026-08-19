@@ -4,6 +4,8 @@ export const BLOSSOM_SERVER = 'nostr:blossom-server' as const;
 export const DARK_MODE = 'nostr:dark-mode' as const;
 export const VAULT_AUTO_LOCK_MINUTES = 'vault:auto-lock-minutes' as const;
 export const REQUEST_EXPIRY_MINUTES = 'nostr:request-expiry-minutes' as const;
+// Session-scoped: the queue starts empty on every browser restart by design (ADR D6, D7).
+export const REQUEST_QUEUE_KEY = 'nostr:request-queue' as const;
 export const VAULT_LAST_ACTIVITY = 'vault:last-activity' as const;
 export const BLOSSOM_UPLOAD_STATUS = 'blossom:upload-status' as const;
 export const PERMISSIONS_KEY = 'nostr:permissions' as const;
