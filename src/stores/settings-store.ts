@@ -3,9 +3,14 @@ import {
   BLOSSOM_SERVER,
   DARK_MODE,
   FALLBACK_RELAYS,
+  REQUEST_EXPIRY_MINUTES,
   storageService,
   VAULT_AUTO_LOCK_MINUTES,
 } from 'src/services/storage-service';
+import {
+  clampRequestExpiryMinutes,
+  REQUEST_EXPIRY_DEFAULT_MINUTES,
+} from 'src/services/request-expiry';
 import { RELAY_SEEDS } from 'src/data/relay-seeds';
 import { PROFILE_SEARCH_RELAY_SEEDS } from 'src/data/profile-search-relay-seeds';
 import { normalizeRelayUrl } from 'src/services/relay-url';
@@ -33,6 +38,7 @@ const useSettingsStore = defineStore('settings', {
     blossomServer: DEFAULT_BLOSSOM_SERVER,
     darkMode: true, // Default to dark mode as per current observed behavior
     vaultAutoLockMinutes: DEFAULT_VAULT_AUTO_LOCK_MINUTES,
+    requestExpiryMinutes: REQUEST_EXPIRY_DEFAULT_MINUTES,
     fallbackRelays: DEFAULT_FALLBACK_RELAYS,
     profileSearchRelays: DEFAULT_PROFILE_SEARCH_RELAYS,
     isListening: false,
@@ -58,6 +64,7 @@ const useSettingsStore = defineStore('settings', {
         BLOSSOM_SERVER,
         DARK_MODE,
         VAULT_AUTO_LOCK_MINUTES,
+        REQUEST_EXPIRY_MINUTES,
         FALLBACK_RELAYS,
       ]);
       if (result[BLOSSOM_SERVER] && typeof result[BLOSSOM_SERVER] === 'string') {
@@ -71,6 +78,11 @@ const useSettingsStore = defineStore('settings', {
         this.vaultAutoLockMinutes = Number.isFinite(value)
           ? Math.max(0, Math.floor(value))
           : DEFAULT_VAULT_AUTO_LOCK_MINUTES;
+      }
+      if (Object.prototype.hasOwnProperty.call(result, REQUEST_EXPIRY_MINUTES)) {
+        // Clamped on read as well as on write: the background applies the same clamp, and the
+        // UI must never present a value the background would refuse (ADR D8).
+        this.requestExpiryMinutes = clampRequestExpiryMinutes(result[REQUEST_EXPIRY_MINUTES]);
       }
       if (Array.isArray(result[FALLBACK_RELAYS]) && (result[FALLBACK_RELAYS] as unknown[]).length > 0) {
         this.fallbackRelays = result[FALLBACK_RELAYS] as string[];
@@ -101,6 +113,12 @@ const useSettingsStore = defineStore('settings', {
       const normalized = Number.isFinite(minutes) ? Math.max(0, Math.floor(minutes)) : 0;
       this.vaultAutoLockMinutes = normalized;
       await storageService.set(VAULT_AUTO_LOCK_MINUTES, normalized);
+    },
+
+    async setRequestExpiryMinutes(minutes: number): Promise<void> {
+      const normalized = clampRequestExpiryMinutes(minutes);
+      this.requestExpiryMinutes = normalized;
+      await storageService.set(REQUEST_EXPIRY_MINUTES, normalized);
     },
 
     async setFallbackRelays(relays: string[]): Promise<void> {

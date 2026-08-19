@@ -1,6 +1,19 @@
+import {
+  REQUEST_EXPIRY_DEFAULT_MINUTES,
+  REQUEST_EXPIRY_MAX_MINUTES,
+  REQUEST_EXPIRY_MIN_MINUTES,
+} from 'src/services/request-expiry';
+
 export const REQUEST_TIMEOUT_MS = 60000;
-export const AUTO_LOCK_CHECK_INTERVAL_MS = 15000;
-export const AUTO_LOCK_DEFAULT_MINUTES = 15;
+
+// Re-exported so background code keeps a single constants entry point. The values live in
+// `src/services/request-expiry.ts` because both the background and the settings UI need them,
+// and the UI cannot import from `src-bex`.
+export {
+  REQUEST_EXPIRY_DEFAULT_MINUTES,
+  REQUEST_EXPIRY_MAX_MINUTES,
+  REQUEST_EXPIRY_MIN_MINUTES,
+};
 
 export const MESSAGE_TYPE_REQUEST = 'diogel-request';
 export const MESSAGE_TYPE_PING = 'diogel-ping';

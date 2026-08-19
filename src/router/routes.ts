@@ -2,15 +2,21 @@ import type { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   {
-    path: '/popup',
-    component: () => import('layouts/ExtensionLayout.vue'),
+    path: '/sidebar',
+    component: () => import('layouts/SidebarLayout.vue'),
     children: [
       {
         path: '',
-        name: 'popup',
-        component: () => import('pages/PopupHome.vue'),
+        name: 'sidebar',
+        component: () => import('pages/SidebarHome.vue'),
       },
     ],
+  },
+  {
+    // The toolbar popup was retired with the sidebar (ADR D3). Anything still holding the old
+    // URL lands on the panel rather than a not-found page.
+    path: '/popup',
+    redirect: { name: 'sidebar' },
   },
   {
     path: '/login',
