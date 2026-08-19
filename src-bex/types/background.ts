@@ -47,5 +47,60 @@ export interface PermissionGrant {
   expiry?: number;
 }
 
+// Approval request queue types (ADR D5, D6)
+
+/**
+ * Request lifecycle states. `approved`, `rejected`, `expired`, and `interrupted` are terminal:
+ * a request in any of them can never be approved.
+ */
+export type ApprovalRequestState =
+  | 'queued'
+  | 'presented'
+  | 'approved'
+  | 'rejected'
+  | 'expired'
+  | 'interrupted';
+
+export const TERMINAL_REQUEST_STATES: readonly ApprovalRequestState[] = [
+  'approved',
+  'rejected',
+  'expired',
+  'interrupted',
+];
+
+/**
+ * The durable shape of a queued request.
+ *
+ * This is the complete list of fields permitted in session storage (ADR D6). Event content,
+ * event bodies, plaintext, ciphertext, invoices, preimages, and key material are transient and
+ * must never appear here.
+ */
+export interface ApprovalRequestRecord {
+  id: string;
+  origin: string;
+  requestType: string;
+  eventKind: number;
+  accountAlias: string | null;
+  accountPubkey: string | null;
+  createdAt: number;
+  expiresAt: number;
+  state: ApprovalRequestState;
+}
+
+/** Approval durations the user can choose. */
+export type ApprovalDuration = 'once' | '8h' | 'always';
+
+export interface ApprovalDecision {
+  approved: boolean;
+  duration: ApprovalDuration;
+}
+
+/** Why a decision was refused, when it was not applied. */
+export type DecisionRefusal = 'unknown-request' | 'already-resolved' | 'expired';
+
+export type DecisionResult =
+  | { applied: true; record: ApprovalRequestRecord }
+  | { applied: false; reason: DecisionRefusal };
+
 // Handler function type
 export type HandlerFn<T, R> = (payload: T, origin: string) => Promise<HandlerResult<R>>;

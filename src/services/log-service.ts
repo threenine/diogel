@@ -1,4 +1,5 @@
 import { db } from './database';
+import type { ApprovalOutcome } from './database';
 
 export enum LogLevel {
   INFO = 'INFO',
@@ -75,7 +76,18 @@ export class LogService {
     }
   }
 
-  async logApproval(eventKind: number | string, hostname: string, account?: string | null): Promise<void> {
+  /**
+   * Record what happened to an approval request.
+   *
+   * Called on the terminal transition, not when the site asks: a rejected request must not be
+   * recorded the same way as an approved one.
+   */
+  async logApproval(
+    eventKind: number | string,
+    hostname: string,
+    account?: string | null,
+    outcome: ApprovalOutcome = 'unknown',
+  ): Promise<void> {
     const persistedAccount: PersistedLogAccount = this.normalizeNullableString(account);
 
     try {
@@ -84,8 +96,9 @@ export class LogService {
         eventKind,
         hostname,
         account: persistedAccount,
+        outcome,
       });
-      this.log(LogLevel.DEBUG, `Approval granted for kind ${eventKind} on ${hostname}`, {
+      this.log(LogLevel.DEBUG, `Approval ${outcome} for kind ${eventKind} on ${hostname}`, {
         account: persistedAccount,
       });
     } catch (error: unknown) {

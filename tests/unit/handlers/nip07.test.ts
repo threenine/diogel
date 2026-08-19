@@ -76,7 +76,8 @@ describe('Nip07Handler', () => {
       if (result.success) {
         expect(result.data).toBe('test-pubkey');
       }
-      expect(resetAutoLockTimer).toHaveBeenCalled();
+      // ADR D15: site-initiated requests must not extend the unlocked window (finding F2).
+      expect(resetAutoLockTimer).not.toHaveBeenCalled();
     });
 
     it('should return error when vault is locked', async () => {
@@ -152,7 +153,8 @@ describe('Nip07Handler', () => {
         expect(result.data).toEqual(signedEvent);
       }
       expect(finalizeEvent).toHaveBeenCalled();
-      expect(resetAutoLockTimer).toHaveBeenCalled();
+      // ADR D15: site-initiated requests must not extend the unlocked window (finding F2).
+      expect(resetAutoLockTimer).not.toHaveBeenCalled();
     });
 
     it('should return error when vault is locked', async () => {

@@ -73,7 +73,8 @@ describe('Nip44Handler', () => {
     }
     expect(nip44.getConversationKey).toHaveBeenCalledWith(expect.any(Buffer), 'recipient-pubkey');
     expect(nip44.encrypt).toHaveBeenCalledWith('hello', Uint8Array.from([1, 2, 3]));
-    expect(resetAutoLockTimer).toHaveBeenCalled();
+    // ADR D15: site-initiated requests must not extend the unlocked window (finding F2).
+    expect(resetAutoLockTimer).not.toHaveBeenCalled();
   });
 
   it('decrypts when vault is unlocked and active account exists', async () => {
@@ -89,7 +90,8 @@ describe('Nip44Handler', () => {
     }
     expect(nip44.getConversationKey).toHaveBeenCalledWith(expect.any(Buffer), 'sender-pubkey');
     expect(nip44.decrypt).toHaveBeenCalledWith('nip44-ciphertext', Uint8Array.from([4, 5, 6]));
-    expect(resetAutoLockTimer).toHaveBeenCalled();
+    // ADR D15: site-initiated requests must not extend the unlocked window (finding F2).
+    expect(resetAutoLockTimer).not.toHaveBeenCalled();
   });
 
   it('returns error when vault is locked', async () => {
