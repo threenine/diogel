@@ -113,6 +113,7 @@ export function useAccounts() {
         '/settings',
         '/logs',
         '/popup',
+        '/sidebar',
         '/login',
         '/approve',
       ];

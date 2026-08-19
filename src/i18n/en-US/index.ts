@@ -429,6 +429,12 @@ export default {
     exportVaultCaption: 'Download an encrypted backup of your entire vault.',
     importVault: 'Import Vault',
     autoLockVault: 'Auto-lock Vault',
+    requestExpiry: 'Approval Request Expiry',
+    requestExpiryCaption:
+      'How long an approval request stays valid, measured from when the site asked. A request that expires cannot be approved and the site must ask again.',
+    requestExpiryOptions: {
+      minutes: '{count} minute | {count} minutes',
+    },
     autoLockVaultCaption: ' Automatically lock the vault after inactivity. Set to Off to disable.',
     importVaultCaption: 'Restore your vault from a previously exported backup file.',
     importButton: 'Import',
@@ -507,6 +513,19 @@ export default {
       refresh: 'Refresh List',
       refreshing: 'Refreshing...',
       results_per_page: 'Results per page',
+    },
+  },
+  sidebar: {
+    activeSite: {
+      label: 'Current tab',
+      ariaLabel: 'Site in the active tab',
+    },
+    links: {
+      ariaLabel: 'Porwr management surfaces',
+      dashboard: 'Dashboard',
+      keys: 'Keys',
+      eventHistory: 'History',
+      settings: 'Settings',
     },
   },
   approval: {

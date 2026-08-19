@@ -6,11 +6,18 @@ import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';
 import { useVaultManagement } from 'src/composables/useVaultManagement';
 import { normalizeRelayUrl } from 'src/services/relay-url';
+import { REQUEST_EXPIRY_OPTION_MINUTES } from 'src/services/request-expiry';
 
 const { t } = useI18n();
 const $q = useQuasar();
 const settingsStore = useSettingsStore();
 const profileSearchRelayInput = ref('');
+
+// Bounded, discrete choices with no "off" option: expiry is a fail-closed control (ADR D8).
+const requestExpiryOptions = REQUEST_EXPIRY_OPTION_MINUTES.map((minutes: number) => ({
+  label: t('settings.requestExpiryOptions.minutes', minutes),
+  value: minutes,
+}));
 
 const { fileInput, handleExportVault, triggerImport, handleFileImport } =
   useVaultManagement();
@@ -87,6 +94,26 @@ async function updateProfileSearchRelay(index: number, value: string | number | 
                 dense
                 outlined
                 @update:model-value="(val) => settingsStore.setVaultAutoLockMinutes(Number(val))"
+              />
+            </q-item-section>
+          </q-item>
+
+          <q-item>
+            <q-item-section>
+              <q-item-label>{{ t('settings.requestExpiry') }}</q-item-label>
+              <q-item-label caption lines="3">
+                {{ t('settings.requestExpiryCaption') }}
+              </q-item-label>
+            </q-item-section>
+            <q-item-section side style="min-width: 140px">
+              <q-select
+                :model-value="settingsStore.requestExpiryMinutes"
+                :options="requestExpiryOptions"
+                emit-value
+                map-options
+                dense
+                outlined
+                @update:model-value="(val) => settingsStore.setRequestExpiryMinutes(Number(val))"
               />
             </q-item-section>
           </q-item>

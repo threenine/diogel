@@ -1,72 +1,12 @@
 import { db } from './database';
 import { ErrorCode } from 'src/types/error-codes.d';
 import { LogLevel, logService } from './log-service';
-import type { BridgeAction, BridgeRequestMap, BridgeResponsePayload, VaultData } from 'src/types/bridge';
+import type { VaultData } from 'src/types/bridge';
+import { sendBexMessage } from './bridge-client';
 
-/**
- * Robust messaging for BEX environment.
- * Prefers Quasar bridge if available, but falls back to direct chrome.runtime.sendMessage
- * which is more reliable across different context lifetimes (popup vs options vs tab).
- */
-
-interface BridgeEnvelope<T> {
-  data: T;
-}
-
-interface BridgeLike {
-  send<T>(request: { event: BridgeAction; to: 'background'; payload?: unknown }): Promise<BridgeEnvelope<T> | T | null | undefined>;
-}
-
-const getBridge = (): BridgeLike | undefined => {
-  const bridgeHost = window as Window & {
-    bridge?: BridgeLike;
-    $q?: { bex?: BridgeLike };
-  };
-
-  return bridgeHost.bridge || bridgeHost.$q?.bex;
-};
-
-export async function sendBexMessage<T extends BridgeAction>(
-  type: T,
-  payload?: Omit<BridgeRequestMap[T], 'id' | 'action'>,
-): Promise<BridgeResponsePayload<T> | undefined> {
-  const bridge = getBridge();
-  if (bridge) {
-    try {
-      const response = await Promise.race([
-        bridge.send<BridgeResponsePayload<T>>({ event: type, to: 'background', payload }) as Promise<BridgeEnvelope<BridgeResponsePayload<T>> | BridgeResponsePayload<T>>,
-        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Bridge timeout')), 5000)),
-      ]);
-      if (response && typeof response === 'object' && 'data' in response) {
-        return response.data as BridgeResponsePayload<T>;
-      }
-      return response;
-    } catch (error: unknown) {
-      logService.log(LogLevel.WARN, `[VaultService] Bridge call failed for ${type}, falling back to direct messaging`, {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  if (typeof chrome !== 'undefined' && chrome.runtime?.sendMessage) {
-    logService.log(LogLevel.DEBUG, `[VaultService] Using direct chrome.runtime.sendMessage for ${type}`);
-    return await Promise.race([
-      new Promise<BridgeResponsePayload<T> | undefined>((resolve, reject) => {
-        chrome.runtime.sendMessage({ type, payload }, (response) => {
-          const runtimeError = chrome.runtime.lastError;
-          if (runtimeError) {
-            reject(new Error(runtimeError.message));
-            return;
-          }
-          resolve(response as BridgeResponsePayload<T> | undefined);
-        });
-      }),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error(`Direct background timeout for ${type}`)), 5000)),
-    ]);
-  }
-
-  throw new Error('No communication channel available (bridge or chrome.runtime)');
-}
+// Re-exported for existing callers; the implementation moved to `bridge-client.ts` when the
+// sidebar needed retry behaviour for a surface that outlives service-worker restarts.
+export { sendBexMessage };
 
 export async function unlockVault(
   password: string,

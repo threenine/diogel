@@ -22,6 +22,7 @@ import {
   restoreLastActivity,
   checkAutoLock,
 } from './services/auto-lock';
+import { initializePanelSurface, resolvePanelSurface } from './services/panel-surface';
 import type {
   BridgeResponsePayload,
   VaultData,
@@ -346,6 +347,7 @@ async function initialize(): Promise<void> {
         error: error instanceof Error ? error.message : String(error),
       });
     });
+    await initializePanelSurface();
   } catch (error: unknown) {
     logService.log(LogLevel.ERROR, '[BEX] Initialization error:', {
       error: error instanceof Error ? error.message : String(error),
@@ -354,6 +356,20 @@ async function initialize(): Promise<void> {
 }
 
 void initialize();
+
+// Chromium reveals the panel through `openPanelOnActionClick`, so `action.onClicked` never
+// fires there. Firefox has no equivalent, so the click is the user gesture that toggles the
+// sidebar. Opening the panel is only ever attempted from inside this handler (ADR D4).
+chrome.action?.onClicked?.addListener((tab) => {
+  const surface = resolvePanelSurface();
+  if (surface.kind !== 'firefox') return;
+
+  void surface.openFromUserGesture(tab.windowId).catch((error: unknown) => {
+    logService.log(LogLevel.ERROR, '[Panel] Failed to open panel from toolbar action', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+});
 
 // Signing/encryption actions are scoped to the requesting page's origin for
 // permission checks. This raw listener has no reliable origin of its own, so
