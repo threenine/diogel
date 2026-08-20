@@ -7,10 +7,10 @@ on:
   push:
     branches:
       - develop
+  # No branch filter: a pull request stacked on another feature branch is still code heading
+  # for master, and filtering by base left those PRs with no checks at all until they were
+  # retargeted. Running on every pull request costs one job and closes that gap.
   pull_request:
-    branches:
-      - master
-      - develop
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
