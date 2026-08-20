@@ -28,13 +28,19 @@ import {
   listPendingRequests,
   markPresented,
   pruneResolvedRequests,
+  interruptRequestsForOrigin,
+  onQueueChange,
   reconcileInterruptedRequests,
   requeuePresented,
   submitDecision,
 } from './services/request-queue';
+import { observePanelConnections } from './services/panel-presence';
+import { refreshAttention } from './services/attention-badge';
 import {
   getPageOrigin,
+  listPageOrigins,
   observePageConnections,
+  onPageOriginChange,
   restorePageOrigins,
 } from './services/page-origin-registry';
 import type { ApprovalDuration, UnsignedEvent } from './types/background';
@@ -400,6 +406,9 @@ async function initialize(): Promise<void> {
     // and can never be approved (ADR D7).
     await reconcileInterruptedRequests();
     await pruneResolvedRequests();
+    // The toolbar is the only signal while the panel is closed, so it must be right from the
+    // first moment a restarted worker is running (D4).
+    await refreshAttention();
   } catch (error: unknown) {
     logService.log(LogLevel.ERROR, '[BEX] Initialization error:', {
       error: error instanceof Error ? error.message : String(error),
@@ -410,8 +419,48 @@ async function initialize(): Promise<void> {
 void initialize();
 
 // Registered at top level, not inside initialize(): a restarted worker must be watching before the
-// first content script reconnects, or the registry starts empty and stays that way.
+// first content script or panel reconnects, or it misses them and never learns they are there.
 observePageConnections();
+observePanelConnections();
+
+// Every queue write mirrors onto the toolbar. Expiry is evaluated lazily on read, so a request can
+// leave the queue with no caller involved; watching the write is the only way to catch that.
+onQueueChange(() => {
+  void refreshAttention();
+});
+
+/**
+ * A page that has gone cannot be signed for.
+ *
+ * The content script's port dies on navigation, tab close, window close and crash, which is what
+ * the page origin registry reports here. Requests name an origin and not a tab, so this waits
+ * until no tab holds the origin at all before interrupting anything (D7).
+ */
+onPageOriginChange((_tabId, record) => {
+  if (record) return;
+
+  const goneOrigins = new Set<string>();
+  for (const [, remaining] of listPageOrigins()) goneOrigins.add(remaining.origin);
+
+  void (async () => {
+    const origins = new Set<string>();
+    for (const request of (await listPendingRequests()) ?? []) origins.add(request.origin);
+
+    for (const origin of origins) {
+      if (goneOrigins.has(origin)) continue;
+      await interruptRequestsForOrigin(origin);
+    }
+  })().catch((error: unknown) => {
+    logService.log(LogLevel.ERROR, '[Pages] Failed to reconcile requests for a closed page', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
+});
+
+// A closed window takes its tabs with it; ports usually report that first, but not always.
+chrome.windows?.onRemoved?.addListener(() => {
+  void refreshAttention();
+});
 
 // Chromium reveals the panel through `openPanelOnActionClick`, so `action.onClicked` never
 // fires there. Firefox has no equivalent, so the click is the user gesture that toggles the
