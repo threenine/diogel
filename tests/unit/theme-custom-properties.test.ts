@@ -25,25 +25,36 @@ const UNINTERPOLATED_SASS_VARIABLE = /\$[\w-]+/;
 
 const stripInterpolations = (value: string): string => value.replace(/#\{[^}]*\}/g, '');
 
+interface CustomProperty {
+  name: string;
+  value: string;
+}
+
+/** Capture groups are optional to the type checker, so narrow once here rather than at each use. */
+const parseCustomProperties = (scss: string): CustomProperty[] =>
+  [...scss.matchAll(CUSTOM_PROPERTY)].flatMap(([, name, value]) =>
+    name && value ? [{ name, value: value.trim() }] : [],
+  );
+
 describe('theme custom properties', () => {
-  const source = readFileSync(THEME_FILE, 'utf8');
+  const properties = parseCustomProperties(readFileSync(THEME_FILE, 'utf8'));
+
+  it('parses the theme file', () => {
+    expect(properties.length).toBeGreaterThan(0);
+  });
 
   it('interpolates every Sass variable used in a custom-property value', () => {
-    const offenders: string[] = [];
-
-    for (const [, name, value] of source.matchAll(CUSTOM_PROPERTY)) {
-      if (UNINTERPOLATED_SASS_VARIABLE.test(stripInterpolations(value))) {
-        offenders.push(`${name}: ${value.trim()}`);
-      }
-    }
+    const offenders = properties
+      .filter(({ value }) => UNINTERPOLATED_SASS_VARIABLE.test(stripInterpolations(value)))
+      .map(({ name, value }) => `${name}: ${value}`);
 
     expect(offenders).toEqual([]);
   });
 
   it('declares --header-bg from an interpolated variable in both themes', () => {
-    const declarations = [...source.matchAll(CUSTOM_PROPERTY)]
-      .filter(([, name]) => name === '--header-bg')
-      .map(([, , value]) => value.trim());
+    const declarations = properties
+      .filter(({ name }) => name === '--header-bg')
+      .map(({ value }) => value);
 
     expect(declarations).toHaveLength(2);
     for (const value of declarations) {
