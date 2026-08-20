@@ -64,6 +64,16 @@ export type PermissionEventKind =
 export interface PermissionGrant {
   origin: string;
   /**
+   * The account the grant was given to, as a public key.
+   *
+   * Part of the key. A grant belongs to the identity the user was looking at when they gave it, so
+   * it cannot be inherited by another account on the same site (#116).
+   *
+   * Keyed by public key, never alias: aliases are user-editable, and a rename must not orphan a
+   * grant or silently transfer it to a different identity.
+   */
+  accountPubkey: string;
+  /**
    * The request type the grant was created from.
    *
    * Part of the key: a grant written by `get_public_key` lives in a different space from one

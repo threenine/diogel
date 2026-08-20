@@ -44,23 +44,24 @@ export const handleSignEvent = logWrapper(async (
     return { success: false, error: 'Vault is locked', code: ErrorCode.VLT_LOCKED };
   }
 
-  // Check permission
-  if (!options.skipPermissionCheck) {
-    // Signing is its own key space: a grant from a request that carries no event kind can never
-    // answer this check (#136).
-    const permission = await checkPermission(origin, 'sign_event', payload.event.kind);
-    if (!permission.granted) {
-      return { success: false, error: 'Permission denied', code: ErrorCode.PER_DENIED };
-    }
-  }
-
-  // The site's bound account, not the active one: a signature must come from the identity the site
-  // was given at login (#116).
+  // Resolved before the permission check, not after: the check is against the account that will
+  // actually sign. The site's bound account, never the active one, so a signature comes from the
+  // identity the site was given at login (#116).
   const resolved = await resolveSigningAccount(origin);
   if ('error' in resolved) {
     return { success: false, error: resolved.error, code: resolved.code };
   }
   const account = resolved.account;
+
+  // Check permission
+  if (!options.skipPermissionCheck) {
+    // In signing's own key space, and against this account: a grant given to another identity, or
+    // by a request carrying no event kind, cannot answer it (#116, #136).
+    const permission = await checkPermission(origin, account.id, 'sign_event', payload.event.kind);
+    if (!permission.granted) {
+      return { success: false, error: 'Permission denied', code: ErrorCode.PER_DENIED };
+    }
+  }
 
   try {
     // Set the correct pubkey
