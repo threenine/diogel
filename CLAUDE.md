@@ -59,12 +59,15 @@ provider-side call in `nostr-provider.js`.
 
 - Per-origin, per-event-kind permissions are checked via `checkPermission` /
   `grantPermission` in `src-bex/handlers/permission-handler.ts`.
-- If permission isn't already granted, `requestApproval` (in `background.ts`) opens a
-  popup window (`pages/SignerApproval.vue` via the `/approve` or `/login` route) and
-  awaits the user's response (`nostr.approval.respond` bridge event), with "once" /
-  "8h" / "always" durations and a request timeout (`REQUEST_TIMEOUT_MS` in
-  `src-bex/constants.ts`).
-- If the vault is locked, the user is routed through `/login` first.
+- If permission isn't already granted, `requestApproval` (in `background.ts`) enqueues the
+  request on the background-owned queue (`src-bex/services/request-queue.ts`) and awaits
+  its terminal outcome, with "once" / "8h" / "always" durations and an expiry measured
+  from creation.
+- The sidebar panel presents the request and submits the decision against a request id.
+  There is no popup fallback: when the panel is closed the toolbar badge shows the pending
+  count and the user opens the panel themselves (ADR D4).
+- If the vault is locked, the panel shows its own unlock view. The panel is never routed
+  to a full-tab surface.
 
 ### Vault, accounts, and auto-lock
 
@@ -92,11 +95,11 @@ provider-side call in `nostr-provider.js`.
 ### UI structure
 
 - Routes: `src/router/routes.ts`. Layouts in `src/layouts/` map to extension surfaces:
-  `ExtensionLayout` (popup at `/popup`), `LoginLayout` (`/login`), `DashboardLayout`
-  (`/dashboard`, `/settings`, `/profile`, `/relays`, key management), `PopupLayout`,
+  `SidebarLayout` (`/sidebar`), `LoginLayout` (`/login`), `DashboardLayout`
+  (`/dashboard`, `/settings`, `/profile`, `/relays`, key management), `ExtensionLayout`,
   `BlankLayout`.
-- Pages in `src/pages/` correspond to these routes (e.g. `VaultLogin.vue`,
-  `SignerApproval.vue`, `KeyManagementPage.vue`, `DashboardPage.vue`).
+- Pages in `src/pages/` correspond to these routes (e.g. `SidebarHome.vue`,
+  `VaultLogin.vue`, `KeyManagementPage.vue`, `DashboardPage.vue`).
 - Boot files (`src/boot/i18n`, `src/boot/axios`) are auto-registered by Quasar; don't
   import them directly elsewhere. Centralize HTTP via `src/boot/axios`.
 - i18n messages live under `src/i18n/en-US`; the unplugin only picks up files under

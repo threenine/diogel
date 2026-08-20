@@ -164,11 +164,6 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
-  {
-    path: '/approve',
-    component: () => import('layouts/PopupLayout.vue'),
-    children: [{ path: '', component: () => import('pages/SignerApproval.vue') }],
-  },
   // Always leave this as last one,
   // but you can also remove it
   {

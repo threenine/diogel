@@ -115,7 +115,6 @@ export function useAccounts() {
         '/popup',
         '/sidebar',
         '/login',
-        '/approve',
       ];
       const isManagementPath =
         managementPaths.includes(currentPath) ||
