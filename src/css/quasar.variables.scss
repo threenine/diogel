@@ -46,7 +46,8 @@ $dark-header: #353e43;
   --dashboard-accent-bg: #fff3e9;
 
   // App chrome (header/toolbars)
-  --header-bg: $light-header; // deep blue header background
+  // Interpolated: Sass does not evaluate variables inside a custom-property value.
+  --header-bg: #{$light-header};
   --on-header: #0b1220; // header foreground (icons/text)
 
   // Configuration forms
@@ -72,7 +73,7 @@ $dark-header: #353e43;
   --dashboard-accent-bg: #40220f;
 
   // App chrome (header/toolbars)
-  --header-bg: $dark-header;
+  --header-bg: #{$dark-header};
   --on-header: #ffffff;
 
   // Configuration forms
