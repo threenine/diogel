@@ -150,7 +150,9 @@ const fullEventJson = computed(() =>
   max-height: 220px;
   overflow: auto;
   font-size: 0.75rem;
-  background: var(--header-bg);
+  /* Deliberately not --header-bg: this is where the user verifies what they are signing, so it
+     takes the softer surface and keeps the contrast the chrome colour would spend. */
+  background: var(--surface-soft);
   border: 1px solid var(--border-color);
   border-radius: 6px;
   white-space: pre-wrap;
