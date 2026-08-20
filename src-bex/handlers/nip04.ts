@@ -1,14 +1,13 @@
 import { nip04 } from 'nostr-tools';
 import type { HandlerResult } from '../types/background';
-import { getActiveSecretKey } from './active-key';
+import { resolveSigningSecretKey } from '../services/signing-account';
 
 export async function handleNip04Encrypt(
   payload: { pubkey: string; plaintext: string },
-  _origin?: string,
+  origin: string,
 ): Promise<HandlerResult<string>> {
-  void _origin;
   try {
-    const secretKey = await getActiveSecretKey();
+    const secretKey = await resolveSigningSecretKey(origin);
     const ciphertext = nip04.encrypt(secretKey, payload.pubkey, payload.plaintext);
     return { success: true, data: ciphertext };
   } catch (error: unknown) {
@@ -21,11 +20,10 @@ export async function handleNip04Encrypt(
 
 export async function handleNip04Decrypt(
   payload: { pubkey: string; ciphertext: string },
-  _origin?: string,
+  origin: string,
 ): Promise<HandlerResult<string>> {
-  void _origin;
   try {
-    const secretKey = await getActiveSecretKey();
+    const secretKey = await resolveSigningSecretKey(origin);
     const plaintext = nip04.decrypt(secretKey, payload.pubkey, payload.ciphertext);
     return { success: true, data: plaintext };
   } catch (error: unknown) {
