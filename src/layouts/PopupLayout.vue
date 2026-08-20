@@ -47,7 +47,7 @@ html.extension-popup body {
   justify-content: space-between;
   padding: 12px 16px;
   background: var(--header-bg);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--header-border);
   flex-shrink: 0;
 }
 

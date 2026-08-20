@@ -101,7 +101,7 @@ const pendingLabel = computed(() =>
   gap: 8px;
   padding: 12px 16px;
   background: var(--header-bg);
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--header-border);
   flex-shrink: 0;
 }
 
@@ -127,9 +127,10 @@ const pendingLabel = computed(() =>
   flex-shrink: 0;
 }
 
+/* Theme-aware: a dark pill on light chrome, an amber pill on dark chrome (#153). */
 .sidebar-header__pending {
-  background: var(--q-warning, #f2c037);
-  color: #0b1220;
+  background: var(--badge-bg);
+  color: var(--on-badge);
   font-weight: 700;
   font-size: 0.7rem;
   min-width: 20px;
