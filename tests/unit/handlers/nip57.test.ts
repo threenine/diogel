@@ -9,11 +9,18 @@ import { ErrorCode } from 'src/types/error-codes.d';
 vi.mock('app/src-bex/vault', () => ({
   getVaultData: vi.fn(),
   updateVaultData: vi.fn(),
+  isVaultUnlocked: vi.fn(() => true),
 }));
 
 vi.mock('src/services/storage-service', () => ({
   NOSTR_ACTIVE: 'NOSTR_ACTIVE',
-  storageService: { get: vi.fn() },
+  SITE_BINDINGS_KEY: 'nostr:site-bindings',
+  storageService: { get: vi.fn(), set: vi.fn(() => Promise.resolve()) },
+}));
+
+vi.mock('src/services/log-service', () => ({
+  LogLevel: { INFO: 'info' },
+  logService: { log: vi.fn() },
 }));
 
 vi.mock('app/src-bex/services/nip47-connection-store', () => ({
@@ -47,6 +54,7 @@ vi.mock('src/services/nip47-invoice', () => ({
 
 import { getVaultData, updateVaultData } from 'app/src-bex/vault';
 import { storageService } from 'src/services/storage-service';
+import { clearSiteBindingCache } from 'app/src-bex/services/site-binding-store';
 import { findNip47Connection, listNip47Connections } from 'app/src-bex/services/nip47-connection-store';
 import { nip47Client } from 'app/src-bex/services/nip47-client';
 import { appendNip57ZapHistory, listNip57ZapHistory } from 'app/src-bex/services/nip57-zap-history-store';
@@ -158,8 +166,14 @@ describe('handleNip57SendZap', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     globalThis.crypto.randomUUID = vi.fn(() => 'zap-entry-id') as () => `${string}-${string}-${string}-${string}-${string}`;
+    clearSiteBindingCache();
     vi.mocked(getVaultData).mockResolvedValue({ success: true, vaultData: baseVaultData() });
-    vi.mocked(storageService.get).mockResolvedValue(undefined);
+    // The zap now uses the site's bound account, which binds to the active one on first contact.
+    // This used to fall back to `accounts[0]` when nothing was active, which could attribute a
+    // payment to an identity the user never chose (#116).
+    vi.mocked(storageService.get).mockImplementation((key: string) =>
+      Promise.resolve(key === 'NOSTR_ACTIVE' ? account.alias : undefined),
+    );
     vi.mocked(updateVaultData).mockResolvedValue({ success: true });
   });
 

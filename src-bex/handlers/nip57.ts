@@ -1,5 +1,6 @@
 import type { HandlerResult } from '../types/background';
 import type { StoredKey } from 'src/types';
+import { resolveSigningAccount } from '../services/signing-account';
 import type { VaultData } from 'src/types/bridge';
 import type {
   Nip57ZapHistoryEntry,
@@ -9,7 +10,6 @@ import type {
   ZapCapabilities,
 } from 'src/types/nip57';
 import { getVaultData, updateVaultData } from '../vault';
-import { NOSTR_ACTIVE, storageService } from 'src/services/storage-service';
 import { findNip47Connection, listNip47Connections } from '../services/nip47-connection-store';
 import { nip47Client } from '../services/nip47-client';
 import { appendNip57ZapHistory, listNip57ZapHistory } from '../services/nip57-zap-history-store';
@@ -25,12 +25,21 @@ async function requireUnlockedVaultData(): Promise<VaultData> {
   return result.vaultData as VaultData;
 }
 
-async function getActiveAccount(vaultData: VaultData): Promise<StoredKey | undefined> {
-  const activeAlias = await storageService.get<string>(NOSTR_ACTIVE);
-  if (activeAlias) {
-    return vaultData.accounts.find((account) => account.alias === activeAlias);
-  }
-  return vaultData.accounts[0];
+/**
+ * The account a zap is sent from.
+ *
+ * A zap request is a signed Nostr event carrying the sender's identity, so it follows the same rule
+ * as every other site-initiated action: the site's bound account, never whichever is active (#116).
+ * Falling back to `accounts[0]` when nothing is active, as this used to, could attribute a payment
+ * to an identity the user never chose.
+ */
+async function getZapAccount(vaultData: VaultData, origin: string): Promise<StoredKey | undefined> {
+  const resolved = await resolveSigningAccount(origin);
+  if ('error' in resolved) return undefined;
+
+  // Resolved against the vault snapshot this call already holds, so the account and the wallet
+  // connection below are read from one consistent view.
+  return vaultData.accounts.find((account) => account.id === resolved.account.id);
 }
 
 function normalizeAmountMsat(request: SendZapRequest): number {
@@ -164,9 +173,9 @@ export async function handleNip57SendZap(payload: {
 
   const amountMsat = normalizeAmountMsat(payload.request);
   const vaultData = await requireUnlockedVaultData();
-  const account = await getActiveAccount(vaultData);
+  const account = await getZapAccount(vaultData, payload.origin);
   if (!account) {
-    throw new Error('No active account');
+    throw new Error('No account is available for this site');
   }
   const connection = payload.request.walletConnectionId
     ? findNip47Connection(vaultData, payload.request.walletConnectionId)

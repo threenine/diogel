@@ -1,15 +1,14 @@
 import { nip44 } from 'nostr-tools';
 import type { HandlerResult } from '../types/background';
-import { getActiveSecretKey } from './active-key';
+import { resolveSigningSecretKey } from '../services/signing-account';
 
 export async function handleNip44Encrypt(
   payload: { pubkey: string; plaintext: string },
-  _origin?: string,
+  origin: string,
 ): Promise<HandlerResult<string>> {
-  void _origin;
 
   try {
-    const secretKey = await getActiveSecretKey();
+    const secretKey = await resolveSigningSecretKey(origin);
     const conversationKey = nip44.getConversationKey(secretKey, payload.pubkey);
     const ciphertext = nip44.encrypt(payload.plaintext, conversationKey);
 
@@ -25,12 +24,11 @@ export async function handleNip44Encrypt(
 
 export async function handleNip44Decrypt(
   payload: { pubkey: string; ciphertext: string },
-  _origin?: string,
+  origin: string,
 ): Promise<HandlerResult<string>> {
-  void _origin;
 
   try {
-    const secretKey = await getActiveSecretKey();
+    const secretKey = await resolveSigningSecretKey(origin);
     const conversationKey = nip44.getConversationKey(secretKey, payload.pubkey);
     const plaintext = nip44.decrypt(payload.ciphertext, conversationKey);
 
