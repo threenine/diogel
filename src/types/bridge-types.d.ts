@@ -115,6 +115,7 @@ export type BridgeAction =
   | 'nostr.requests.respond'
   | 'nostr.requests.content'
   | 'nostr.requests.requeuePresented'
+  | 'pages.originForTab'
   | 'relay.browser.list'
   | 'relay.browser.getStatus'
   | 'relay.browser.refresh'
@@ -287,6 +288,11 @@ export interface BridgeRequestMap {
     action: 'nostr.requests.content';
     requestId: string;
   };
+  'pages.originForTab': {
+    id: string;
+    action: 'pages.originForTab';
+    tabId: number;
+  };
   'nostr.requests.requeuePresented': {
     id: string;
     action: 'nostr.requests.requeuePresented';
@@ -395,6 +401,7 @@ export interface BridgeResponseMap {
   'nostr.requests.list': ApprovalRequestRecord[];
   'nostr.requests.current': ApprovalRequestRecord | null;
   'nostr.requests.count': number;
+  'pages.originForTab': string | null;
   'nostr.requests.present': ApprovalRequestRecord | null;
   'nostr.requests.respond': DecisionResult;
   'nostr.requests.content': ApprovalRequestContent | null;

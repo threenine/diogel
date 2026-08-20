@@ -32,6 +32,11 @@ import {
   requeuePresented,
   submitDecision,
 } from './services/request-queue';
+import {
+  getPageOrigin,
+  observePageConnections,
+  restorePageOrigins,
+} from './services/page-origin-registry';
 import type { ApprovalDuration, UnsignedEvent } from './types/background';
 import type {
   BridgeResponsePayload,
@@ -133,6 +138,7 @@ declare module '@quasar/app-vite' {
     'nostr.requests.list': [undefined, BridgeResponsePayload<'nostr.requests.list'>];
     'nostr.requests.current': [undefined, BridgeResponsePayload<'nostr.requests.current'>];
     'nostr.requests.count': [undefined, BridgeResponsePayload<'nostr.requests.count'>];
+    'pages.originForTab': [{ tabId: number }, BridgeResponsePayload<'pages.originForTab'>];
     'nostr.requests.present': [{ requestId: string }, BridgeResponsePayload<'nostr.requests.present'>];
     'nostr.requests.respond': [
       { requestId: string; approved: boolean; duration: ApprovalDuration },
@@ -259,6 +265,12 @@ bridge.on('nostr.requests.count', () => {
   return getPendingCount() as unknown as BridgeResponsePayload<'nostr.requests.count'>;
 });
 
+// The panel can read a tab's id but never its url (NFR-18 rules out the permission that would
+// expose it), so the origin is resolved here from what the content script's port already told us.
+bridge.on('pages.originForTab', ({ payload }) => {
+  return getPageOrigin(payload.tabId) ?? null;
+});
+
 bridge.on('nostr.requests.present', ({ payload }) => {
   return markPresented(payload.requestId) as unknown as BridgeResponsePayload<'nostr.requests.present'>;
 });
@@ -383,6 +395,7 @@ async function initialize(): Promise<void> {
       });
     });
     await initializePanelSurface();
+    await restorePageOrigins();
     // A restarted worker has lost every live callback, so anything still pending is interrupted
     // and can never be approved (ADR D7).
     await reconcileInterruptedRequests();
@@ -395,6 +408,10 @@ async function initialize(): Promise<void> {
 }
 
 void initialize();
+
+// Registered at top level, not inside initialize(): a restarted worker must be watching before the
+// first content script reconnects, or the registry starts empty and stays that way.
+observePageConnections();
 
 // Chromium reveals the panel through `openPanelOnActionClick`, so `action.onClicked` never
 // fires there. Firefox has no equivalent, so the click is the user gesture that toggles the
