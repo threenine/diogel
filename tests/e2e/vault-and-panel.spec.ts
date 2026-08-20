@@ -9,21 +9,6 @@ import { createVault, lockVault } from './fixtures/vault';
  * no way to tell an intended onboarding redirect from a surface-boundary bug.
  */
 test.describe('the panel across vault states', () => {
-  /**
-   * Marked `fixme` because it fails by design, not by flakiness on our side: with no vault, the
-   * boot races and settles on either the full-tab create-vault card or the panel itself (#158).
-   * Removing the `fixme` reproduces the race. It is left here rather than deleted so the gap in
-   * coverage is visible in the suite rather than only in an issue.
-   */
-  test.fixme('sends a first-run user to vault creation rather than an empty panel', async ({
-    openPage,
-  }) => {
-    const page = await openPage('/sidebar');
-
-    await expect(page.getByText('Create Vault')).toBeVisible();
-    expect(page.url()).toContain('#/login');
-  });
-
   test('shows the panel once a vault exists and is unlocked', async ({ openPage }) => {
     const page = await openPage('/login');
     await createVault(page);
@@ -48,5 +33,36 @@ test.describe('the panel across vault states', () => {
     // violation #113 suspected.
     await expect(page.locator('.sidebar-unlock')).toBeVisible();
     expect(page.url()).toContain('#/sidebar');
+  });
+});
+
+/**
+ * The no-vault state (#158).
+ *
+ * The approval contract names S16 as "no account configured" — a vault that exists and is unlocked
+ * but holds no keys. It says nothing about there being no vault at all, which is why this went
+ * unnoticed: the panel fell through to its unlock view and offered to unlock nothing.
+ */
+test.describe('the panel with no vault', () => {
+  test('settles on the panel deterministically rather than racing a redirect', async ({
+    openPage,
+  }) => {
+    const page = await openPage('/sidebar');
+
+    expect(page.url()).toContain('#/sidebar');
+    await expect(page.locator('.sidebar-root')).toBeVisible();
+  });
+
+  test('never offers to unlock a vault that does not exist', async ({ openPage }) => {
+    const page = await openPage('/sidebar');
+
+    await expect(page.locator('.sidebar-unlock')).toHaveCount(0);
+    await expect(page.getByText('Unlock Vault')).toHaveCount(0);
+  });
+
+  test('prompts to set Porwr up instead', async ({ openPage }) => {
+    const page = await openPage('/sidebar');
+
+    await expect(page.locator('.sidebar-setup')).toBeVisible();
   });
 });

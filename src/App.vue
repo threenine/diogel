@@ -59,6 +59,18 @@ const addLog = (msg: string) => {
 
 type LoginContext = 'dashboard' | 'extension';
 
+/**
+ * The panel owns every vault state it can be in and must never be routed to the full-tab login
+ * page, which the approved surface map keeps out of a 360px column.
+ *
+ * Without this the boot raced: whether `#/sidebar` survived depended on whether
+ * `checkVaultStatus()` had answered before the redirect check ran, so the same first run landed on
+ * either the panel or the create-vault card (#158).
+ */
+function isPanelRoute(): boolean {
+  return route.path === '/sidebar' || route.name === 'sidebar';
+}
+
 function resolveLoginContextFromRoute(): LoginContext {
   const routeName = route.name;
   if (
@@ -144,9 +156,15 @@ onMounted(async () => {
       `Vault status check complete. exists: ${String(vaultStore.vaultExists)}, unlocked: ${String(vaultStore.isUnlocked)}`,
     );
 
+    // The router may still be resolving the initial URL. Until it has, `route` reports the blank
+    // path the router starts on rather than where the user actually is, so every check below —
+    // including the panel exemption — reads the wrong route. Whether that resolved first was the
+    // race in #158.
+    await router.isReady();
+
     // Only redirect if we ARE on home but SHOULD be on login, or vice versa
     const isAtLogin = route.path === '/login' || route.name === 'login';
-    if (!vaultStore.isUnlocked && !isAtLogin) {
+    if (!vaultStore.isUnlocked && !isAtLogin && !isPanelRoute()) {
       const isAtApprove = route.path === '/approve' || route.name === 'approve';
       addLog(
         `Redirecting to login (current path: ${String(route.path)}, name: ${String(route.name)})`,
@@ -250,7 +268,7 @@ watch(
     if (vaultStore.isLoading) return;
 
     const isAtApprove = route.path === '/approve' || route.name === 'approve';
-    if (isAtApprove) return;
+    if (isAtApprove || isPanelRoute()) return;
 
     if (!isUnlocked && route.path !== '/login' && route.name !== 'login') {
       addLog('Redirecting to login via watcher');

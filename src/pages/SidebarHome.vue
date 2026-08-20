@@ -26,7 +26,16 @@ const busy = ref(false);
  * Body precedence from the interaction specification §3: unlock, then the current request, then
  * the pending list, then the idle view.
  */
-const showUnlock = computed(() => !vaultStore.isUnlocked);
+/**
+ * A vault that does not exist cannot be unlocked.
+ *
+ * The contract names S16 for "no account configured", meaning an unlocked vault with no keys, and
+ * says nothing about there being no vault at all. Without this distinction the panel fell through
+ * to its unlock view and offered to unlock nothing (#158).
+ */
+const showSetup = computed(() => !vaultStore.vaultExists);
+
+const showUnlock = computed(() => vaultStore.vaultExists && !vaultStore.isUnlocked);
 
 async function onDecide(id: string, approved: boolean, duration: ApprovalDuration): Promise<void> {
   busy.value = true;
@@ -66,9 +75,22 @@ onMounted(async () => {
 
 <template>
   <q-page class="sidebar-home">
-    <!-- Unlock takes precedence over everything, and names any waiting request (S5, S15). -->
+    <!-- Nothing else is reachable without a vault, so this precedes even the unlock view (#158). -->
+    <section v-if="showSetup" class="sidebar-setup">
+      <q-icon color="grey-5" name="lock_open" size="3em" />
+      <h2 class="sidebar-setup__title">{{ t('sidebar.setup.title') }}</h2>
+      <p class="sidebar-setup__body">{{ t('sidebar.setup.body') }}</p>
+      <q-btn
+        no-caps
+        class="diogel-btn-primary"
+        :label="t('sidebar.setup.action')"
+        @click="openInTab('/login')"
+      />
+    </section>
+
+    <!-- Unlock takes precedence over everything else, and names any waiting request (S5, S15). -->
     <SidebarUnlock
-      v-if="showUnlock"
+      v-else-if="showUnlock"
       :waiting-request="current"
       @reject="(id) => onDecide(id, false, 'once')"
     />
@@ -158,5 +180,23 @@ onMounted(async () => {
 .sidebar-home__empty {
   text-align: center;
   padding: 24px 8px;
+}
+
+.sidebar-setup {
+  text-align: center;
+  padding: 24px 8px;
+  min-width: 0;
+}
+
+.sidebar-setup__title {
+  margin: 8px 0 4px;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.sidebar-setup__body {
+  color: var(--text-muted, #888);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
 }
 </style>
