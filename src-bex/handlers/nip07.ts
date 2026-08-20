@@ -60,7 +60,9 @@ export const handleSignEvent = logWrapper(async (
 
   // Check permission
   if (!options.skipPermissionCheck) {
-    const permission = await checkPermission(origin, payload.event.kind);
+    // Signing is its own key space: a grant from a request that carries no event kind can never
+    // answer this check (#136).
+    const permission = await checkPermission(origin, 'sign_event', payload.event.kind);
     if (!permission.granted) {
       return { success: false, error: 'Permission denied', code: ErrorCode.PER_DENIED };
     }

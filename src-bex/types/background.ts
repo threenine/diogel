@@ -39,9 +39,38 @@ export interface SignedEvent extends UnsignedEvent {
 }
 
 // Permission types
+/**
+ * What an event-kind scope means on a grant.
+ *
+ * `-1` used to carry two meanings at once: the approval call sites passed it for "this request has
+ * no event kind", while the checker read it as "any event kind". A request type with no kind could
+ * therefore write a grant the checker later honoured as a signing wildcard (#136). These are now
+ * separate values in separate key spaces.
+ */
+export type PermissionEventKind =
+  /** A specific Nostr event kind. Only ever set by a signing request. */
+  | number
+  /**
+   * Every event kind for this origin.
+   *
+   * Deliberately not producible by `grantPermission`: the approved contract says a wildcard must be
+   * asked for in those words on a signing request, and nothing offers that yet. The value exists so
+   * the checker and any future explicit path agree on how it is represented.
+   */
+  | 'any'
+  /** The request carries no event kind at all, such as `get_public_key`. */
+  | null;
+
 export interface PermissionGrant {
   origin: string;
-  eventKind: number;
+  /**
+   * The request type the grant was created from.
+   *
+   * Part of the key: a grant written by `get_public_key` lives in a different space from one
+   * written by `sign_event` and can never satisfy it.
+   */
+  requestType: string;
+  eventKind: PermissionEventKind;
   granted: boolean;
   timestamp: number;
   expiry?: number;
