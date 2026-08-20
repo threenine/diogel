@@ -1,44 +1,52 @@
 /**
  * Permission management for Nostr signing and non-signing requests.
  *
- * A grant is keyed by origin, request type, and event kind. The request type is part of the key
- * because it used to be absent: every grant was `(origin, eventKind)`, and `-1` meant "no event
- * kind" at the approval call sites but "any event kind" in the checker. Approving a
- * `get_public_key` request with "always" therefore wrote a record that authorised signing any event
- * kind, with no further prompt (#136).
+ * A grant is keyed by origin, account, request type, and event kind.
+ *
+ * The request type is part of the key because it used to be absent: every grant was
+ * `(origin, eventKind)`, and `-1` meant "no event kind" at the approval call sites but "any event
+ * kind" in the checker, so approving a `get_public_key` request with "always" wrote a record that
+ * authorised signing any event kind (#136).
+ *
+ * The account is part of the key because a grant belongs to the identity the user was looking at
+ * when they gave it. Without it, connecting a second account to a site inherited the first
+ * account's permissions (#116).
  */
 
 import { PERMISSIONS_KEY, storageService } from 'src/services/storage-service';
 import { LogLevel, logService } from 'src/services/log-service';
 import type { PermissionEventKind, PermissionGrant } from '../types/background';
 
-/** Event kinds are non-negative, so this only ever appears in pre-#136 records. */
-const LEGACY_AMBIGUOUS_KIND = -1;
-
 const SIGN_EVENT = 'sign_event';
 
 // In-memory cache
 let permissionCache: PermissionGrant[] | null = null;
 
-/** A pre-#136 record: no request type, and `eventKind` carrying both meanings. */
+/** Anything written before the current shape: missing a request type, an account, or both. */
 interface LegacyPermissionGrant {
   origin: string;
-  eventKind: number;
+  eventKind: number | PermissionEventKind;
+  requestType?: string;
+  accountPubkey?: string;
   granted: boolean;
   timestamp: number;
   expiry?: number;
 }
 
 const isMigrated = (grant: PermissionGrant | LegacyPermissionGrant): grant is PermissionGrant =>
-  typeof (grant as PermissionGrant).requestType === 'string';
+  typeof (grant as PermissionGrant).requestType === 'string' &&
+  typeof (grant as PermissionGrant).accountPubkey === 'string';
 
 /**
- * Bring stored grants onto the keyed shape, narrowing wherever the original scope is ambiguous.
+ * Bring stored grants onto the keyed shape, discarding whatever cannot be attributed.
  *
- * A legacy record with a real event kind can only have come from a signing request, so it migrates
- * intact. A legacy `-1` cannot be attributed after the fact — it may have been a non-signing grant
- * or a signing wildcard — so it is discarded rather than guessed at. The user is asked again; no
- * authority is invented (#136).
+ * Every record written before the account dimension existed is ambiguous in the same way: it does
+ * not say which identity the user was granting for. A vault with several accounts gives no way to
+ * tell, and a vault with one today may have had others yesterday. Guessing would hand one identity
+ * the authority another was given, which is the defect this dimension exists to prevent.
+ *
+ * So they are discarded. The user is asked again the next time a site requests something, and the
+ * new grant records the account. Nothing is broadened, and no authority is invented (#116, SR-6).
  */
 const migrateGrants = (
   stored: Array<PermissionGrant | LegacyPermissionGrant>,
@@ -52,19 +60,7 @@ const migrateGrants = (
       continue;
     }
 
-    if (grant.eventKind === LEGACY_AMBIGUOUS_KIND) {
-      discarded += 1;
-      continue;
-    }
-
-    grants.push({
-      origin: grant.origin,
-      requestType: SIGN_EVENT,
-      eventKind: grant.eventKind,
-      granted: grant.granted,
-      timestamp: grant.timestamp,
-      ...(grant.expiry !== undefined ? { expiry: grant.expiry } : {}),
-    });
+    discarded += 1;
   }
 
   return { grants, discarded };
@@ -81,7 +77,7 @@ async function loadPermissions(): Promise<PermissionGrant[]> {
   const { grants, discarded } = migrateGrants(stored);
 
   if (discarded > 0 || grants.length !== stored.length) {
-    logService.log(LogLevel.WARN, '[Permissions] Discarded ambiguous pre-#136 grants', {
+    logService.log(LogLevel.WARN, '[Permissions] Discarded grants that name no account', {
       discarded,
     });
     permissionCache = grants;
@@ -104,20 +100,31 @@ const isLive = (grant: PermissionGrant, now: number): boolean =>
 const sameScope = (
   grant: PermissionGrant,
   origin: string,
+  accountPubkey: string,
   requestType: string,
   eventKind: PermissionEventKind,
 ): boolean =>
-  grant.origin === origin && grant.requestType === requestType && grant.eventKind === eventKind;
+  grant.origin === origin &&
+  grant.accountPubkey === accountPubkey &&
+  grant.requestType === requestType &&
+  grant.eventKind === eventKind;
 
 export async function checkPermission(
   origin: string,
+  accountPubkey: string,
   requestType: string,
   eventKind: PermissionEventKind,
 ): Promise<{ granted: boolean; always?: boolean }> {
+  // No account means nothing to check against. Matching "any account" here would reintroduce the
+  // inheritance this dimension removes.
+  if (!accountPubkey) return { granted: false };
+
   const permissions = await loadPermissions();
   const now = Date.now();
 
-  const exactMatch = permissions.find((grant) => sameScope(grant, origin, requestType, eventKind));
+  const exactMatch = permissions.find((grant) =>
+    sameScope(grant, origin, accountPubkey, requestType, eventKind),
+  );
   if (exactMatch) {
     return isLive(exactMatch, now) ? { granted: true, always: exactMatch.expiry === undefined } : { granted: false };
   }
@@ -126,7 +133,9 @@ export async function checkPermission(
   // It can no longer be produced as a side effect of a request that carries no event kind.
   if (requestType !== SIGN_EVENT) return { granted: false };
 
-  const wildcard = permissions.find((grant) => sameScope(grant, origin, SIGN_EVENT, 'any'));
+  const wildcard = permissions.find((grant) =>
+    sameScope(grant, origin, accountPubkey, SIGN_EVENT, 'any'),
+  );
   if (wildcard && isLive(wildcard, now)) {
     return { granted: true, always: wildcard.expiry === undefined };
   }
@@ -136,6 +145,7 @@ export async function checkPermission(
 
 export async function grantPermission(
   origin: string,
+  accountPubkey: string,
   requestType: string,
   // Deliberately narrower than PermissionEventKind: a wildcard must be asked for explicitly on a
   // signing request, and nothing offers that yet, so this path cannot create one (#136).
@@ -146,13 +156,18 @@ export async function grantPermission(
     throw new Error(`Unsupported permission duration: ${String(duration)}`);
   }
 
+  if (!accountPubkey) {
+    throw new Error('A permission grant must name the account it was given to');
+  }
+
   const permissions = await loadPermissions();
   const filtered = permissions.filter(
-    (grant) => !sameScope(grant, origin, requestType, eventKind),
+    (grant) => !sameScope(grant, origin, accountPubkey, requestType, eventKind),
   );
 
   const grant: PermissionGrant = {
     origin,
+    accountPubkey,
     requestType,
     eventKind,
     granted: true,
@@ -165,13 +180,29 @@ export async function grantPermission(
 
 export async function revokePermission(
   origin: string,
+  accountPubkey: string,
   requestType: string,
   eventKind: PermissionEventKind,
 ): Promise<void> {
   const permissions = await loadPermissions();
   await savePermissions(
-    permissions.filter((grant) => !sameScope(grant, origin, requestType, eventKind)),
+    permissions.filter((grant) => !sameScope(grant, origin, accountPubkey, requestType, eventKind)),
   );
+}
+
+/** Every grant for one origin, whichever account holds it. For the Connected Sites view. */
+export async function getGrantsForOrigin(origin: string): Promise<PermissionGrant[]> {
+  const permissions = await loadPermissions();
+  return permissions.filter((grant) => grant.origin === origin);
+}
+
+/** Drops every grant an account holds, for when that account is removed or disconnected. */
+export async function revokeGrantsForAccount(accountPubkey: string): Promise<number> {
+  const permissions = await loadPermissions();
+  const remaining = permissions.filter((grant) => grant.accountPubkey !== accountPubkey);
+
+  if (remaining.length !== permissions.length) await savePermissions(remaining);
+  return permissions.length - remaining.length;
 }
 
 export async function getGrantedPermissions(): Promise<PermissionGrant[]> {

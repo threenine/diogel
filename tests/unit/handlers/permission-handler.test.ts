@@ -21,11 +21,14 @@ vi.mock('src/services/log-service', () => ({
 }));
 
 const ORIGIN = 'https://example.com';
+const ALICE = 'a'.repeat(64);
+const BOB = 'b'.repeat(64);
 
-/** A pre-#136 record: no request type, and `eventKind` carrying both meanings. */
+/** Anything written before the current shape: missing a request type, an account, or both. */
 interface LegacyGrant {
   origin: string;
-  eventKind: number;
+  eventKind: number | 'any' | null;
+  requestType?: string;
   granted: boolean;
   timestamp: number;
   expiry?: number;
@@ -55,9 +58,9 @@ afterEach(() => {
 describe('permission grants', () => {
   describe('duration', () => {
     it('grants without expiry for "always"', async () => {
-      await grantPermission(ORIGIN, 'sign_event', 1, 'always');
+      await grantPermission(ORIGIN, ALICE, 'sign_event', 1, 'always');
 
-      const result = await checkPermission(ORIGIN, 'sign_event', 1);
+      const result = await checkPermission(ORIGIN, ALICE, 'sign_event', 1);
       expect(result).toEqual({ granted: true, always: true });
       expect(stored[0]?.expiry).toBeUndefined();
     });
@@ -67,20 +70,20 @@ describe('permission grants', () => {
       vi.useFakeTimers();
       vi.setSystemTime(now);
 
-      await grantPermission(ORIGIN, 'sign_event', 1, '8h');
-      expect(await checkPermission(ORIGIN, 'sign_event', 1)).toEqual({
+      await grantPermission(ORIGIN, ALICE, 'sign_event', 1, '8h');
+      expect(await checkPermission(ORIGIN, ALICE, 'sign_event', 1)).toEqual({
         granted: true,
         always: false,
       });
       expect(stored[0]?.expiry).toBe(now + 8 * 60 * 60 * 1000);
 
       vi.advanceTimersByTime(8 * 60 * 60 * 1000 + 1);
-      expect(await checkPermission(ORIGIN, 'sign_event', 1)).toEqual({ granted: false });
+      expect(await checkPermission(ORIGIN, ALICE, 'sign_event', 1)).toEqual({ granted: false });
     });
 
     it('refuses a duration it does not model', async () => {
       await expect(
-        grantPermission(ORIGIN, 'sign_event', 1, 'forever' as '8h'),
+        grantPermission(ORIGIN, ALICE, 'sign_event', 1, 'forever' as '8h'),
       ).rejects.toThrow(/Unsupported permission duration/);
     });
   });
@@ -94,37 +97,37 @@ describe('permission grants', () => {
    */
   describe('key spaces (#136)', () => {
     it('does not let a public-key grant authorise signing', async () => {
-      await grantPermission(ORIGIN, 'get_public_key', null, 'always');
+      await grantPermission(ORIGIN, ALICE, 'get_public_key', null, 'always');
 
-      expect(await checkPermission(ORIGIN, 'sign_event', 1)).toEqual({ granted: false });
+      expect(await checkPermission(ORIGIN, ALICE, 'sign_event', 1)).toEqual({ granted: false });
     });
 
     it('does not let a signing grant authorise a different request type', async () => {
-      await grantPermission(ORIGIN, 'sign_event', 1, 'always');
+      await grantPermission(ORIGIN, ALICE, 'sign_event', 1, 'always');
 
-      expect(await checkPermission(ORIGIN, 'nip04_decrypt', null)).toEqual({ granted: false });
+      expect(await checkPermission(ORIGIN, ALICE, 'nip04_decrypt', null)).toEqual({ granted: false });
     });
 
     it('keeps each kindless request type separate from the others', async () => {
-      await grantPermission(ORIGIN, 'nip04_decrypt', null, 'always');
+      await grantPermission(ORIGIN, ALICE, 'nip04_decrypt', null, 'always');
 
-      expect(await checkPermission(ORIGIN, 'nip44_decrypt', null)).toEqual({ granted: false });
-      expect(await checkPermission(ORIGIN, 'nip04_decrypt', null)).toEqual({
+      expect(await checkPermission(ORIGIN, ALICE, 'nip44_decrypt', null)).toEqual({ granted: false });
+      expect(await checkPermission(ORIGIN, ALICE, 'nip04_decrypt', null)).toEqual({
         granted: true,
         always: true,
       });
     });
 
     it('keeps each event kind separate', async () => {
-      await grantPermission(ORIGIN, 'sign_event', 1, 'always');
+      await grantPermission(ORIGIN, ALICE, 'sign_event', 1, 'always');
 
-      expect(await checkPermission(ORIGIN, 'sign_event', 5)).toEqual({ granted: false });
+      expect(await checkPermission(ORIGIN, ALICE, 'sign_event', 5)).toEqual({ granted: false });
     });
 
     it('keeps each origin separate', async () => {
-      await grantPermission(ORIGIN, 'sign_event', 1, 'always');
+      await grantPermission(ORIGIN, ALICE, 'sign_event', 1, 'always');
 
-      expect(await checkPermission('https://other.example', 'sign_event', 1)).toEqual({
+      expect(await checkPermission('https://other.example', ALICE, 'sign_event', 1)).toEqual({
         granted: false,
       });
     });
@@ -137,10 +140,10 @@ describe('permission grants', () => {
   describe('the signing wildcard', () => {
     it('answers any kind for the same origin when one exists', async () => {
       seed([
-        { origin: ORIGIN, requestType: 'sign_event', eventKind: 'any', granted: true, timestamp: 1 },
+        { origin: ORIGIN, accountPubkey: ALICE, requestType: 'sign_event', eventKind: 'any', granted: true, timestamp: 1 },
       ]);
 
-      expect(await checkPermission(ORIGIN, 'sign_event', 30023)).toEqual({
+      expect(await checkPermission(ORIGIN, ALICE, 'sign_event', 30023)).toEqual({
         granted: true,
         always: true,
       });
@@ -148,68 +151,76 @@ describe('permission grants', () => {
 
     it('answers only signing, never another request type', async () => {
       seed([
-        { origin: ORIGIN, requestType: 'sign_event', eventKind: 'any', granted: true, timestamp: 1 },
+        { origin: ORIGIN, accountPubkey: ALICE, requestType: 'sign_event', eventKind: 'any', granted: true, timestamp: 1 },
       ]);
 
-      expect(await checkPermission(ORIGIN, 'get_public_key', null)).toEqual({ granted: false });
+      expect(await checkPermission(ORIGIN, ALICE, 'get_public_key', null)).toEqual({ granted: false });
     });
 
     it('cannot be created through grantPermission', async () => {
-      await grantPermission(ORIGIN, 'sign_event', null, 'always');
+      await grantPermission(ORIGIN, ALICE, 'sign_event', null, 'always');
 
       // null is "this request carries no kind", not a wildcard, so signing stays unauthorised.
-      expect(await checkPermission(ORIGIN, 'sign_event', 1)).toEqual({ granted: false });
+      expect(await checkPermission(ORIGIN, ALICE, 'sign_event', 1)).toEqual({ granted: false });
       expect(stored.every((grant) => grant.eventKind !== 'any')).toBe(true);
     });
   });
 
-  describe('migrating 0.0.32 records', () => {
-    it('keeps a legacy grant that names a real event kind, as signing', async () => {
+  /**
+   * Stricter than #136's migration, deliberately.
+   *
+   * #136 kept a legacy grant that named a real event kind, because it could only have come from a
+   * signing request. The account dimension changes that: no pre-#116 record says which identity the
+   * user was granting for, and a vault with several accounts gives no way to tell. Keeping one
+   * would hand an identity authority another was given.
+   */
+  describe('migrating records written before the account dimension', () => {
+    it('discards a legacy record that names no account, even with a real event kind', async () => {
       seed([{ origin: ORIGIN, eventKind: 1, granted: true, timestamp: 1 }]);
 
-      expect(await checkPermission(ORIGIN, 'sign_event', 1)).toEqual({ granted: true, always: true });
-    });
-
-    it('discards a legacy -1, which cannot be attributed after the fact', async () => {
-      seed([{ origin: ORIGIN, eventKind: -1, granted: true, timestamp: 1 }]);
-
-      // It may have been a non-signing grant or a signing wildcard. Neither is assumed.
-      expect(await checkPermission(ORIGIN, 'sign_event', 1)).toEqual({ granted: false });
-      expect(await checkPermission(ORIGIN, 'get_public_key', null)).toEqual({ granted: false });
+      expect(await checkPermission(ORIGIN, ALICE, 'sign_event', 1)).toEqual({ granted: false });
       expect(await getGrantedPermissions()).toEqual([]);
     });
 
-    it('broadens nothing: a legacy kind grant still answers only that kind', async () => {
-      seed([{ origin: ORIGIN, eventKind: 1, granted: true, timestamp: 1 }]);
+    it('discards a #136-shaped record that has a request type but no account', async () => {
+      seed([
+        { origin: ORIGIN, requestType: 'sign_event', eventKind: 1, granted: true, timestamp: 1 },
+      ]);
 
-      expect(await checkPermission(ORIGIN, 'sign_event', 5)).toEqual({ granted: false });
+      expect(await checkPermission(ORIGIN, ALICE, 'sign_event', 1)).toEqual({ granted: false });
+      expect(await getGrantedPermissions()).toEqual([]);
     });
 
-    it('preserves a legacy expiry', async () => {
-      const expiry = Date.now() + 60_000;
-      seed([{ origin: ORIGIN, eventKind: 1, granted: true, timestamp: 1, expiry }]);
-
-      const [grant] = await getGrantedPermissions();
-      expect(grant?.expiry).toBe(expiry);
-      expect(await checkPermission(ORIGIN, 'sign_event', 1)).toEqual({ granted: true, always: false });
-    });
-
-    it('writes the migrated shape back, so the discard is not re-done on every read', async () => {
+    it('writes the discard back, so it is not re-done on every read', async () => {
       seed([
         { origin: ORIGIN, eventKind: 1, granted: true, timestamp: 1 },
-        { origin: ORIGIN, eventKind: -1, granted: true, timestamp: 1 },
+        {
+          origin: ORIGIN,
+          accountPubkey: ALICE,
+          requestType: 'sign_event',
+          eventKind: 5,
+          granted: true,
+          timestamp: 1,
+        },
       ]);
 
       await getGrantedPermissions();
 
       expect(vi.mocked(storageService).set).toHaveBeenCalled();
       expect(stored).toHaveLength(1);
-      expect(stored[0]).toMatchObject({ requestType: 'sign_event', eventKind: 1 });
+      expect(stored[0]).toMatchObject({ accountPubkey: ALICE, eventKind: 5 });
     });
 
-    it('leaves already-migrated records alone', async () => {
+    it('leaves fully-keyed records alone', async () => {
       seed([
-        { origin: ORIGIN, requestType: 'sign_event', eventKind: 1, granted: true, timestamp: 1 },
+        {
+          origin: ORIGIN,
+          accountPubkey: ALICE,
+          requestType: 'sign_event',
+          eventKind: 1,
+          granted: true,
+          timestamp: 1,
+        },
       ]);
 
       await getGrantedPermissions();
@@ -218,15 +229,67 @@ describe('permission grants', () => {
     });
   });
 
+  describe('accounts do not inherit each other (#116)', () => {
+    it('does not let one account use another account grant on the same site', async () => {
+      await grantPermission(ORIGIN, ALICE, 'sign_event', 1, 'always');
+
+      expect(await checkPermission(ORIGIN, BOB, 'sign_event', 1)).toEqual({ granted: false });
+    });
+
+    it('keeps a wildcard to the account it was given to', async () => {
+      seed([
+        {
+          origin: ORIGIN,
+          accountPubkey: ALICE,
+          requestType: 'sign_event',
+          eventKind: 'any',
+          granted: true,
+          timestamp: 1,
+        },
+      ]);
+
+      expect(await checkPermission(ORIGIN, ALICE, 'sign_event', 7)).toEqual({
+        granted: true,
+        always: true,
+      });
+      expect(await checkPermission(ORIGIN, BOB, 'sign_event', 7)).toEqual({ granted: false });
+    });
+
+    it('refuses to check without an account rather than matching any', async () => {
+      await grantPermission(ORIGIN, ALICE, 'sign_event', 1, 'always');
+
+      expect(await checkPermission(ORIGIN, '', 'sign_event', 1)).toEqual({ granted: false });
+    });
+
+    it('refuses to grant without an account', async () => {
+      await expect(grantPermission(ORIGIN, '', 'sign_event', 1, 'always')).rejects.toThrow(
+        /must name the account/,
+      );
+    });
+
+    it('revokes only the named account grant', async () => {
+      await grantPermission(ORIGIN, ALICE, 'sign_event', 1, 'always');
+      await grantPermission(ORIGIN, BOB, 'sign_event', 1, 'always');
+
+      await revokePermission(ORIGIN, ALICE, 'sign_event', 1);
+
+      expect(await checkPermission(ORIGIN, ALICE, 'sign_event', 1)).toEqual({ granted: false });
+      expect(await checkPermission(ORIGIN, BOB, 'sign_event', 1)).toEqual({
+        granted: true,
+        always: true,
+      });
+    });
+  });
+
   describe('revoking', () => {
     it('removes only the scope named', async () => {
-      await grantPermission(ORIGIN, 'sign_event', 1, 'always');
-      await grantPermission(ORIGIN, 'get_public_key', null, 'always');
+      await grantPermission(ORIGIN, ALICE, 'sign_event', 1, 'always');
+      await grantPermission(ORIGIN, ALICE, 'get_public_key', null, 'always');
 
-      await revokePermission(ORIGIN, 'sign_event', 1);
+      await revokePermission(ORIGIN, ALICE, 'sign_event', 1);
 
-      expect(await checkPermission(ORIGIN, 'sign_event', 1)).toEqual({ granted: false });
-      expect(await checkPermission(ORIGIN, 'get_public_key', null)).toEqual({
+      expect(await checkPermission(ORIGIN, ALICE, 'sign_event', 1)).toEqual({ granted: false });
+      expect(await checkPermission(ORIGIN, ALICE, 'get_public_key', null)).toEqual({
         granted: true,
         always: true,
       });
@@ -235,8 +298,8 @@ describe('permission grants', () => {
 
   describe('listing', () => {
     it('returns every live grant', async () => {
-      await grantPermission('https://site1.example', 'sign_event', 1, 'always');
-      await grantPermission('https://site2.example', 'sign_event', 4, '8h');
+      await grantPermission('https://site1.example', ALICE, 'sign_event', 1, 'always');
+      await grantPermission('https://site2.example', ALICE, 'sign_event', 4, '8h');
 
       const all = await getGrantedPermissions();
 
@@ -251,7 +314,7 @@ describe('permission grants', () => {
   describe('caching', () => {
     it('reads storage once until the cache is cleared', async () => {
       seed([
-        { origin: ORIGIN, requestType: 'sign_event', eventKind: 1, granted: true, timestamp: 1 },
+        { origin: ORIGIN, accountPubkey: ALICE, requestType: 'sign_event', eventKind: 1, granted: true, timestamp: 1 },
       ]);
 
       await getGrantedPermissions();

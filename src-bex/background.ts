@@ -36,6 +36,7 @@ import {
 } from './services/request-queue';
 import { observePanelConnections } from './services/panel-presence';
 import { refreshAttention } from './services/attention-badge';
+import { resolveSigningAccount } from './services/signing-account';
 import {
   getPageOrigin,
   listPageOrigins,
@@ -551,20 +552,28 @@ async function requestApproval(
 ): Promise<boolean> {
   const permissionKind = toPermissionKind(eventKind);
 
-  if (!details.skipPermissionCheck) {
-    const permission = await checkPermission(origin, details.requestType, permissionKind);
+  // The account that will act for this site, which is the one a grant belongs to. Resolved before
+  // the permission check so a grant given to one identity cannot answer for another (#116).
+  const resolved = await resolveSigningAccount(origin);
+  const actingAccount = 'account' in resolved ? resolved.account : null;
+
+  if (!details.skipPermissionCheck && actingAccount) {
+    const permission = await checkPermission(
+      origin,
+      actingAccount.id,
+      details.requestType,
+      permissionKind,
+    );
     if (permission.granted) return true;
   }
 
-  const activeStoredKey = await getActiveStoredKey();
   const { record, decision } = await enqueueRequest({
     origin,
     requestType: details.requestType,
     eventKind,
-    accountAlias: activeStoredKey?.alias ?? null,
-    // StoredKey carries no public key, and deriving one would need an unlocked vault and key
-    // material for a display field. #116 owns the account dimension and populates this.
-    accountPubkey: null,
+    accountAlias: actingAccount?.alias ?? null,
+    // The identity the user is deciding for, shown on the approval and recorded on the grant.
+    accountPubkey: actingAccount?.id ?? null,
   }, {
     // Reviewable detail stays in worker memory for the life of the request.
     ...(details.contentDescription !== undefined
@@ -591,7 +600,13 @@ async function requestApproval(
     !details.skipPermissionCheck
   ) {
     try {
-      await grantPermission(origin, details.requestType, permissionKind, durationLabel);
+      await grantPermission(
+        origin,
+        record.accountPubkey ?? '',
+        details.requestType,
+        permissionKind,
+        durationLabel,
+      );
     } catch (error: unknown) {
       logService.log(LogLevel.ERROR, '[BEX] Failed to grant permission', {
         error: error instanceof Error ? error.message : String(error),
