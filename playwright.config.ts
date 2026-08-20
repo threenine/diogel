@@ -30,8 +30,15 @@ export default defineConfig({
     {
       name: 'chromium',
       // Chromium is where `side_panel` and the MV3 service worker live, so it is the reference
-      // target. Firefox is tracked separately; see tests/e2e/README.md.
+      // target and carries the deeper coverage.
+      testIgnore: '**/firefox/**',
       use: { browserName: 'chromium' },
+    },
+    {
+      // Driven through WebDriver, not Playwright: Playwright cannot install extensions in Firefox.
+      // The runner here is only providing structure and reporting — see tests/e2e/fixtures/firefox.ts.
+      name: 'firefox',
+      testMatch: '**/firefox/**/*.spec.ts',
     },
   ],
 });

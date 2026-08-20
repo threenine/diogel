@@ -31,8 +31,13 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Run end-to-end tests
+      - name: Run Chromium end-to-end tests
         run: npm run test:e2e
+
+      # Firefox is driven through WebDriver, not Playwright, so it needs a real Firefox on the
+      # runner rather than a Playwright download. ubuntu-latest ships one.
+      - name: Run Firefox end-to-end tests
+        run: npm run test:e2e:firefox
 
       - name: Upload traces
         if: failure()

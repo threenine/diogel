@@ -55,16 +55,35 @@ Two consequences, both learned the hard way:
 
 ## Firefox
 
-Not covered yet, and not for want of trying. Playwright cannot install extensions in Firefox — the
-capability exists for Chromium only. Adding Firefox means a second driver, realistically
-`geckodriver` with WebDriver's temporary-addon install, which works on release Firefox.
+```bash
+npm run test:e2e:firefox   # builds the Firefox extension, then runs the Firefox project
+npm run test:e2e:all       # both browsers
+```
 
-That is a separate piece of work rather than a config flag, so it is tracked on #141 rather than
-half-done here. NFR-17 wants both browsers shipping from the same source with equivalent behaviour,
-so it should not be dropped.
+Playwright runs the suite but does not drive the browser here — it cannot install extensions in
+Firefox at all, that capability is Chromium-only. Firefox goes through WebDriver instead, which does
+support installing a temporary add-on on release builds. The runner is providing structure and
+reporting; the driver is selenium.
 
-## Known gap
+Three Firefox obstacles are worked around in `fixtures/firefox.ts`, each of which fails in a way that
+does not name its own cause:
 
-`vault-and-panel.spec.ts` has one `test.fixme`. It is not flakiness in the harness: with no vault the
-app boot races and settles on either surface (#158). It is left visible in the suite rather than
-deleted so the gap shows up when the suite runs.
+1. **The `moz-extension://` origin is a fresh UUID per profile**, so the panel's URL is unknowable up
+   front. The `extensions.webextensions.uuids` preference pins it, keyed by the add-on id.
+2. **WebDriver refuses to navigate content to `moz-extension://`** — "Navigation is not allowed in
+   this context". The tab is opened from the browser's own chrome context instead.
+3. **Chrome-context scripting needs `--allow-system-access`** from Firefox 137, and Firefox rejects
+   that flag when it arrives through WebDriver capabilities. It has to be on geckodriver's command
+   line, so the fixture starts geckodriver itself rather than letting selenium start one.
+
+Firefox coverage is deliberately thinner than Chromium's. Chromium is where `side_panel` and the MV3
+service worker live, so it carries the deeper suite; Firefox asserts parity on the panel facts that
+NFR-17 says must be equivalent.
+
+## Known gaps
+
+- The real side panel is never opened, in either browser — see above. The manifest keys are asserted
+  instead (`side_panel` on Chromium, `sidebar_action` on Firefox); that the toolbar reveals the panel
+  is manual.
+- Firefox has no vault-lifecycle coverage yet. The Chromium suite creates, locks and unlocks a vault;
+  the Firefox project asserts panel parity only.
