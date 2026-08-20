@@ -93,11 +93,11 @@ watch(
 </template>
 
 <style scoped>
+/* The column inset belongs to the page, once. See SidebarHome. */
 .current-request {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 12px;
   min-width: 0;
 }
 
