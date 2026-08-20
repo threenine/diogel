@@ -81,7 +81,7 @@ describe('VaultLogin.vue', () => {
 
   it('shows and notifies a locked-vault signer approval message', async () => {
     testState.route.query = {
-      redirect: '/approve',
+      redirect: '/settings',
       origin: 'https://example.test',
       kind: '1',
       approvalVaultLocked: 'true',

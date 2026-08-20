@@ -165,19 +165,13 @@ onMounted(async () => {
     // Only redirect if we ARE on home but SHOULD be on login, or vice versa
     const isAtLogin = route.path === '/login' || route.name === 'login';
     if (!vaultStore.isUnlocked && !isAtLogin && !isPanelRoute()) {
-      const isAtApprove = route.path === '/approve' || route.name === 'approve';
       addLog(
         `Redirecting to login (current path: ${String(route.path)}, name: ${String(route.name)})`,
       );
       try {
-        const query: Record<string, string> = {};
-        if (isAtApprove) {
-          query.redirect = '/approve';
-        }
         await router.push({
           path: '/login',
           query: {
-            ...query,
             loginContext: resolveLoginContextFromRoute(),
           },
         }); // Use path to be explicit
@@ -208,9 +202,6 @@ watch(
     addLog(`Path changed to: ${String(newPath)}`);
     if (vaultStore.isLoading) return;
 
-    const isAtApprove = newPath === '/approve' || route.name === 'approve';
-    if (isAtApprove) return;
-
     if (newPath === '/' && !vaultStore.isUnlocked) {
       addLog('WARNING: At home page while locked. Redirecting to login...');
       void router.push({
@@ -232,9 +223,6 @@ watch(
   (newName) => {
     addLog(`Route name changed to: ${String(newName)}`);
     if (vaultStore.isLoading) return;
-
-    const isAtApprove = newName === 'approve' || route.path === '/approve';
-    if (isAtApprove) return;
 
     if (newName === 'home' && !vaultStore.isUnlocked) {
       addLog('WARNING: At home route while locked. Redirecting to login...');
@@ -267,8 +255,7 @@ watch(
     addLog(`isUnlocked changed to: ${String(isUnlocked)}`);
     if (vaultStore.isLoading) return;
 
-    const isAtApprove = route.path === '/approve' || route.name === 'approve';
-    if (isAtApprove || isPanelRoute()) return;
+    if (isPanelRoute()) return;
 
     if (!isUnlocked && route.path !== '/login' && route.name !== 'login') {
       addLog('Redirecting to login via watcher');

@@ -52,6 +52,19 @@ describe('sidebar surface boundary', () => {
     await expect(resolveComponentName(children[0]?.component)).resolves.toBe('SidebarHome');
   });
 
+  it('registers no approval fallback surface', async () => {
+    // The approved contract has no fallback for a closed panel in 0.1.0: the toolbar badge asks for
+    // attention and the user opens the panel themselves (D4, specification §9). `/approve` and its
+    // popup page were retained only until that was settled, and were removed once it was (#113).
+    const paths = routes.map((route) => route.path);
+
+    expect(paths).not.toContain('/approve');
+    for (const route of routes) {
+      const layout = await resolveComponentName(route.component);
+      expect(layout).not.toBe('PopupLayout');
+    }
+  });
+
   it('keeps every dashboard-layout route outside the sidebar branch', async () => {
     const managementPaths: string[] = [];
 
