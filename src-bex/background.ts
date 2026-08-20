@@ -538,13 +538,21 @@ const trimApprovalContentDescription = (content?: string): string | undefined =>
   return normalized.length > 240 ? `${normalized.slice(0, 237)}...` : normalized;
 };
 
+/**
+ * `-1` at these call sites means "this request carries no event kind", never "any kind". The grant
+ * store no longer conflates the two, so it is translated to null on the way in (#136).
+ */
+const toPermissionKind = (eventKind: number): number | null => (eventKind < 0 ? null : eventKind);
+
 async function requestApproval(
   origin: string,
   eventKind: number,
   details: ApprovalRequestDetails,
 ): Promise<boolean> {
+  const permissionKind = toPermissionKind(eventKind);
+
   if (!details.skipPermissionCheck) {
-    const permission = await checkPermission(origin, eventKind);
+    const permission = await checkPermission(origin, details.requestType, permissionKind);
     if (permission.granted) return true;
   }
 
@@ -583,7 +591,7 @@ async function requestApproval(
     !details.skipPermissionCheck
   ) {
     try {
-      await grantPermission(origin, eventKind, durationLabel);
+      await grantPermission(origin, details.requestType, permissionKind, durationLabel);
     } catch (error: unknown) {
       logService.log(LogLevel.ERROR, '[BEX] Failed to grant permission', {
         error: error instanceof Error ? error.message : String(error),
