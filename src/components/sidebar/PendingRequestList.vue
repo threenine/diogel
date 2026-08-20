@@ -41,8 +41,8 @@ const { t } = useI18n();
 </template>
 
 <style scoped>
+/* The column inset belongs to the page, once; the page's gap separates this from the request. */
 .pending-list {
-  padding: 0 12px 12px;
   min-width: 0;
 }
 

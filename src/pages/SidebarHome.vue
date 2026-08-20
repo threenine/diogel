@@ -115,6 +115,11 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+/*
+ * The panel column is inset once, here. The request components used to add 12px of their own on
+ * top of this, so request content sat 24px from each edge and cost 48px of a 320px floor, while
+ * the idle view sat at 12px — an inset that changed with the state on screen.
+ */
 .sidebar-home {
   display: flex;
   flex-direction: column;
