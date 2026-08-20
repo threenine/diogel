@@ -4,6 +4,7 @@ import { handleGetPublicKey, handleSignEvent } from 'app/src-bex/handlers/nip07'
 import { isVaultUnlocked, getVaultData } from 'app/src-bex/vault';
 import { storageService } from 'src/services/storage-service';
 import { checkPermission } from 'app/src-bex/handlers/permission-handler';
+import { clearSiteBindingCache } from 'app/src-bex/services/site-binding-store';
 import { resetAutoLockTimer } from 'app/src-bex/services/auto-lock';
 import { finalizeEvent } from 'nostr-tools';
 import { ErrorCode } from 'src/types/error-codes.d';
@@ -17,8 +18,10 @@ vi.mock('app/src-bex/vault', () => ({
 vi.mock('src/services/storage-service', () => ({
   storageService: {
     get: vi.fn(),
+    set: vi.fn(() => Promise.resolve()),
   },
   NOSTR_ACTIVE: 'nostr_active_account',
+  SITE_BINDINGS_KEY: 'nostr:site-bindings',
 }));
 
 vi.mock('app/src-bex/handlers/permission-handler', () => ({
@@ -39,7 +42,9 @@ vi.mock('@noble/hashes/utils', () => ({
 
 // Mock logService to avoid issues with wrapWithLogging
 vi.mock('src/services/log-service', () => ({
+  LogLevel: { DEBUG: 'debug', INFO: 'info', WARN: 'warn', ERROR: 'error' },
   logService: {
+    log: vi.fn(),
     wrapWithLogging: vi.fn((fn) => fn),
   },
 }));
@@ -57,6 +62,9 @@ describe('Nip07Handler', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Bindings are cached in module scope, so one test's binding would decide the next one's
+    // signing account.
+    clearSiteBindingCache();
   });
 
   describe('handleGetPublicKey', () => {
@@ -227,5 +235,100 @@ describe('Nip07Handler', () => {
         expect(result.error).toBe('Signing failed');
       }
     });
+  });
+});
+
+/**
+ * Site-to-account binding (#116).
+ *
+ * A NIP-07 client caches the public key it received at login and assumes every later signature
+ * comes from that identity. Porwr signs as the account the site is bound to, never as whichever
+ * account happens to be active.
+ */
+describe('signing identity is bound to the site', () => {
+  const alice = {
+    id: 'a'.repeat(64),
+    alias: 'alice',
+    account: { privkey: '11'.repeat(32) },
+  };
+  const bob = {
+    id: 'b'.repeat(64),
+    alias: 'bob',
+    account: { privkey: '22'.repeat(32) },
+  };
+
+  const origin = 'https://example.com';
+
+  const setAccounts = (accounts: unknown[], activeAlias: string): void => {
+    vi.mocked(storageService['get']).mockImplementation((key: string) =>
+      Promise.resolve(key === 'nostr_active_account' ? activeAlias : []),
+    );
+    vi.mocked(getVaultData).mockResolvedValue({ success: true, vaultData: { accounts } });
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearSiteBindingCache();
+    vi.mocked(isVaultUnlocked).mockReturnValue(true);
+    vi.mocked(checkPermission).mockResolvedValue({ granted: true });
+  });
+
+  it('binds a site to the active account on first contact', async () => {
+    setAccounts([alice, bob], 'alice');
+
+    const result = await handleGetPublicKey({}, origin);
+
+    expect(result.success && result.data).toBe(alice.id);
+  });
+
+  it('keeps returning the bound key after the active account changes', async () => {
+    setAccounts([alice, bob], 'alice');
+    await handleGetPublicKey({}, origin);
+
+    setAccounts([alice, bob], 'bob');
+    const result = await handleGetPublicKey({}, origin);
+
+    expect(result.success && result.data).toBe(alice.id);
+  });
+
+  it('signs as the bound account after the active account changes', async () => {
+    setAccounts([alice, bob], 'alice');
+    await handleGetPublicKey({}, origin);
+
+    setAccounts([alice, bob], 'bob');
+    vi.mocked(finalizeEvent).mockReturnValue({ id: 'signed' } as never);
+
+    const event = { kind: 1, content: 'hi', tags: [], created_at: 1 } as unknown as UnsignedEvent;
+    const result = await handleSignEvent({ event }, origin);
+
+    // The signature must come from the identity the site was given at login.
+    expect(result.success).toBe(true);
+    expect(event.pubkey).toBe(alice.id);
+  });
+
+  it('gives different sites their own identities', async () => {
+    setAccounts([alice, bob], 'alice');
+    await handleGetPublicKey({}, 'https://one.example');
+
+    setAccounts([alice, bob], 'bob');
+    const second = await handleGetPublicKey({}, 'https://two.example');
+
+    expect(second.success && second.data).toBe(bob.id);
+  });
+
+  it('refuses rather than substituting when the bound account is gone', async () => {
+    setAccounts([alice, bob], 'alice');
+    await handleGetPublicKey({}, origin);
+
+    // Alice removed from the vault; bob is active and available.
+    setAccounts([bob], 'bob');
+    const result = await handleSignEvent(
+      { event: { kind: 1, content: 'hi', tags: [], created_at: 1 } as unknown as UnsignedEvent },
+      origin,
+    );
+
+    // Falling back to bob is exactly the substitution this prevents.
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.error).toMatch(/no longer available/);
   });
 });
