@@ -1,6 +1,7 @@
 import type { StoredKey } from './index.d';
 import type {
   ApprovalDuration,
+  ApprovalRequestContent,
   ApprovalRequestRecord,
   DecisionResult,
 } from 'app/src-bex/types/background';
@@ -112,6 +113,7 @@ export type BridgeAction =
   | 'nostr.requests.count'
   | 'nostr.requests.present'
   | 'nostr.requests.respond'
+  | 'nostr.requests.content'
   | 'nostr.requests.requeuePresented'
   | 'relay.browser.list'
   | 'relay.browser.getStatus'
@@ -280,6 +282,11 @@ export interface BridgeRequestMap {
     approved: boolean;
     duration: ApprovalDuration;
   };
+  'nostr.requests.content': {
+    id: string;
+    action: 'nostr.requests.content';
+    requestId: string;
+  };
   'nostr.requests.requeuePresented': {
     id: string;
     action: 'nostr.requests.requeuePresented';
@@ -390,6 +397,7 @@ export interface BridgeResponseMap {
   'nostr.requests.count': number;
   'nostr.requests.present': ApprovalRequestRecord | null;
   'nostr.requests.respond': DecisionResult;
+  'nostr.requests.content': ApprovalRequestContent | null;
   'nostr.requests.requeuePresented': void;
   'relay.browser.list': RelayCatalogEntry[];
   'relay.browser.getStatus': RelayDiscoveryState | null;

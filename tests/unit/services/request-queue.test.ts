@@ -69,8 +69,8 @@ describe('request queue', () => {
 
     it('presents requests in deterministic order', async () => {
       const now = 1_000_000;
-      await enqueueRequest({ ...baseInput, origin: 'https://a.example' }, now);
-      await enqueueRequest({ ...baseInput, origin: 'https://b.example' }, now + 10);
+      await enqueueRequest({ ...baseInput, origin: 'https://a.example' }, { allowRemember: true }, now);
+      await enqueueRequest({ ...baseInput, origin: 'https://b.example' }, { allowRemember: true }, now + 10);
 
       const current = await getCurrentRequest(now + 20);
       expect(current?.origin).toBe('https://a.example');
@@ -108,7 +108,7 @@ describe('request queue', () => {
 
     it('refuses a decision on an expired request', async () => {
       const now = 1_000_000;
-      const { record } = await enqueueRequest(baseInput, now);
+      const { record } = await enqueueRequest(baseInput, { allowRemember: true }, now);
 
       const result = await submitDecision(
         record.id,
@@ -122,7 +122,7 @@ describe('request queue', () => {
   describe('expiry', () => {
     it('expires from creation, not from presentation', async () => {
       const now = 1_000_000;
-      const { record } = await enqueueRequest(baseInput, now);
+      const { record } = await enqueueRequest(baseInput, { allowRemember: true }, now);
       await markPresented(record.id, now + 60_000);
 
       const pending = await listPendingRequests(now + 6 * 60 * 1000);
@@ -133,7 +133,7 @@ describe('request queue', () => {
     it('stamps the expiry at creation so a later settings change cannot move it', async () => {
       const now = 1_000_000;
       store.set(REQUEST_EXPIRY_MINUTES, 1);
-      const { record } = await enqueueRequest(baseInput, now);
+      const { record } = await enqueueRequest(baseInput, { allowRemember: true }, now);
       expect(record.expiresAt).toBe(now + 60_000);
 
       store.set(REQUEST_EXPIRY_MINUTES, 10);
@@ -144,11 +144,11 @@ describe('request queue', () => {
     it('clamps an out-of-range stored expiry preference', async () => {
       const now = 1_000_000;
       store.set(REQUEST_EXPIRY_MINUTES, 0);
-      const zero = await enqueueRequest(baseInput, now);
+      const zero = await enqueueRequest(baseInput, { allowRemember: true }, now);
       expect(zero.record.expiresAt).toBe(now + 60_000);
 
       store.set(REQUEST_EXPIRY_MINUTES, 9999);
-      const huge = await enqueueRequest(baseInput, now);
+      const huge = await enqueueRequest(baseInput, { allowRemember: true }, now);
       expect(huge.record.expiresAt).toBe(now + 10 * 60 * 1000);
     });
   });
@@ -192,7 +192,7 @@ describe('request queue', () => {
 
     it('keeps the original expiry across requeue', async () => {
       const now = 1_000_000;
-      const { record } = await enqueueRequest(baseInput, now);
+      const { record } = await enqueueRequest(baseInput, { allowRemember: true }, now);
       await markPresented(record.id, now + 1000);
       await requeuePresented(now + 2000);
 

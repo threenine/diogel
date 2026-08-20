@@ -24,6 +24,7 @@ import {
   enqueueRequest,
   getCurrentRequest,
   getPendingCount,
+  getRequestContent,
   listPendingRequests,
   markPresented,
   pruneResolvedRequests,
@@ -31,7 +32,7 @@ import {
   requeuePresented,
   submitDecision,
 } from './services/request-queue';
-import type { ApprovalDuration } from './types/background';
+import type { ApprovalDuration, UnsignedEvent } from './types/background';
 import type {
   BridgeResponsePayload,
   VaultData,
@@ -132,11 +133,12 @@ declare module '@quasar/app-vite' {
     'nostr.requests.list': [undefined, BridgeResponsePayload<'nostr.requests.list'>];
     'nostr.requests.current': [undefined, BridgeResponsePayload<'nostr.requests.current'>];
     'nostr.requests.count': [undefined, BridgeResponsePayload<'nostr.requests.count'>];
-    'nostr.requests.present': [{ id: string }, BridgeResponsePayload<'nostr.requests.present'>];
+    'nostr.requests.present': [{ requestId: string }, BridgeResponsePayload<'nostr.requests.present'>];
     'nostr.requests.respond': [
-      { id: string; approved: boolean; duration: ApprovalDuration },
+      { requestId: string; approved: boolean; duration: ApprovalDuration },
       BridgeResponsePayload<'nostr.requests.respond'>,
     ];
+    'nostr.requests.content': [{ requestId: string }, BridgeResponsePayload<'nostr.requests.content'>];
     'nostr.requests.requeuePresented': [undefined, BridgeResponsePayload<'nostr.requests.requeuePresented'>];
     'vault.unlock': [{ password: string }, BridgeResponsePayload<'vault.unlock'>];
     'vault.lock': [undefined, BridgeResponsePayload<'vault.lock'>];
@@ -258,16 +260,22 @@ bridge.on('nostr.requests.count', () => {
 });
 
 bridge.on('nostr.requests.present', ({ payload }) => {
-  return markPresented(payload.id) as unknown as BridgeResponsePayload<'nostr.requests.present'>;
+  return markPresented(payload.requestId) as unknown as BridgeResponsePayload<'nostr.requests.present'>;
 });
 
 // Decisions name a request id. The queue refuses unknown, already-terminal, and expired ids, so
 // a panel acting on stale state changes nothing (ADR D5).
 bridge.on('nostr.requests.respond', ({ payload }) => {
-  return submitDecision(payload.id, {
+  return submitDecision(payload.requestId, {
     approved: payload.approved,
     duration: payload.duration,
   }) as unknown as BridgeResponsePayload<'nostr.requests.respond'>;
+});
+
+// Reviewable content is read from the live worker, never from storage. A restarted worker has
+// none, which matches the request being interrupted anyway (D6, D7).
+bridge.on('nostr.requests.content', ({ payload }) => {
+  return getRequestContent(payload.requestId);
 });
 
 bridge.on('nostr.requests.requeuePresented', () => {
@@ -452,6 +460,10 @@ interface ApprovalRequestDetails {
   contentDescription?: string;
   allowRemember?: boolean;
   skipPermissionCheck?: boolean;
+  /** Full unsigned event, for `sign_event`. Held in memory only, never persisted (D6). */
+  event?: UnsignedEvent;
+  /** Counterparty for encryption and decryption requests. Never the plaintext. */
+  counterpartyPubkey?: string;
 }
 
 const trimApprovalContentDescription = (content?: string): string | undefined => {
@@ -479,6 +491,16 @@ async function requestApproval(
     // StoredKey carries no public key, and deriving one would need an unlocked vault and key
     // material for a display field. #116 owns the account dimension and populates this.
     accountPubkey: null,
+  }, {
+    // Reviewable detail stays in worker memory for the life of the request.
+    ...(details.contentDescription !== undefined
+      ? { contentDescription: details.contentDescription }
+      : {}),
+    ...(details.event !== undefined ? { event: details.event } : {}),
+    ...(details.counterpartyPubkey !== undefined
+      ? { counterpartyPubkey: details.counterpartyPubkey }
+      : {}),
+    allowRemember: details.allowRemember !== false,
   });
 
   // A locked vault no longer opens its own window: the panel presents the unlock view with the
@@ -540,8 +562,8 @@ bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => (
     void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
     const contentDescription = trimApprovalContentDescription(event.content);
     const approvalDetails: ApprovalRequestDetails = contentDescription
-      ? { requestType: 'sign_event', contentDescription }
-      : { requestType: 'sign_event' };
+      ? { requestType: 'sign_event', contentDescription, event }
+      : { requestType: 'sign_event', event };
     const approved = await requestApproval(origin, event.kind, approvalDetails);
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
@@ -583,7 +605,7 @@ bridge.on('nostr.nip04.encrypt', ({ payload }) => (
   (async () => {
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_encrypt', getHostname(payload.origin), activeStoredKey?.alias);
-    const approved = await requestApproval(payload.origin, -1, { requestType: 'nip04_encrypt' });
+    const approved = await requestApproval(payload.origin, -1, { requestType: 'nip04_encrypt', counterpartyPubkey: payload.pubkey });
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
       if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
@@ -597,7 +619,7 @@ bridge.on('nostr.nip04.decrypt', ({ payload }) => (
   (async () => {
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip04_decrypt', getHostname(payload.origin), activeStoredKey?.alias);
-    const approved = await requestApproval(payload.origin, -1, { requestType: 'nip04_decrypt' });
+    const approved = await requestApproval(payload.origin, -1, { requestType: 'nip04_decrypt', counterpartyPubkey: payload.pubkey });
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
       if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
@@ -611,7 +633,7 @@ bridge.on('nostr.nip44.encrypt', ({ payload }) => (
   (async () => {
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip44_encrypt', getHostname(payload.origin), activeStoredKey?.alias);
-    const approved = await requestApproval(payload.origin, -1, { requestType: 'nip44_encrypt' });
+    const approved = await requestApproval(payload.origin, -1, { requestType: 'nip44_encrypt', counterpartyPubkey: payload.pubkey });
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
       if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
@@ -625,7 +647,7 @@ bridge.on('nostr.nip44.decrypt', ({ payload }) => (
   (async () => {
     const activeStoredKey = await getActiveStoredKey();
     void logService.logApproval('nip44_decrypt', getHostname(payload.origin), activeStoredKey?.alias);
-    const approved = await requestApproval(payload.origin, -1, { requestType: 'nip44_decrypt' });
+    const approved = await requestApproval(payload.origin, -1, { requestType: 'nip44_decrypt', counterpartyPubkey: payload.pubkey });
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
       if (!unlockedStatus.success || !unlockedStatus.data) throw new Error('Vault is locked. Open the extension to unlock.');
