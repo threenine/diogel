@@ -99,6 +99,14 @@ export function useVault() {
 
   async function handleLock() {
     await vaultStore.lock();
+
+    // The panel renders its own unlock view for a locked vault, the same way it already reacts to a
+    // background auto-lock. Routing to the dashboard login page would pull a full-tab surface into
+    // the 360px panel, which the sidebar surface map forbids.
+    if (route.name === 'sidebar') {
+      return;
+    }
+
     void router.push({
       name: 'login',
       query: {

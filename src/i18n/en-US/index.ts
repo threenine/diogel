@@ -572,6 +572,13 @@ export default {
       eventHistory: 'History',
       settings: 'Settings',
     },
+    header: {
+      ariaLabel: 'Porwr panel',
+      pending: {
+        // The badge carries the number; the label is what assistive technology reads instead.
+        ariaLabel: 'No requests waiting | 1 request waiting | {count} requests waiting',
+      },
+    },
   },
   approval: {
     title: 'Approval Request',
