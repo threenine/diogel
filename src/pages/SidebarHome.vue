@@ -9,7 +9,6 @@ import PendingRequestList from '../components/sidebar/PendingRequestList.vue';
 import SidebarUnlock from '../components/sidebar/SidebarUnlock.vue';
 import { useActiveTab } from '../composables/useActiveTab';
 import { useApprovalQueue } from '../composables/useApprovalQueue';
-import { useVault } from '../composables/useVault';
 import useVaultStore from '../stores/vault-store';
 import type { ApprovalDuration } from 'app/src-bex/types/background';
 
@@ -18,7 +17,6 @@ defineOptions({ name: 'SidebarHome' });
 const { t } = useI18n();
 const accountStore = useAccountStore();
 const { activeOrigin } = useActiveTab();
-const { handleLock } = useVault();
 const vaultStore = useVaultStore();
 const { pending, current, content, decide, refresh } = useApprovalQueue();
 
@@ -96,17 +94,9 @@ onMounted(async () => {
       <div class="sidebar-home__context-origin">{{ activeOrigin }}</div>
     </section>
 
+    <!-- The lock action lives in the header, so it stays reachable once a request is presented. -->
     <div v-if="activeStoredKey" class="sidebar-home__account">
       <ProfileView :stored-key="activeStoredKey" />
-      <q-btn
-        flat
-        dense
-        no-caps
-        icon="lock"
-        class="sidebar-home__lock"
-        :label="t('navigation.lock.label')"
-        @click="handleLock"
-      />
     </div>
 
     <div v-else class="sidebar-home__empty">
@@ -158,10 +148,6 @@ onMounted(async () => {
   flex-direction: column;
   gap: 8px;
   min-width: 0;
-}
-
-.sidebar-home__lock {
-  align-self: flex-start;
 }
 
 .sidebar-home__empty {

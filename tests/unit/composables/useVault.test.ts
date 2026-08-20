@@ -186,5 +186,18 @@ describe('useVault', () => {
 
       expect(testState.pushMock).toHaveBeenCalledWith({ name: 'login', query: { loginContext: 'extension' } });
     });
+
+    it('locks without leaving the panel when the sidebar is the active surface', async () => {
+      // The panel renders its own unlock view. Routing would pull the full-tab login page into
+      // the 360px panel, which the sidebar surface map forbids.
+      testState.route.name = 'sidebar';
+      const wrapper = mount(TestHarness);
+      const vm = wrapper.vm as unknown as HarnessVm;
+
+      await vm.handleLock();
+
+      expect(testState.vaultStore.lock).toHaveBeenCalledTimes(1);
+      expect(testState.pushMock).not.toHaveBeenCalled();
+    });
   });
 });
