@@ -34,3 +34,7 @@ yarn-error.log*
 
 # Test coverage reports
 /coverage
+
+# Playwright
+/test-results/
+/playwright-report/

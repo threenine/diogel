@@ -18,7 +18,9 @@
     "postinstall": "quasar prepare",
     "build:chrome": "quasar build -m bex -T chrome",
     "build:firefox": "quasar build -m bex -T firefox",
-    "icons:bex": "icongenie generate -m bex -i public/images/light/diogel.png"
+    "icons:bex": "icongenie generate -m bex -i public/images/light/diogel.png",
+    "test:e2e": "npm run build:chrome && playwright test",
+    "test:e2e:only": "playwright test"
   },
   "dependencies": {
     "@noble/ciphers": "^0.5.3",
@@ -45,6 +47,7 @@
     "@eslint/js": "^9.0.0",
     "@intlify/unplugin-vue-i18n": "^4.0.0",
     "@pinia/testing": "^1.0.3",
+    "@playwright/test": "^1.62.1",
     "@quasar/app-vite": "^2.4.1",
     "@quasar/icongenie": "^2.5.4",
     "@types/crypto-js": "^4.2.2",
