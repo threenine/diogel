@@ -29,8 +29,19 @@ $negative: #c10015;
 $info: #31ccec;
 $warning: #f2c037;
 
-$light-header: #898989;
+// Chrome. The light value was #898989 until #153: a neutral grey belonging to no family in this
+// palette, described in a comment as "deep blue", and never actually reviewed because an
+// uninterpolated custom property meant it was never rendered (#146). Slate-200 puts it in the same
+// family as $dark-header and restores the usual light-theme relationship of chrome no darker than
+// the page.
+$light-header: #e2e8f0; // slate-200
 $dark-header: #353e43;
+
+// Attention badge. Mid-luminance amber reads well on the dark header and disappears against any
+// light one, so the badge inverts with the theme rather than being one colour that has to survive
+// both (#153).
+$light-badge: #1e293b; // slate-800
+$dark-badge: $warning;
 
 // Surface variables for both themes. These are consumed in app.scss
 .body--light {
@@ -49,6 +60,14 @@ $dark-header: #353e43;
   // Interpolated: Sass does not evaluate variables inside a custom-property value.
   --header-bg: #{$light-header};
   --on-header: #0b1220; // header foreground (icons/text)
+
+  // Attention badge
+  --badge-bg: #{$light-badge};
+  --on-badge: #ffffff;
+
+  // Chrome edge. --border-color is a hairline meant for cards on the page; against chrome that
+  // sits this close to the page background it is invisible, so the band needs its own line.
+  --header-border: rgba(15, 23, 42, 0.36);
 
   // Configuration forms
   --settings-form-bg: #efefef;
@@ -75,6 +94,13 @@ $dark-header: #353e43;
   // App chrome (header/toolbars)
   --header-bg: #{$dark-header};
   --on-header: #ffffff;
+
+  // Attention badge
+  --badge-bg: #{$dark-badge};
+  --on-badge: #0b1220;
+
+  // Chrome edge
+  --header-border: rgba(255, 255, 255, 0.32);
 
   // Configuration forms
   --settings-form-bg: #242424;

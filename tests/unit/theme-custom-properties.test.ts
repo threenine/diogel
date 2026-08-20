@@ -51,14 +51,28 @@ describe('theme custom properties', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('declares --header-bg from an interpolated variable in both themes', () => {
-    const declarations = properties
-      .filter(({ name }) => name === '--header-bg')
-      .map(({ value }) => value);
+  it.each(['--header-bg', '--badge-bg'])(
+    'declares %s from an interpolated variable in both themes',
+    (name) => {
+      const declarations = properties.filter((p) => p.name === name).map(({ value }) => value);
 
-    expect(declarations).toHaveLength(2);
-    for (const value of declarations) {
-      expect(value).toMatch(/^#\{\$[\w-]+\}$/);
+      expect(declarations).toHaveLength(2);
+      for (const value of declarations) {
+        expect(value).toMatch(/^#\{\$[\w-]+\}$/);
+      }
+    },
+  );
+
+  /**
+   * Chrome tokens only mean anything as a set. A theme that defines the background but not the
+   * foreground or the edge renders unreadable text or an invisible band, which is the class of
+   * defect #146 and #153 both came from.
+   */
+  it('defines every chrome token in both themes', () => {
+    const chromeTokens = ['--header-bg', '--on-header', '--header-border', '--badge-bg', '--on-badge'];
+
+    for (const name of chromeTokens) {
+      expect(properties.filter((p) => p.name === name)).toHaveLength(2);
     }
   });
 });

@@ -43,7 +43,7 @@ const links = [
   flex-wrap: wrap;
   gap: 4px;
   padding: 8px 12px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--header-border);
   background: var(--header-bg);
   flex-shrink: 0;
 }
