@@ -19,8 +19,10 @@
     "build:chrome": "quasar build -m bex -T chrome",
     "build:firefox": "quasar build -m bex -T firefox",
     "icons:bex": "icongenie generate -m bex -i public/images/light/diogel.png",
-    "test:e2e": "npm run build:chrome && playwright test",
-    "test:e2e:only": "playwright test"
+    "test:e2e": "npm run build:chrome && playwright test --project=chromium",
+    "test:e2e:only": "playwright test",
+    "test:e2e:firefox": "npm run build:firefox && playwright test --project=firefox",
+    "test:e2e:all": "npm run build:chrome && npm run build:firefox && playwright test"
   },
   "dependencies": {
     "@noble/ciphers": "^0.5.3",
@@ -53,6 +55,7 @@
     "@types/crypto-js": "^4.2.2",
     "@types/file-saver": "^2.0.7",
     "@types/node": "^25.3.0",
+    "@types/selenium-webdriver": "^4.35.6",
     "@vitejs/plugin-vue": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.10",
     "@vue/eslint-config-prettier": "^10.1.0",
@@ -62,9 +65,11 @@
     "autoprefixer": "^10.4.2",
     "eslint": "^9.0.0",
     "eslint-plugin-vue": "^10.8.0",
+    "geckodriver": "^6.1.1",
     "globals": "^16.4.0",
     "jsdom": "^25.0.1",
     "prettier": "^3.3.3",
+    "selenium-webdriver": "^4.47.0",
     "typescript": "^5.9.2",
     "vite-plugin-checker": "^0.12.0",
     "vitest": "^4.0.15",
