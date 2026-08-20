@@ -10,6 +10,8 @@ import {
   reconcileInterruptedRequests,
   requeuePresented,
   submitDecision,
+  interruptRequestsForOrigin,
+  onQueueChange,
   __resetLiveCallbacksForTests,
 } from 'app/src-bex/services/request-queue';
 import { REQUEST_EXPIRY_MINUTES, REQUEST_QUEUE_KEY } from 'src/services/storage-service';
@@ -198,6 +200,79 @@ describe('request queue', () => {
 
       const stored = readStored().find((item) => item.id === record.id);
       expect(stored?.expiresAt).toBe(record.expiresAt);
+    });
+  });
+
+  describe('page gone (#113)', () => {
+    it('interrupts every live request for the origin', async () => {
+      const { record } = await enqueueRequest(baseInput);
+
+      const interrupted = await interruptRequestsForOrigin('https://example.com');
+
+      expect(interrupted).toHaveLength(1);
+      expect(readStored().find((item) => item.id === record.id)?.state).toBe('interrupted');
+    });
+
+    it('settles the waiting provider promise rather than leaving the page hanging', async () => {
+      const { decision } = await enqueueRequest(baseInput);
+
+      await interruptRequestsForOrigin('https://example.com');
+
+      // Fail closed: the page is gone, so the request is refused, not approved.
+      await expect(decision).resolves.toEqual({ approved: false, duration: 'once' });
+    });
+
+    it('cannot approve a request whose page has gone', async () => {
+      const { record } = await enqueueRequest(baseInput);
+      await interruptRequestsForOrigin('https://example.com');
+
+      const result = await submitDecision(record.id, { approved: true, duration: 'once' });
+      expect(result).toEqual({ applied: false, reason: 'already-resolved' });
+    });
+
+    it('leaves other origins alone', async () => {
+      const { record } = await enqueueRequest(baseInput);
+
+      const interrupted = await interruptRequestsForOrigin('https://other.example');
+
+      expect(interrupted).toHaveLength(0);
+      expect(readStored().find((item) => item.id === record.id)?.state).not.toBe('interrupted');
+    });
+
+    it('does not disturb a request that already reached a terminal state', async () => {
+      const { record } = await enqueueRequest(baseInput);
+      await submitDecision(record.id, { approved: true, duration: 'once' });
+
+      const interrupted = await interruptRequestsForOrigin('https://example.com');
+
+      expect(interrupted).toHaveLength(0);
+      expect(readStored().find((item) => item.id === record.id)?.state).toBe('approved');
+    });
+  });
+
+  describe('change notification', () => {
+    it('reports a write so the toolbar can mirror the queue', async () => {
+      const listener = vi.fn();
+      onQueueChange(listener);
+
+      await enqueueRequest(baseInput);
+
+      expect(listener).toHaveBeenCalled();
+    });
+
+    it('reports an expiry, which no caller asked for', async () => {
+      const now = 1_000_000;
+      const { record } = await enqueueRequest(baseInput, { allowRemember: true }, now);
+
+      const listener = vi.fn();
+      onQueueChange(listener);
+
+      // Expiry is evaluated on read, so this write happens with no decision and no caller.
+      await listPendingRequests(record.expiresAt + 1);
+
+      // Assert the expiry actually happened, so the notification is not credited to some other write.
+      expect(readStored().find((item) => item.id === record.id)?.state).toBe('expired');
+      expect(listener).toHaveBeenCalled();
     });
   });
 

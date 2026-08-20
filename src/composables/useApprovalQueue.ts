@@ -1,5 +1,6 @@
 import { computed, onMounted, onUnmounted, ref, type Ref } from 'vue';
 
+import { connectPanelPort, type PanelPortHandle } from 'src/services/panel-port';
 import { sendBexMessage } from 'src/services/bridge-client';
 import { LogLevel, logService } from 'src/services/log-service';
 import type {
@@ -41,6 +42,7 @@ const pendingCount = computed(() => pending.value.length);
 
 let timer: ReturnType<typeof setInterval> | undefined;
 let consumers = 0;
+let panelPort: PanelPortHandle | undefined;
 
 const loadContent = async (id: string | undefined): Promise<void> => {
   if (!id) {
@@ -99,6 +101,8 @@ const decide = async (
 export function resetApprovalQueue(): void {
   if (timer !== undefined) clearInterval(timer);
   timer = undefined;
+  panelPort?.disconnect();
+  panelPort = undefined;
   consumers = 0;
   pending.value = [];
   current.value = null;
@@ -117,6 +121,16 @@ export function useApprovalQueue(): UseApprovalQueueResult {
       }, POLL_INTERVAL_MS);
     }
 
+    // One presence port per panel, not per consumer: the background counts connections, so a
+    // second port would make a single panel look like two.
+    panelPort ??= connectPanelPort({
+      // A reconnect means the worker restarted and may have reconciled the queue while it was
+      // gone, so nothing on screen can be trusted until it has been re-read.
+      onReconnect: () => {
+        void refresh();
+      },
+    });
+
     void refresh();
   });
 
@@ -127,8 +141,12 @@ export function useApprovalQueue(): UseApprovalQueueResult {
     if (timer !== undefined) clearInterval(timer);
     timer = undefined;
 
+    panelPort?.disconnect();
+    panelPort = undefined;
+
     // Closing the panel is never a decision: hand the request back to the queue (FR-6). This runs
-    // only once the last consumer has gone, so navigating within the panel does not requeue.
+    // only once the last consumer has gone, so navigating within the panel does not requeue. The
+    // presence port covers the cases this cannot reach, such as the window being closed outright.
     void sendBexMessage('nostr.requests.requeuePresented').catch(() => {
       /* the background reconciles on its own if this never lands */
     });

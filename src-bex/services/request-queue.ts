@@ -70,8 +70,25 @@ const readRecords = async (): Promise<ApprovalRequestRecord[]> => {
   return Array.isArray(stored) ? stored : [];
 };
 
+type QueueChangeListener = () => void;
+
+const queueChangeListeners = new Set<QueueChangeListener>();
+
+/**
+ * Notified after every write to the queue.
+ *
+ * Expiry is evaluated lazily on read rather than timed, so a request can leave the queue without
+ * any caller having asked for it. Anything mirroring the queue outward — the toolbar badge (D4) —
+ * has to learn about that from the write itself, not from a poll.
+ */
+export const onQueueChange = (listener: QueueChangeListener): (() => void) => {
+  queueChangeListeners.add(listener);
+  return () => queueChangeListeners.delete(listener);
+};
+
 const writeRecords = async (records: ApprovalRequestRecord[]): Promise<void> => {
   await storageService.set(REQUEST_QUEUE_KEY, records, 'session');
+  for (const listener of queueChangeListeners) listener();
 };
 
 /**
@@ -310,8 +327,54 @@ export const pruneResolvedRequests = async (now: number = Date.now()): Promise<v
   }
 };
 
+/**
+ * Interrupt every live request for an origin whose page has gone.
+ *
+ * Called when the last tab holding an origin disappears, which the browser reports through the
+ * content script's port. The provider promise those requests would resolve no longer has a page
+ * listening to it, so they must become non-signable rather than sit in the queue looking
+ * actionable (D7).
+ *
+ * Scoped to the origin, not to a tab: a request record carries the requesting origin and no tab
+ * id, so two tabs on the same origin are indistinguishable here. Interrupting only once *no* tab
+ * holds the origin is the conservative reading — it never interrupts a request another live tab
+ * might still be waiting on.
+ */
+export const interruptRequestsForOrigin = async (
+  origin: string,
+  now: number = Date.now(),
+): Promise<ApprovalRequestRecord[]> => {
+  const records = await loadQueue(now);
+  const interrupted: ApprovalRequestRecord[] = [];
+
+  const next = records.map((record) => {
+    if (record.origin !== origin || isTerminal(record.state)) return record;
+    const updated: ApprovalRequestRecord = { ...record, state: 'interrupted' };
+    interrupted.push(updated);
+    return updated;
+  });
+
+  if (interrupted.length === 0) return [];
+
+  await writeRecords(next.map(toDurableRecord));
+  for (const record of interrupted) {
+    const callback = liveCallbacks.get(record.id);
+    forgetRequest(record.id);
+    // Fail closed: the page is gone, so the request is refused rather than left hanging.
+    callback?.settle({ approved: false, duration: 'once' });
+  }
+
+  logService.log(LogLevel.WARN, '[Queue] Marked requests interrupted after the page went away', {
+    origin,
+    count: interrupted.length,
+  });
+
+  return interrupted;
+};
+
 /** Test seam: clear in-memory callbacks. Not used by production code. */
 export const __resetLiveCallbacksForTests = (): void => {
   liveCallbacks.clear();
   requestContent.clear();
+  queueChangeListeners.clear();
 };
