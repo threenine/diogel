@@ -572,6 +572,11 @@ export default {
       eventHistory: 'History',
       settings: 'Settings',
     },
+    setup: {
+      title: 'Set up Porwr',
+      body: 'Create your encrypted vault to start signing Nostr events from this panel.',
+      action: 'Create vault',
+    },
     header: {
       ariaLabel: 'Porwr panel',
       pending: {
