@@ -9,6 +9,8 @@ export const REQUEST_QUEUE_KEY = 'nostr:request-queue' as const;
 export const VAULT_LAST_ACTIVITY = 'vault:last-activity' as const;
 export const BLOSSOM_UPLOAD_STATUS = 'blossom:upload-status' as const;
 export const PERMISSIONS_KEY = 'nostr:permissions' as const;
+/** Which account each origin signs as. See `src-bex/services/site-binding-store.ts` (#116). */
+export const SITE_BINDINGS_KEY = 'nostr:site-bindings' as const;
 export const VAULT_UNLOCKED = 'vault:unlocked' as const;
 export const FALLBACK_RELAYS = 'nostr:fallback-relays' as const;
 
