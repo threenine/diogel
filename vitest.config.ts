@@ -9,6 +9,9 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./tests/setup.ts'], // Add setup file
     include: ['tests/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}', 'src/**/*.spec.{ts,js}', 'src-bex/**/*.spec.{ts,js}'],
+    // The end-to-end specs are Playwright's, not vitest's. They load a real browser and would fail
+    // here with a confusing "test.describe is not a function" if vitest picked them up (#141).
+    exclude: ['node_modules/**', 'dist/**', 'tests/e2e/**'],
     coverage: {
       reporter: ['text', 'json', 'html'],
       exclude: ['node_modules/', 'tests/'],
