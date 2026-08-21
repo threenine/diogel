@@ -100,9 +100,18 @@ function openKeys(): void {
 </template>
 
 <style scoped>
+/*
+ * Sized to its content, capped, and never squeezed below legibility.
+ *
+ * This carried `max-width: 40%`, which resolved against the header's actions block rather than the
+ * header — and that block is sized by its own contents, so the constraint was circular and left the
+ * alias rendering at 14px (#188). A fixed width would only trade one arbitrary number for another
+ * and break differently on a long alias.
+ */
 .account-switcher {
-  max-width: 40%;
+  flex: 0 1 auto;
   min-width: 0;
+  max-width: 11rem;
 }
 
 /* An alias can be anything the user typed; it must not push the lock action off the header. */
@@ -112,6 +121,8 @@ function openKeys(): void {
   white-space: nowrap;
   font-size: 0.8rem;
   font-weight: 600;
+  /* Enough for several characters before the ellipsis; an alias truncated to nothing names no one. */
+  min-width: 4.5rem;
 }
 
 .account-switcher__heading {
