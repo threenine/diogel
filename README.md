@@ -38,6 +38,9 @@ identity stored inside an encrypted local vault, and provides a Vue/Pinia UI for
 
 The project has been bootstrapped with Quasar Framework. [Learn More](https://quasar.dev/introduction-to-quasar)
 
+See [DEVELOPING.md](./DEVELOPING.md) for the build and reload loop, the Node version to use, and why
+`quasar dev -m bex` does not currently give you a working panel.
+
 #### Icon generation (BEX)
 
 - Use the project-local IconGenie CLI (installed in `devDependencies`):
