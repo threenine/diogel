@@ -38,8 +38,11 @@ jobs:
       - name: Run typecheck
         run: npm run typecheck
 
-      - name: Run tests
-        run: npm run test:run
+      # Runs the same tests again with coverage instrumentation, and fails if any threshold in
+      # vitest.config.ts is breached. Without this step the thresholds are configuration nobody
+      # enforces, which is the state #143 existed to end.
+      - name: Run tests with coverage
+        run: npm run test:coverage
 
       - name: Build default app
         run: npm run build
