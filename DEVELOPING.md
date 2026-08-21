@@ -94,6 +94,43 @@ npm run typecheck
 
 See `tests/e2e/README.md` for how the browsers are driven and what the end-to-end suite cannot cover.
 
+### Coverage policy
+
+Coverage is enforced. `npm run test:coverage` fails if any threshold in `vitest.config.ts` is
+breached, and CI runs it on every pull request.
+
+The thresholds are a **ratchet**, not an achievement. Each one sits just below where coverage
+actually stands, so a genuine regression fails and ordinary noise does not:
+
+| | Floor | Actual (2026-08-21) |
+|---|---|---|
+| Statements | 74% | 74.26% |
+| Branches | 60% | 61.10% |
+| Functions | 70% | 70.45% |
+| Lines | 74% | 74.74% |
+
+**The target is 75%** across the board. The floors are raised toward it as coverage rises, and are
+never lowered: if a change cannot meet the current floor, the answer is a test, not a smaller number.
+
+The layers that decide authority — `src/services`, `src/composables`, `src/utils`,
+`src-bex/handlers`, `src-bex/services` — are already past 75% and are held there by their own
+per-directory thresholds. Without those, the global floor would let them slide while the component
+layer pulled the average around. Expect a per-directory threshold to fail a pull request for a file
+it did not touch: adding an uncovered file to a well-covered directory is exactly what it is for.
+
+Branches are the furthest from target and matter most. In a signing extension the untested branch is
+the one that fails open. The largest single gap is `src-bex/background.ts`, where approvals,
+permissions, the queue, the badge and the page registry are wired together — it is the least covered
+file in the security path.
+
+The Vue component layer has no threshold. #123 deliberately left component structure alone, and a
+floor there would measure work nobody has agreed to do.
+
+**What coverage does not tell you.** It measures execution, not assertion. A test that runs a line
+and asserts nothing counts the same as one that checks the result — two tests written during this
+work passed while asserting nothing meaningful. Treat the number as a floor against regression, never
+as evidence that something is tested.
+
 ## A known dead branch
 
 Building the background emits:
