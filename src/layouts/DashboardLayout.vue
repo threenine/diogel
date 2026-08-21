@@ -33,6 +33,8 @@ import DashboardHeader from 'components/DashboardHeader.vue';
 import DashboardNavigation from 'components/DashboardNavigation.vue';
 import DashboardFooter from '../components/DashboardFooter.vue';
 
+defineOptions({ name: 'DashboardLayout' });
+
 const $q = useQuasar();
 const leftDrawerOpen = ref($q.screen.gt.md);
 
