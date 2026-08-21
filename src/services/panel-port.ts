@@ -6,7 +6,11 @@
  * signal that works on both browsers (#113).
  *
  * The port carries no requests and no decisions. Those stay on the existing request/response
- * bridge, where the background remains the authority. #140 adds pushes over this same connection.
+ * bridge, where the background remains the authority.
+ *
+ * What it does carry is a bare "the queue moved" notification (#140). It says nothing about what
+ * changed, so it cannot be stale or arrive out of order behind a decision already applied — the
+ * panel re-reads and the background answers with what is true now.
  *
  * A Chromium service worker can be suspended while the panel stays open, which disconnects the
  * port without the panel having gone anywhere. Reconnecting is therefore normal operation rather
@@ -28,6 +32,8 @@ export interface PanelPortHandle {
 export interface PanelPortOptions {
   /** Called after every reconnect, never on the first connect. */
   onReconnect?: () => void;
+  /** Called when the background says the queue moved. Re-read; do not trust a payload. */
+  onQueueChanged?: () => void;
 }
 
 export function connectPanelPort(options: PanelPortOptions = {}): PanelPortHandle {
@@ -58,6 +64,13 @@ export function connectPanelPort(options: PanelPortOptions = {}): PanelPortHandl
 
     if (hasConnected) options.onReconnect?.();
     hasConnected = true;
+
+    port.onMessage.addListener((message: unknown) => {
+      // One message type today. Anything else is from a newer background than this panel, and
+      // ignoring it is safer than guessing at it.
+      if ((message as { type?: string } | null)?.type !== 'queue-changed') return;
+      options.onQueueChanged?.();
+    });
 
     port.onDisconnect.addListener(() => {
       port = undefined;

@@ -12,13 +12,16 @@ const disconnect = vi.fn();
 
 const makePort = () => {
   const handlers: Array<() => void> = [];
+  const messageHandlers: Array<(message: unknown) => void> = [];
   return {
     port: {
       name: PANEL_PORT_NAME,
       disconnect,
       onDisconnect: { addListener: (fn: () => void) => handlers.push(fn) },
+      onMessage: { addListener: (fn: (message: unknown) => void) => messageHandlers.push(fn) },
     },
     drop: () => handlers.forEach((fn) => fn()),
+    send: (message: unknown) => messageHandlers.forEach((fn) => fn(message)),
   };
 };
 
@@ -83,6 +86,47 @@ describe('panel presence port', () => {
 
     vi.advanceTimersByTime(500);
     expect(connect).toHaveBeenCalledTimes(2);
+  });
+
+  describe('queue notifications (#140)', () => {
+    it('tells the caller to re-read when the background says the queue moved', () => {
+      const first = makePort();
+      connect.mockReturnValue(first.port);
+      const onQueueChanged = vi.fn();
+
+      connectPanelPort({ onQueueChanged });
+      first.send({ type: 'queue-changed' });
+
+      expect(onQueueChanged).toHaveBeenCalledTimes(1);
+    });
+
+    it('ignores a message it does not recognise', () => {
+      const first = makePort();
+      connect.mockReturnValue(first.port);
+      const onQueueChanged = vi.fn();
+
+      connectPanelPort({ onQueueChanged });
+      // From a newer background than this panel. Ignoring beats guessing.
+      first.send({ type: 'something-else' });
+      first.send(null);
+      first.send('queue-changed');
+
+      expect(onQueueChanged).not.toHaveBeenCalled();
+    });
+
+    it('keeps notifying after a reconnect', () => {
+      const first = makePort();
+      const second = makePort();
+      connect.mockReturnValueOnce(first.port).mockReturnValue(second.port);
+      const onQueueChanged = vi.fn();
+
+      connectPanelPort({ onQueueChanged });
+      first.drop();
+      vi.advanceTimersByTime(500);
+
+      second.send({ type: 'queue-changed' });
+      expect(onQueueChanged).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('gives up quietly where there is no extension API to connect to', () => {
