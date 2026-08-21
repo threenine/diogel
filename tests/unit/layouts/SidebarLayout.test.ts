@@ -45,6 +45,7 @@ const mountLayout = async () => {
       stubs: {
         DiogelLogo: true,
         SidebarFooterLinks: true,
+        AccountSwitcher: { template: '<div class="account-switcher-stub" />' },
         'router-view': true,
         'q-layout': { template: '<div><slot /></div>' },
         'q-page-container': { template: '<div><slot /></div>' },

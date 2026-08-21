@@ -15,3 +15,7 @@ export const listConnectedSites = async (): Promise<ConnectedSite[]> =>
 
 export const disconnectSite = async (origin: string): Promise<boolean> =>
   (await sendBexMessage('sites.revoke', { origin })) ?? false;
+
+/** How many sites hold a standing permission for an account. */
+export const countSitesHoldingGrantsFor = async (accountPubkey: string): Promise<number> =>
+  (await sendBexMessage('sites.countForAccount', { accountPubkey })) ?? 0;

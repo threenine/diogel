@@ -16,7 +16,11 @@ vi.mock('app/src-bex/services/site-binding-store', () => ({
   removeBinding: mocks.removeBinding,
 }));
 
-import { disconnectSite, listConnectedSites } from 'app/src-bex/services/connected-sites';
+import {
+  countSitesHoldingGrantsFor,
+  disconnectSite,
+  listConnectedSites,
+} from 'app/src-bex/services/connected-sites';
 
 const ALICE = 'a'.repeat(64);
 const BOB = 'b'.repeat(64);
@@ -52,7 +56,9 @@ describe('what a site holds', () => {
       origin: 'https://example.com',
       boundPubkey: ALICE,
       boundAt: 500,
-      grants: [{ requestType: 'sign_event', eventKind: 1, grantedAt: 1000 }],
+      grants: [
+        { accountPubkey: ALICE, requestType: 'sign_event', eventKind: 1, grantedAt: 1000 },
+      ],
     });
   });
 
@@ -170,5 +176,45 @@ describe('disconnecting a site', () => {
     await expect(disconnectSite('https://example.com')).resolves.toBe(true);
 
     expect(mocks.removeBinding).toHaveBeenCalledWith('https://example.com');
+  });
+});
+
+/**
+ * The dashboard's "Approved Clients" figure.
+ *
+ * It counted distinct hostnames in the approvals log, which overstates it twice over: the log
+ * records rejections and the query never filtered on outcome, and an entry outlives the grant it
+ * describes (#116).
+ */
+describe('counting sites that hold a standing permission', () => {
+  it('counts a site once however many grants it holds', async () => {
+    mocks.getGrantedPermissions.mockResolvedValue([grant(), grant({ eventKind: 5 })]);
+
+    await expect(countSitesHoldingGrantsFor(ALICE)).resolves.toBe(1);
+  });
+
+  it('counts only grants belonging to that account', async () => {
+    mocks.getGrantedPermissions.mockResolvedValue([
+      grant(),
+      grant({ origin: 'https://other.example', accountPubkey: BOB }),
+    ]);
+
+    await expect(countSitesHoldingGrantsFor(ALICE)).resolves.toBe(1);
+    await expect(countSitesHoldingGrantsFor(BOB)).resolves.toBe(1);
+  });
+
+  it('does not count a site that is merely bound', async () => {
+    // A bound site with no standing permission asks every time, so it holds nothing.
+    mocks.listBindings.mockResolvedValue([
+      { origin: 'https://example.com', pubkey: ALICE, boundAt: 1 },
+    ]);
+
+    await expect(countSitesHoldingGrantsFor(ALICE)).resolves.toBe(0);
+  });
+
+  it('counts nothing without an account', async () => {
+    mocks.getGrantedPermissions.mockResolvedValue([grant()]);
+
+    await expect(countSitesHoldingGrantsFor('')).resolves.toBe(0);
   });
 });
