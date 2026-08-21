@@ -3,13 +3,13 @@ import { onMounted, ref, watch, computed } from 'vue';
 import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { normalizeRelayUrl } from 'src/services/relay-url';
-import type { NostrRelay, StoredKey } from '../types';
-import type { RelayCatalogEntry } from '../types/relay';
+import type { NostrRelay, StoredKey } from 'src/types';
+import type { RelayCatalogEntry } from 'src/types/relay';
 import { SimplePool } from 'nostr-tools';
 import { finalizeEvent } from 'nostr-tools/pure';
 import { hexToBytes } from '@noble/hashes/utils';
-import useSettingsStore from '../stores/settings-store';
-import RelayBrowserModal from './RelayBrowserModal.vue';
+import useSettingsStore from 'src/stores/settings-store';
+import RelayBrowserModal from 'components/dashboard/RelayBrowserModal.vue';
 
 defineOptions({ name: 'RelayEditor' });
 

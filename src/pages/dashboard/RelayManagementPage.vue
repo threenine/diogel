@@ -2,7 +2,7 @@
 import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import useAccountStore from 'src/stores/account-store';
-import RelayEditor from 'components/RelayEditor.vue';
+import RelayEditor from 'components/dashboard/RelayEditor.vue';
 
 const { t } = useI18n();
 const accountStore = useAccountStore();

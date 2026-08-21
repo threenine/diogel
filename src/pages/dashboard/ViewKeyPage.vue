@@ -6,9 +6,9 @@ import { type QInput, useQuasar } from 'quasar';
 
 import type { StoredKey } from 'src/types';
 import useAccountStore from 'src/stores/account-store';
-import ViewStoredKey from 'components/ViewStoredKey/Index.vue';
-import ExportButton from 'components/ExportButton.vue';
-import SecurityWarning from 'components/SecurityWarning.vue';
+import ViewStoredKey from 'components/dashboard/ViewStoredKey.vue';
+import ExportButton from 'components/dashboard/ExportButton.vue';
+import SecurityWarning from 'components/dashboard/SecurityWarning.vue';
 
 const { t } = useI18n();
 const route = useRoute();

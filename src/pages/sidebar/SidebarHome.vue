@@ -3,7 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import useAccountStore from 'src/stores/account-store';
-import ProfileView from 'components/ProfileView.vue';
+import ProfileView from 'components/shared/ProfileView.vue';
 import CurrentRequest from 'components/sidebar/CurrentRequest.vue';
 import PendingRequestList from 'components/sidebar/PendingRequestList.vue';
 import SidebarUnlock from 'components/sidebar/SidebarUnlock.vue';

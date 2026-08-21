@@ -26,7 +26,7 @@ vi.mock('src/stores/account-store', () => ({
   }),
 }));
 
-import AccountSwitcher from 'src/components/sidebar/AccountSwitcher.vue';
+import AccountSwitcher from 'components/sidebar/AccountSwitcher.vue';
 
 const createTab = vi.fn();
 

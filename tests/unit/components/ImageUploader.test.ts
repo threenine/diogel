@@ -39,7 +39,7 @@ vi.mock('quasar', () => ({
 }));
 
 // Import after mocks
-import ImageUploader from 'src/components/ImageUploader.vue';
+import ImageUploader from 'components/dashboard/ImageUploader.vue';
 
 const mockStoredKey: StoredKey = {
   id: 'test-pubkey',

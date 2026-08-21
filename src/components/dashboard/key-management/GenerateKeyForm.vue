@@ -7,7 +7,7 @@ import { useRouter } from 'vue-router';
 import type { StoredKey } from 'src/types';
 import useAccountStore from 'src/stores/account-store';
 import { generateKey } from 'src/services/generate-key';
-import ViewStoredKey from 'src/components/ViewStoredKey/Index.vue';
+import ViewStoredKey from 'components/dashboard/ViewStoredKey.vue';
 
 const { t } = useI18n();
 const $q = useQuasar();

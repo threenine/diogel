@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 
-import ProfileEditor from 'src/components/ProfileEditor.vue';
+import ProfileEditor from 'components/dashboard/ProfileEditor.vue';
 import type { NostrProfile, StoredKey } from 'src/types';
 
 const { fetchProfileMock, saveProfileMock, verifyIdentifierMock, notifyMock } = vi.hoisted(() => ({

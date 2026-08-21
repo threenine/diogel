@@ -4,7 +4,7 @@ import { useQuasar } from 'quasar';
 import { useI18n } from 'vue-i18n';
 import { uploadImageToBlossom } from 'src/services/blossom-upload-service';
 import { storageService } from 'src/services/storage-service';
-import type { StoredKey } from '../types';
+import type { StoredKey } from 'src/types';
 
 defineOptions({ name: 'ImageUploader' });
 

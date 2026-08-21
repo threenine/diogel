@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import DiogelLogo from 'components/DiogelLogo/Index.vue';
+import DiogelLogo from 'components/shared/DiogelLogo.vue';
 import SidebarFooterLinks from 'components/sidebar/SidebarFooterLinks.vue';
 import AccountSwitcher from 'components/sidebar/AccountSwitcher.vue';
 import { useApprovalQueue } from 'src/composables/useApprovalQueue';
