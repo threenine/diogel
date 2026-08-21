@@ -66,3 +66,71 @@ export async function unlockVault(page: Page, password = VAULT_PASSWORD): Promis
 export async function lockVault(page: Page): Promise<void> {
   await page.evaluate(() => chrome.runtime.sendMessage({ type: 'vault.lock' }));
 }
+
+/**
+ * A fixed test identity.
+ *
+ * Deliberately not generated: a failure that only reproduces with the key that produced it is not
+ * a failure anyone can act on.
+ */
+export const TEST_ACCOUNT = {
+  alias: 'e2e',
+  privkey: '1'.repeat(64),
+  // The public key for that private key, computed once with nostr-tools and pinned here so the
+  // fixture needs no crypto. A wrong value here would seed an account whose id does not match what
+  // it signs with, which is exactly the kind of mismatch these tests exist to catch.
+  pubkey: '4f355bdcb7cc0af728ef3cceb9615d90684bb5b2ca5f859ab0f0b704075871aa',
+};
+
+/**
+ * Puts one account into an unlocked vault, without driving the key-generation UI.
+ *
+ * `vault.updateData` is routed through the dispatcher, so an extension page can send it directly.
+ * The active account lives in `chrome.storage.local` under `nostr:active`, which is what
+ * `resolveSigningAccount` reads when a site has no binding yet.
+ */
+export async function seedAccount(page: Page): Promise<void> {
+  const seeded = await page.evaluate(async (account) => {
+    const result = (await chrome.runtime.sendMessage({
+      type: 'vault.updateData',
+      payload: {
+        vaultData: {
+          accounts: [
+            {
+              id: account.pubkey,
+              alias: account.alias,
+              account: { privkey: account.privkey },
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        },
+      },
+    })) as { success?: boolean } | undefined;
+
+    await chrome.storage.local.set({ 'nostr:active': account.alias });
+    return result;
+  }, TEST_ACCOUNT);
+
+  if (!seeded || seeded.success === false) {
+    throw new Error(`Could not seed the test account: ${JSON.stringify(seeded)}`);
+  }
+}
+
+/**
+ * Asks the extension to sign, from a real page, through the injected provider.
+ *
+ * Deliberately does not await the result. The promise settles only when the request is decided, and
+ * the interval while it is pending is the thing under test.
+ */
+export async function requestSignatureFromPage(sitePage: Page): Promise<void> {
+  await sitePage.evaluate(() => {
+    const provider = (window as unknown as { nostr?: { signEvent: (event: unknown) => Promise<unknown> } })
+      .nostr;
+    if (!provider) throw new Error('window.nostr was not injected into the page');
+
+    // Held so the promise is not garbage, and so a later test can inspect it if needed.
+    (window as unknown as { __signing?: unknown }).__signing = provider
+      .signEvent({ kind: 1, content: 'e2e', tags: [], created_at: Math.floor(Date.now() / 1000) })
+      .catch((error: unknown) => ({ error: String(error) }));
+  });
+}

@@ -39,6 +39,29 @@ const bridgeRegistrations = (): string[] =>
  */
 const KNOWN_UNROUTED = ['permission.check', 'permission.grant', 'vault.setData'];
 
+/**
+ * Actions the extension's own surfaces send, which must reach the dispatcher.
+ *
+ * `sendBexMessage` prefers the Quasar bridge and falls back to `chrome.runtime.sendMessage`. It
+ * looks for the bridge at `window.bridge` or `$q.bex`, neither of which exists in an extension
+ * page — so the fallback is the *only* path a panel or dashboard call ever takes. An action
+ * registered on the bridge alone silently returns null there, which is how the panel came to show
+ * no requests while the queue held them (#177).
+ */
+const SURFACE_ACTIONS = [
+  'nostr.requests.list',
+  'nostr.requests.current',
+  'nostr.requests.count',
+  'nostr.requests.content',
+  'nostr.requests.present',
+  'nostr.requests.respond',
+  'nostr.requests.requeuePresented',
+  'pages.originForTab',
+  'sites.list',
+  'sites.revoke',
+  'sites.countForAccount',
+];
+
 describe('bridge action routing', () => {
   const actions = declaredActions();
   const routed = new Set([...dispatcherCases(), ...bridgeRegistrations()]);
@@ -69,6 +92,20 @@ describe('bridge action routing', () => {
     for (const action of KNOWN_UNROUTED) {
       expect(actions).toContain(action);
       expect(routed.has(action)).toBe(false);
+    }
+  });
+
+  it('routes every action an extension surface sends through the dispatcher', () => {
+    const cases = new Set(dispatcherCases());
+    const unreachable = SURFACE_ACTIONS.filter((action) => !cases.has(action));
+
+    expect(unreachable).toEqual([]);
+  });
+
+  it('keeps that list honest against the declared union', () => {
+    // A typo here would make the assertion above vacuous.
+    for (const action of SURFACE_ACTIONS) {
+      expect(actions).toContain(action);
     }
   });
 });

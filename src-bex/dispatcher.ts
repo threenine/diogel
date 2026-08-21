@@ -20,6 +20,21 @@ import {
   stopAutoLockTimer,
 } from './services/auto-lock';
 import { handleGetPublicKey, handleSignEvent } from './handlers/nip07';
+import {
+  getCurrentRequest,
+  getPendingCount,
+  getRequestContent,
+  listPendingRequests,
+  markPresented,
+  requeuePresented,
+  submitDecision,
+} from './services/request-queue';
+import { getPageOrigin } from './services/page-origin-registry';
+import {
+  countSitesHoldingGrantsFor,
+  disconnectSite,
+  listConnectedSites,
+} from './services/connected-sites';
 import { handleBlossomUpload } from './handlers/blossom-handler';
 import { handleNip04Encrypt, handleNip04Decrypt } from './handlers/nip04';
 import { handleNip44Encrypt, handleNip44Decrypt } from './handlers/nip44';
@@ -151,6 +166,65 @@ export async function dispatchMessage<K extends BridgeAction>(
         } as BridgeResponsePayload<K>;
       }
       return { success: false, error: result.error, code: result.code } as unknown as BridgeResponsePayload<K>;
+    }
+
+    /**
+     * The panel's own actions.
+     *
+     * These were registered only on the Quasar bridge, which `sendBexMessage` looks for at
+     * `window.bridge` or `$q.bex` and does not find in an extension page — so every call fell back
+     * to this dispatcher, hit no case, and returned null. The panel silently showed no requests at
+     * all while the queue held them and the toolbar badge counted them (#177).
+     */
+    case 'nostr.requests.list':
+      return (await listPendingRequests()) as BridgeResponsePayload<K>;
+
+    case 'nostr.requests.current':
+      return (await getCurrentRequest()) as BridgeResponsePayload<K>;
+
+    case 'nostr.requests.count':
+      return (await getPendingCount()) as BridgeResponsePayload<K>;
+
+    case 'nostr.requests.content': {
+      const contentPayload = payload as BridgeRequestMap['nostr.requests.content'];
+      return getRequestContent(contentPayload.requestId) as BridgeResponsePayload<K>;
+    }
+
+    case 'nostr.requests.present': {
+      const presentPayload = payload as BridgeRequestMap['nostr.requests.present'];
+      return (await markPresented(presentPayload.requestId)) as BridgeResponsePayload<K>;
+    }
+
+    case 'nostr.requests.respond': {
+      const respondPayload = payload as BridgeRequestMap['nostr.requests.respond'];
+      return (await submitDecision(respondPayload.requestId, {
+        approved: respondPayload.approved,
+        duration: respondPayload.duration,
+      })) as BridgeResponsePayload<K>;
+    }
+
+    case 'nostr.requests.requeuePresented':
+      await requeuePresented();
+      return null;
+
+    case 'pages.originForTab': {
+      const tabPayload = payload as BridgeRequestMap['pages.originForTab'];
+      return (getPageOrigin(tabPayload.tabId) ?? null) as BridgeResponsePayload<K>;
+    }
+
+    case 'sites.list':
+      return (await listConnectedSites()) as BridgeResponsePayload<K>;
+
+    case 'sites.revoke': {
+      const revokePayload = payload as BridgeRequestMap['sites.revoke'];
+      return (await disconnectSite(revokePayload.origin)) as BridgeResponsePayload<K>;
+    }
+
+    case 'sites.countForAccount': {
+      const countPayload = payload as BridgeRequestMap['sites.countForAccount'];
+      return (await countSitesHoldingGrantsFor(
+        countPayload.accountPubkey,
+      )) as BridgeResponsePayload<K>;
     }
 
     case 'vault.getData': {
