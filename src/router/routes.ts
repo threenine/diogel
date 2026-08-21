@@ -123,6 +123,17 @@ const routes: RouteRecordRaw[] = [
     ],
   },
   {
+    path: '/connected-sites',
+    component: () => import('layouts/DashboardLayout.vue'),
+    children: [
+      {
+        path: '',
+        name: 'connected-sites',
+        component: () => import('pages/ConnectedSitesPage.vue'),
+      },
+    ],
+  },
+  {
     path: '/event-history',
     component: () => import('layouts/DashboardLayout.vue'),
     children: [

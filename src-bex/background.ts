@@ -43,6 +43,7 @@ import type { ApprovalRequestDetails } from './services/approval-flow';
 import { originHostname } from './services/origin';
 import { decideRouting, type RawMessage } from './services/message-routing';
 import { reconcileAbandonedRequests } from './services/page-reconciliation';
+import { disconnectSite, listConnectedSites } from './services/connected-sites';
 import {
   getPageOrigin,
   observePageConnections,
@@ -151,6 +152,8 @@ declare module '@quasar/app-vite' {
     'nostr.requests.current': [undefined, BridgeResponsePayload<'nostr.requests.current'>];
     'nostr.requests.count': [undefined, BridgeResponsePayload<'nostr.requests.count'>];
     'pages.originForTab': [{ tabId: number }, BridgeResponsePayload<'pages.originForTab'>];
+    'sites.list': [undefined, BridgeResponsePayload<'sites.list'>];
+    'sites.revoke': [{ origin: string }, BridgeResponsePayload<'sites.revoke'>];
     'nostr.requests.present': [{ requestId: string }, BridgeResponsePayload<'nostr.requests.present'>];
     'nostr.requests.respond': [
       { requestId: string; approved: boolean; duration: ApprovalDuration },
@@ -273,6 +276,17 @@ bridge.on('nostr.requests.count', () => {
 // expose it), so the origin is resolved here from what the content script's port already told us.
 bridge.on('pages.originForTab', ({ payload }) => {
   return getPageOrigin(payload.tabId) ?? null;
+});
+
+// What each site currently holds, and disconnecting one. The handlers behind these have existed
+// since the permission model was written, with no bridge event and no caller, so no user has ever
+// been able to see or revoke a grant (#116).
+bridge.on('sites.list', () => {
+  return listConnectedSites() as unknown as BridgeResponsePayload<'sites.list'>;
+});
+
+bridge.on('sites.revoke', ({ payload }) => {
+  return disconnectSite(payload.origin) as unknown as BridgeResponsePayload<'sites.revoke'>;
 });
 
 bridge.on('nostr.requests.present', ({ payload }) => {

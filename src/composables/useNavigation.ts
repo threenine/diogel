@@ -67,6 +67,14 @@ export function useNavigation(): UseNavigationResult {
       isActive: () => routeName.value === 'relays',
     },
     {
+      id: 'connected-sites',
+      icon: 'link',
+      label: t('navigation.connectedSites.label'),
+      caption: t('navigation.connectedSites.caption'),
+      target: { name: 'connected-sites' },
+      isActive: () => routeName.value === 'connected-sites',
+    },
+    {
       id: 'contacts',
       icon: 'contacts',
       label: t('navigation.contacts.label'),
