@@ -15,6 +15,13 @@ import { normalizeOrigin } from './origin';
 import type { PermissionEventKind } from '../types/background';
 
 export interface ConnectedSiteGrant {
+  /**
+   * The account this grant belongs to.
+   *
+   * A site can hold grants for more than one identity — each was given while that account was the
+   * one acting — so a grant list that did not say which would be ambiguous exactly where it matters.
+   */
+  accountPubkey: string;
   requestType: string;
   eventKind: PermissionEventKind;
   /** Absent for a grant that does not expire. */
@@ -60,6 +67,7 @@ export const listConnectedSites = async (): Promise<ConnectedSite[]> => {
     if (!grant.granted) continue;
 
     siteFor(grant.origin).grants.push({
+      accountPubkey: grant.accountPubkey,
       requestType: grant.requestType,
       eventKind: grant.eventKind,
       grantedAt: grant.timestamp,
@@ -78,6 +86,22 @@ export const listConnectedSites = async (): Promise<ConnectedSite[]> => {
  * means to anyone reading it. Removing the binding lets the next request bind afresh, and the user
  * is asked again for everything.
  */
+/**
+ * How many sites hold at least one standing permission for an account.
+ *
+ * The dashboard's "Approved Clients" figure used to count distinct hostnames in the approvals log,
+ * which answers a different question: it counted sites that *asked*, including ones the user
+ * rejected, and kept counting them after a grant was revoked (#116).
+ */
+export const countSitesHoldingGrantsFor = async (accountPubkey: string): Promise<number> => {
+  if (!accountPubkey) return 0;
+
+  const sites = await listConnectedSites();
+  return sites.filter((site) =>
+    site.grants.some((grant) => grant.accountPubkey === accountPubkey),
+  ).length;
+};
+
 export const disconnectSite = async (origin: string): Promise<boolean> => {
   const normalized = normalizeOrigin(origin);
   if (!normalized) return false;

@@ -119,6 +119,7 @@ export type BridgeAction =
   | 'pages.originForTab'
   | 'sites.list'
   | 'sites.revoke'
+  | 'sites.countForAccount'
   | 'relay.browser.list'
   | 'relay.browser.getStatus'
   | 'relay.browser.refresh'
@@ -305,6 +306,11 @@ export interface BridgeRequestMap {
     action: 'sites.revoke';
     origin: string;
   };
+  'sites.countForAccount': {
+    id: string;
+    action: 'sites.countForAccount';
+    accountPubkey: string;
+  };
   'nostr.requests.requeuePresented': {
     id: string;
     action: 'nostr.requests.requeuePresented';
@@ -416,6 +422,7 @@ export interface BridgeResponseMap {
   'pages.originForTab': string | null;
   'sites.list': ConnectedSite[];
   'sites.revoke': boolean;
+  'sites.countForAccount': number;
   'nostr.requests.present': ApprovalRequestRecord | null;
   'nostr.requests.respond': DecisionResult;
   'nostr.requests.content': ApprovalRequestContent | null;

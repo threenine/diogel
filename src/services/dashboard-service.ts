@@ -8,7 +8,7 @@ import useSettingsStore from 'src/stores/settings-store';
 import type { Event } from 'nostr-tools';
 import { isVaultUnlocked } from './vault-service';
 import { useEventService } from 'src/composables/useEventService';
-import { db } from './database';
+import { countSitesHoldingGrantsFor } from './connected-sites-service';
 import type { DashboardActivityType, DashboardSummary } from 'src/types';
 
 export type DashboardActivityStatus = 'approved' | 'exception' | 'rejected' | 'signed';
@@ -73,10 +73,15 @@ export async function getActiveKeyCount(): Promise<number> {
 }
 
 /**
- * Returns the number of distinct hostnames that have approval log entries
- * for the active Diogel account on this local install.
+ * Returns the number of sites that currently hold a standing permission for the active account.
  *
- * This metric is deterministic, stable, and does not query Nostr relays.
+ * This counted distinct hostnames in the approvals log, which answers a different question in two
+ * ways that both overstate it (#116): the log records rejections as well as approvals and the query
+ * never filtered on outcome, so a site the user *refused* was counted as an approved client — and a
+ * grant that had since expired or been revoked went on being counted for as long as its log entry
+ * survived.
+ *
+ * It now reads the grant store, so the figure answers what its label claims.
  */
 export async function getApprovedClientCountForActiveKey(): Promise<number> {
   const unlocked = await isVaultUnlocked();
@@ -84,20 +89,19 @@ export async function getApprovedClientCountForActiveKey(): Promise<number> {
     return 0;
   }
 
-  const activeAccount = await getActiveAccountAlias();
-  if (!activeAccount) {
+  const alias = await getActiveAccountAlias();
+  if (!alias) {
     return 0;
   }
 
-  const approvals = await db.approvals.where('account').equals(activeAccount).toArray();
+  // Grants are keyed by public key, never alias, because an alias is user-editable.
+  const keys = await get();
+  const activePubkey = keys[alias]?.id;
+  if (!activePubkey) {
+    return 0;
+  }
 
-  const hostnames = new Set(
-    approvals
-      .map((approval) => approval.hostname.trim().toLowerCase())
-      .filter((hostname) => hostname.length > 0),
-  );
-
-  return hostnames.size;
+  return countSitesHoldingGrantsFor(activePubkey);
 }
 
 export async function getConnectedRelayCountForActiveKey(): Promise<number> {

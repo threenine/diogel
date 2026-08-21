@@ -603,6 +603,16 @@ export default {
       body: 'Create your encrypted vault to start signing Nostr events from this panel.',
       action: 'Create vault',
     },
+    accountSwitcher: {
+      ariaLabel: 'Signing identity for new sites',
+      current: 'New sites will use',
+      // The scope has to be stated. Switching cannot re-target a site that is already bound, and a
+      // control that implied otherwise would mislead about which key signs what (#116, S10).
+      scope: 'Sites already connected keep the identity they were given.',
+      none: 'No account configured',
+      manage: 'Manage keys',
+      switched: 'New sites will use {alias}',
+    },
     header: {
       ariaLabel: 'Porwr panel',
       pending: {

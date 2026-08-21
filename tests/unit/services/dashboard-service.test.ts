@@ -5,6 +5,14 @@ import type * as DexieStorage from 'src/services/dexie-storage';
 import type * as VaultService from 'src/services/vault-service';
 import { useEventService } from 'src/composables/useEventService';
 
+const { countSitesHoldingGrantsFor } = vi.hoisted(() => ({
+  countSitesHoldingGrantsFor: vi.fn(),
+}));
+
+vi.mock('src/services/connected-sites-service', () => ({ countSitesHoldingGrantsFor }));
+
+const ALICE = 'a'.repeat(64);
+
 vi.mock('src/services/dexie-storage', () => ({
   get: vi.fn(),
   getActive: vi.fn(),
@@ -152,47 +160,54 @@ describe('dashboard-service', () => {
     await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(0);
   });
 
-  it('counts unique approved hostnames for active account', async () => {
+  /**
+   * Repointed at the grant store (#116).
+   *
+   * This counted distinct hostnames in the approvals log, which overstates the figure in two ways:
+   * the log records rejections and the query never filtered on outcome, and an entry survives long
+   * after the grant it describes has expired or been revoked.
+   */
+  it('counts the sites that hold a standing permission for the active account', async () => {
     vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
-    approvalsToArrayMock.mockResolvedValue([
-      { id: 1, dateTime: '2026-01-01', eventKind: 1, hostname: 'example.com', account: 'alpha' },
-      { id: 2, dateTime: '2026-01-02', eventKind: 1, hostname: 'example.com', account: 'alpha' },
-      { id: 3, dateTime: '2026-01-03', eventKind: 1, hostname: 'app.example.com', account: 'alpha' },
-    ]);
+    vi.mocked(dexieStorage.get).mockResolvedValue({
+      alpha: { id: ALICE, alias: 'alpha' },
+    } as never);
+    countSitesHoldingGrantsFor.mockResolvedValue(2);
 
     await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(2);
   });
 
-  it('normalizes hostname case and whitespace', async () => {
+  it('asks by public key, not alias', async () => {
     vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
-    approvalsToArrayMock.mockResolvedValue([
-      { id: 1, dateTime: '2026-01-01', eventKind: 1, hostname: 'Example.com', account: 'alpha' },
-      { id: 2, dateTime: '2026-01-02', eventKind: 1, hostname: ' example.com ', account: 'alpha' },
-    ]);
+    vi.mocked(dexieStorage.get).mockResolvedValue({
+      alpha: { id: ALICE, alias: 'alpha' },
+    } as never);
+    countSitesHoldingGrantsFor.mockResolvedValue(1);
 
-    await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(1);
+    await dashboardService.getApprovedClientCountForActiveKey();
+
+    // An alias is user-editable; a rename must not change what the figure counts.
+    expect(countSitesHoldingGrantsFor).toHaveBeenCalledWith(ALICE);
   });
 
-  it('ignores blank hostnames', async () => {
+  it('no longer reads the approvals log for this figure', async () => {
     vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
-    approvalsToArrayMock.mockResolvedValue([
-      { id: 1, dateTime: '2026-01-01', eventKind: 1, hostname: '', account: 'alpha' },
-      { id: 2, dateTime: '2026-01-02', eventKind: 1, hostname: '   ', account: 'alpha' },
-      { id: 3, dateTime: '2026-01-03', eventKind: 1, hostname: 'client.example', account: 'alpha' },
-    ]);
+    vi.mocked(dexieStorage.get).mockResolvedValue({
+      alpha: { id: ALICE, alias: 'alpha' },
+    } as never);
+    countSitesHoldingGrantsFor.mockResolvedValue(0);
 
-    await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(1);
+    await dashboardService.getApprovedClientCountForActiveKey();
+
+    expect(approvalsToArrayMock).not.toHaveBeenCalled();
   });
 
-  it('scopes approved clients by active account', async () => {
-    vi.mocked(dexieStorage.getActive).mockResolvedValue('alpha');
-    approvalsToArrayMock.mockResolvedValue([
-      { id: 1, dateTime: '2026-01-01', eventKind: 1, hostname: 'only-alpha.com', account: 'alpha' },
-    ]);
+  it('counts nothing when the active alias names no stored key', async () => {
+    vi.mocked(dexieStorage.getActive).mockResolvedValue('ghost');
+    vi.mocked(dexieStorage.get).mockResolvedValue({} as never);
 
-    await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(1);
-    expect(approvalsWhereMock).toHaveBeenCalledWith('account');
-    expect(approvalsEqualsMock).toHaveBeenCalledWith('alpha');
+    await expect(dashboardService.getApprovedClientCountForActiveKey()).resolves.toBe(0);
+    expect(countSitesHoldingGrantsFor).not.toHaveBeenCalled();
   });
 
   it('does not call relay event service for approved client metric', async () => {
@@ -225,9 +240,8 @@ describe('dashboard-service', () => {
       },
     });
 
-    approvalsToArrayMock.mockResolvedValue([
-      { id: 1, dateTime: '2026-01-01', eventKind: 1, hostname: 'client.example', account: 'alpha' },
-    ]);
+    // The figure now comes from the grant store, not the approvals log.
+    countSitesHoldingGrantsFor.mockResolvedValue(1);
     fetchAccountRelayListEventMock.mockResolvedValue(null);
     getEventsMock.mockResolvedValue([]);
 

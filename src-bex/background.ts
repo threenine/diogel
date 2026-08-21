@@ -43,7 +43,11 @@ import type { ApprovalRequestDetails } from './services/approval-flow';
 import { originHostname } from './services/origin';
 import { decideRouting, type RawMessage } from './services/message-routing';
 import { reconcileAbandonedRequests } from './services/page-reconciliation';
-import { disconnectSite, listConnectedSites } from './services/connected-sites';
+import {
+  countSitesHoldingGrantsFor,
+  disconnectSite,
+  listConnectedSites,
+} from './services/connected-sites';
 import {
   getPageOrigin,
   observePageConnections,
@@ -154,6 +158,10 @@ declare module '@quasar/app-vite' {
     'pages.originForTab': [{ tabId: number }, BridgeResponsePayload<'pages.originForTab'>];
     'sites.list': [undefined, BridgeResponsePayload<'sites.list'>];
     'sites.revoke': [{ origin: string }, BridgeResponsePayload<'sites.revoke'>];
+    'sites.countForAccount': [
+      { accountPubkey: string },
+      BridgeResponsePayload<'sites.countForAccount'>,
+    ];
     'nostr.requests.present': [{ requestId: string }, BridgeResponsePayload<'nostr.requests.present'>];
     'nostr.requests.respond': [
       { requestId: string; approved: boolean; duration: ApprovalDuration },
@@ -287,6 +295,12 @@ bridge.on('sites.list', () => {
 
 bridge.on('sites.revoke', ({ payload }) => {
   return disconnectSite(payload.origin) as unknown as BridgeResponsePayload<'sites.revoke'>;
+});
+
+bridge.on('sites.countForAccount', ({ payload }) => {
+  return countSitesHoldingGrantsFor(
+    payload.accountPubkey,
+  ) as unknown as BridgeResponsePayload<'sites.countForAccount'>;
 });
 
 bridge.on('nostr.requests.present', ({ payload }) => {

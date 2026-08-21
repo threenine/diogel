@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import DiogelLogo from 'components/DiogelLogo/Index.vue';
 import SidebarFooterLinks from 'components/sidebar/SidebarFooterLinks.vue';
+import AccountSwitcher from 'components/sidebar/AccountSwitcher.vue';
 import { useApprovalQueue } from 'src/composables/useApprovalQueue';
 import { useVault } from 'src/composables/useVault';
 import useVaultStore from 'src/stores/vault-store';
@@ -20,6 +21,16 @@ const hasPending = computed(() => pendingCount.value > 0);
 /**
  * The badge carries the number visually; this is what a screen reader announces instead (NFR-4).
  */
+const switchedAlias = ref<string | null>(null);
+
+/**
+ * Announced rather than shown as a toast: the panel is 360px and the change is deliberately
+ * undramatic, but a screen-reader user needs to know the choice took effect.
+ */
+function onAccountSwitched(alias: string): void {
+  switchedAlias.value = alias;
+}
+
 const pendingLabel = computed(() =>
   t('sidebar.header.pending.ariaLabel', { count: pendingCount.value }, pendingCount.value),
 );
@@ -35,10 +46,10 @@ const pendingLabel = computed(() =>
 
       <div class="sidebar-header__actions">
         <!--
-          The account switcher named in specification §3 belongs here. It is deferred to #116,
-          which owns site-to-account binding and therefore decides what switching means for an
-          origin that is already bound to an account.
+          Specification §3's account switcher. It chooses the identity a *new* site binds to; it
+          cannot re-target one already connected, and says so (#116).
         -->
+        <AccountSwitcher v-if="vaultStore.isUnlocked" @switched="onAccountSwitched" />
 
         <q-badge
           v-if="hasPending"
@@ -55,6 +66,9 @@ const pendingLabel = computed(() =>
         -->
         <span class="sidebar-header__sr-only" role="status" aria-live="polite">
           {{ pendingLabel }}
+          <template v-if="switchedAlias">
+            {{ t('sidebar.accountSwitcher.switched', { alias: switchedAlias }) }}
+          </template>
         </span>
 
         <q-btn
