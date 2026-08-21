@@ -68,7 +68,15 @@ export interface FirefoxFixtures {
   driver: firefox.Driver;
   /** Opens an extension route and waits for the app to settle on a real surface. */
   openExtensionPage: (hash: string) => Promise<void>;
+  /** Creates a vault from the login surface, leaving it unlocked. */
+  createVault: (password?: string) => Promise<void>;
+  /** Unlocks an existing vault from the login surface. */
+  unlockVault: (password?: string) => Promise<void>;
+  /** Locks the vault the way the background does on auto-lock. */
+  lockVault: () => Promise<void>;
 }
+
+export const VAULT_PASSWORD = 'e2e-test-password';
 
 export const test = base.extend<FirefoxFixtures>({
   driver: async ({}, use) => {
@@ -133,6 +141,82 @@ export const test = base.extend<FirefoxFixtures>({
         45_000,
         'the app never settled on a surface',
       );
+    });
+  },
+
+  /*
+   * Vault lifecycle in Firefox.
+   *
+   * Not a translation of the Chromium helpers. Playwright's `getByLabel` has no WebDriver
+   * equivalent, so the fields are found by position within the vault card: the create form renders
+   * two password inputs and the unlock form renders one, which is also what tells the two apart.
+   */
+  createVault: async ({ driver, openExtensionPage }, use) => {
+    await use(async (password = VAULT_PASSWORD) => {
+      await openExtensionPage('/login');
+
+      const fields = await driver.wait(
+        until.elementsLocated({ css: '.vault-card input[type="password"]' }),
+        30_000,
+        'the vault form never rendered',
+      );
+
+      if (fields.length !== 2) {
+        throw new Error(
+          `Expected the create form's two password fields, found ${String(fields.length)}. ` +
+            'A vault already exists in this profile, or the form changed.',
+        );
+      }
+
+      await fields[0]?.sendKeys(password);
+      await fields[1]?.sendKeys(password);
+
+      const submit = await driver.findElement({ css: '.vault-card .q-card__actions button' });
+      await submit.click();
+
+      // The form is replaced once the vault exists; waiting on that is what makes this synchronous.
+      await driver.wait(until.stalenessOf(submit), 30_000, 'the vault was never created');
+    });
+  },
+
+  unlockVault: async ({ driver, openExtensionPage }, use) => {
+    await use(async (password = VAULT_PASSWORD) => {
+      await openExtensionPage('/login');
+
+      const fields = await driver.wait(
+        until.elementsLocated({ css: '.vault-card input[type="password"]' }),
+        30_000,
+        'the unlock form never rendered',
+      );
+
+      if (fields.length !== 1) {
+        throw new Error(
+          `Expected the unlock form's single password field, found ${String(fields.length)}. ` +
+            'The vault may not exist, in which case this is the create form.',
+        );
+      }
+
+      await fields[0]?.sendKeys(password);
+
+      const submit = await driver.findElement({ css: '.vault-card .q-card__actions button' });
+      await submit.click();
+      await driver.wait(until.stalenessOf(submit), 30_000, 'the vault was never unlocked');
+    });
+  },
+
+  lockVault: async ({ driver }, use) => {
+    await use(async () => {
+      // Sent from a page rather than the background: a worker asking itself to lock is a no-op,
+      // because runtime messages are not delivered to the sender's own listener.
+      const locked = await driver.executeAsyncScript<boolean>(
+        'const done = arguments[arguments.length - 1];' +
+          'browser.runtime.sendMessage({ type: "vault.lock" })' +
+          '  .then(() => done(true), (e) => done("lock failed: " + String(e)));',
+      );
+
+      // Swallowing this would surface later as "the panel never offered to unlock", which describes
+      // the symptom of an unlocked vault rather than the message that never arrived.
+      if (locked !== true) throw new Error(String(locked));
     });
   },
 });
