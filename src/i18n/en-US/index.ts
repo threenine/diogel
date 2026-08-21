@@ -150,6 +150,28 @@ export default {
     edit: 'edit',
   },
   dashboard: {
+    connectedSites: {
+      title: 'Connected Sites',
+      caption: 'Sites that can act with one of your identities',
+      empty: 'No site has connected yet.',
+      emptyHint: 'A site appears here once it asks to use one of your keys.',
+      signsAs: 'Signs as',
+      unbound: 'Not bound to an account',
+      grants: 'Standing permissions',
+      noGrants: 'Asks every time',
+      expires: 'Expires',
+      neverExpires: 'Until revoked',
+      connectedOn: 'Connected',
+      disconnect: 'Disconnect',
+      disconnectTitle: 'Disconnect {origin}?',
+      disconnectBody:
+        'This removes every standing permission and forgets which account the site signs as. The site will ask again the next time it needs anything.',
+      disconnectConfirm: 'Disconnect',
+      disconnectCancel: 'Cancel',
+      disconnected: 'Disconnected {origin}',
+      disconnectFailed: 'Could not disconnect {origin}',
+      loadFailed: 'Could not load connected sites',
+    },
     title: 'Dashboard',
     caption: 'Monitor signing activity, keys, and relay status.',
     widgets: {
@@ -385,6 +407,10 @@ export default {
     relays: {
       label: 'Relay Management',
       caption: 'Configure relay connections',
+    },
+    connectedSites: {
+      label: 'Connected Sites',
+      caption: 'Sites using your identities',
     },
     contacts: {
       label: 'Contact Management',

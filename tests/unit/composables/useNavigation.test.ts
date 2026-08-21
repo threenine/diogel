@@ -44,6 +44,7 @@ describe('useNavigation', () => {
       'keys',
       'profile',
       'relays',
+      'connected-sites',
       'contacts',
       'wallet-connections',
       'event-history',

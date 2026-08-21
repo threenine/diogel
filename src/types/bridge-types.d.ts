@@ -6,6 +6,7 @@ import type {
   DecisionResult,
 } from 'app/src-bex/types/background';
 import type { RelayCatalogEntry, RelayDiscoveryState } from './relay';
+import type { ConnectedSite } from 'app/src-bex/services/connected-sites';
 import type {
   ImportNip47ConnectionRequest,
   Nip47BalanceResponse,
@@ -116,6 +117,8 @@ export type BridgeAction =
   | 'nostr.requests.content'
   | 'nostr.requests.requeuePresented'
   | 'pages.originForTab'
+  | 'sites.list'
+  | 'sites.revoke'
   | 'relay.browser.list'
   | 'relay.browser.getStatus'
   | 'relay.browser.refresh'
@@ -293,6 +296,15 @@ export interface BridgeRequestMap {
     action: 'pages.originForTab';
     tabId: number;
   };
+  'sites.list': {
+    id: string;
+    action: 'sites.list';
+  };
+  'sites.revoke': {
+    id: string;
+    action: 'sites.revoke';
+    origin: string;
+  };
   'nostr.requests.requeuePresented': {
     id: string;
     action: 'nostr.requests.requeuePresented';
@@ -402,6 +414,8 @@ export interface BridgeResponseMap {
   'nostr.requests.current': ApprovalRequestRecord | null;
   'nostr.requests.count': number;
   'pages.originForTab': string | null;
+  'sites.list': ConnectedSite[];
+  'sites.revoke': boolean;
   'nostr.requests.present': ApprovalRequestRecord | null;
   'nostr.requests.respond': DecisionResult;
   'nostr.requests.content': ApprovalRequestContent | null;
