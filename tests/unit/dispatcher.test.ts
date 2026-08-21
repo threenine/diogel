@@ -4,6 +4,8 @@ import { handleRelayBrowserList, handleRelayBrowserGetStatus } from 'app/src-bex
 import { handleVaultUnlock } from 'app/src-bex/handlers/vault-handler';
 import { handleBlossomUpload } from 'app/src-bex/handlers/blossom-handler';
 import { handleNip44Encrypt, handleNip44Decrypt } from 'app/src-bex/handlers/nip44';
+import { handleNip04Encrypt, handleNip04Decrypt } from 'app/src-bex/handlers/nip04';
+import { handleGetPublicKey, handleSignEvent } from 'app/src-bex/handlers/nip07';
 import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 import { createBridgeRequest } from 'src/types/bridge';
 import type { VaultData } from 'src/types/bridge';
@@ -228,5 +230,70 @@ describe('Dispatcher', () => {
       expect.objectContaining({ pubkey: 'sender-pubkey', ciphertext: 'nip44-ciphertext' }),
       'https://app.example',
     );
+  });
+
+  /**
+   * Every action that acts on a site's behalf must reach its handler with the origin intact (#173).
+   *
+   * `message-routing` refuses to dispatch these without an origin; this is the other half — that the
+   * dispatcher then passes the one it was given through rather than dropping it. A handler that
+   * received an empty origin would check permissions for nowhere and sign for anyone.
+   */
+  describe('origin pass-through', () => {
+    const ORIGIN = 'https://example.com';
+
+    const cases = [
+      { action: 'nostr.getPublicKey', handler: () => handleGetPublicKey },
+      { action: 'nostr.signEvent', handler: () => handleSignEvent },
+      { action: 'nostr.nip04.encrypt', handler: () => handleNip04Encrypt },
+      { action: 'nostr.nip04.decrypt', handler: () => handleNip04Decrypt },
+      { action: 'nostr.nip44.encrypt', handler: () => handleNip44Encrypt },
+      { action: 'nostr.nip44.decrypt', handler: () => handleNip44Decrypt },
+    ] as const;
+
+    for (const { action, handler } of cases) {
+      it(`passes the origin to ${action}`, async () => {
+        vi.mocked(handler()).mockResolvedValue({ success: true, data: 'ok' } as never);
+
+        await dispatchMessage(
+          action as 'nostr.getPublicKey',
+          createBridgeRequest(action as 'nostr.getPublicKey', {
+            pubkey: 'p',
+            plaintext: 't',
+            ciphertext: 'c',
+            event: { kind: 1, content: '', tags: [], created_at: 0 },
+          } as never),
+          ORIGIN,
+        );
+
+        expect(handler()).toHaveBeenCalledWith(expect.anything(), ORIGIN);
+      });
+    }
+
+    it('rejects with the handler error rather than swallowing it', async () => {
+      vi.mocked(handleNip04Encrypt).mockResolvedValue({
+        success: false,
+        error: 'Vault is locked',
+      } as never);
+
+      await expect(
+        dispatchMessage(
+          'nostr.nip04.encrypt',
+          createBridgeRequest('nostr.nip04.encrypt', {
+            pubkey: 'p',
+            plaintext: 't',
+          } as never),
+          ORIGIN,
+        ),
+      ).rejects.toThrow('Vault is locked');
+    });
+
+    it('returns null for an action it does not serve', async () => {
+      // An unknown action falls through the switch. That is where "we do not serve that" belongs,
+      // and it must not throw — the caller gets no response rather than an error page.
+      await expect(
+        dispatchMessage('not.an.action' as 'ping', {} as never, ORIGIN),
+      ).resolves.toBeNull();
+    });
   });
 });
