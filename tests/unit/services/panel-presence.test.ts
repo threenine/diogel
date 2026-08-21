@@ -14,6 +14,7 @@ import {
   getPanelCount,
   isPanelPresent,
   observePanelConnections,
+  notifyPanelsOfQueueChange,
   onPanelPresenceChange,
 } from 'app/src-bex/services/panel-presence';
 
@@ -117,5 +118,69 @@ describe('panel presence', () => {
     panel.disconnect();
 
     expect(seen).toEqual([true, false]);
+  });
+});
+
+/**
+ * Queue notifications (#140).
+ *
+ * The panel used to poll every second. The background now says "the queue moved" over the same
+ * connection presence already uses, and the panel re-reads.
+ */
+describe('telling panels the queue moved', () => {
+  const postMessage = vi.fn();
+
+  const openMessagePort = (connect: Connect, over: Partial<chrome.runtime.Port> = {}) => {
+    const handlers: Array<() => void> = [];
+    const port = {
+      name: PANEL_PORT_NAME,
+      postMessage,
+      onDisconnect: { addListener: (fn: () => void) => handlers.push(fn) },
+      ...over,
+    } as unknown as chrome.runtime.Port;
+    connect(port);
+    return { port, disconnect: () => handlers.forEach((fn) => fn()) };
+  };
+
+  it('notifies every open panel', () => {
+    const connect = startObserving();
+    openMessagePort(connect);
+    openMessagePort(connect);
+
+    notifyPanelsOfQueueChange();
+
+    expect(postMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it('carries no state, only that the queue moved', () => {
+    const connect = startObserving();
+    openMessagePort(connect);
+
+    notifyPanelsOfQueueChange();
+
+    // A payload could arrive behind a decision already applied, which is how a panel ends up
+    // showing a resolved request as actionable.
+    expect(postMessage).toHaveBeenCalledWith({ type: 'queue-changed' });
+  });
+
+  it('does not notify a panel that has gone', () => {
+    const connect = startObserving();
+    const panel = openMessagePort(connect);
+    panel.disconnect();
+
+    notifyPanelsOfQueueChange();
+
+    expect(postMessage).not.toHaveBeenCalled();
+  });
+
+  it('survives a port that is closing but not yet disconnected', () => {
+    const connect = startObserving();
+    openMessagePort(connect, {
+      postMessage: vi.fn(() => {
+        throw new Error('Attempting to use a disconnected port object');
+      }),
+    } as unknown as Partial<chrome.runtime.Port>);
+
+    expect(() => notifyPanelsOfQueueChange()).not.toThrow();
   });
 });

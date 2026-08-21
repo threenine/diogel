@@ -34,7 +34,7 @@ import {
   requeuePresented,
   submitDecision,
 } from './services/request-queue';
-import { observePanelConnections } from './services/panel-presence';
+import { notifyPanelsOfQueueChange, observePanelConnections } from './services/panel-presence';
 import { refreshAttention } from './services/attention-badge';
 import { resolveSigningAccount } from './services/signing-account';
 import {
@@ -428,6 +428,10 @@ observePanelConnections();
 // leave the queue with no caller involved; watching the write is the only way to catch that.
 onQueueChange(() => {
   void refreshAttention();
+  // The same write that moves the toolbar tells any open panel to re-read (#140). Expiry is
+  // evaluated lazily, so this is also how a request leaving the queue with no caller involved
+  // reaches the panel.
+  notifyPanelsOfQueueChange();
 });
 
 /**

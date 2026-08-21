@@ -17,12 +17,14 @@ import type {
  * caches authoritative state: every decision is followed by a refresh from the background, so a
  * request that expired or was interrupted meanwhile cannot linger on screen as actionable.
  *
- * State is module-scoped so every consumer in the panel observes one queue behind one poller. The
- * header shows the pending count while the page shows the request itself; per-caller state would
- * mean two pollers racing each other and a count that could disagree with what is on screen.
+ * State is module-scoped so every consumer in the panel observes one queue. The header shows the
+ * pending count while the page shows the request itself; per-caller state would mean two readers
+ * racing each other and a count that could disagree with what is on screen.
+ *
+ * Nothing polls. The background pushes a bare "the queue moved" notification over the panel port
+ * and this re-reads (#140). A push carries no state, so it cannot be stale or arrive behind a
+ * decision the background has already applied; the answer always comes from a fresh read.
  */
-
-const POLL_INTERVAL_MS = 1000;
 
 export interface UseApprovalQueueResult {
   pending: Ref<ApprovalRequestRecord[]>;
@@ -40,7 +42,6 @@ const content = ref<ApprovalRequestContent | null>(null);
 const loading = ref(true);
 const pendingCount = computed(() => pending.value.length);
 
-let timer: ReturnType<typeof setInterval> | undefined;
 let consumers = 0;
 let panelPort: PanelPortHandle | undefined;
 
@@ -99,8 +100,6 @@ const decide = async (
  * Exported so a suite can start from a known queue rather than inheriting the previous test's.
  */
 export function resetApprovalQueue(): void {
-  if (timer !== undefined) clearInterval(timer);
-  timer = undefined;
   panelPort?.disconnect();
   panelPort = undefined;
   consumers = 0;
@@ -114,13 +113,6 @@ export function useApprovalQueue(): UseApprovalQueueResult {
   onMounted(() => {
     consumers += 1;
 
-    // The poller belongs to the queue, not to whichever component mounted first.
-    if (timer === undefined) {
-      timer = setInterval(() => {
-        void refresh();
-      }, POLL_INTERVAL_MS);
-    }
-
     // One presence port per panel, not per consumer: the background counts connections, so a
     // second port would make a single panel look like two.
     panelPort ??= connectPanelPort({
@@ -129,17 +121,19 @@ export function useApprovalQueue(): UseApprovalQueueResult {
       onReconnect: () => {
         void refresh();
       },
+      onQueueChanged: () => {
+        void refresh();
+      },
     });
 
+    // The one read that is not driven by a notification: what is already waiting when the panel
+    // opens. Everything after this arrives as a push.
     void refresh();
   });
 
   onUnmounted(() => {
     consumers -= 1;
     if (consumers > 0) return;
-
-    if (timer !== undefined) clearInterval(timer);
-    timer = undefined;
 
     panelPort?.disconnect();
     panelPort = undefined;

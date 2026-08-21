@@ -9,12 +9,19 @@
  * Presence is a presentation fact, never a lifecycle one. When the last panel goes away the
  * presented request returns to the queue; nothing is decided, rejected or duplicated, because
  * closing the panel is not a decision (FR-6, S11).
+ *
+ * The same connection carries queue notifications outward (#140). They say only "the queue moved",
+ * never what it moved to: the background stays the single source of truth, and a panel that acts on
+ * a notification does so by re-reading rather than by trusting a payload it was handed.
  */
 
 import { LogLevel, logService } from 'src/services/log-service';
 import { requeuePresented } from './request-queue';
 
 export const PANEL_PORT_NAME = 'porwr-panel';
+
+/** The only message the background sends a panel: re-read the queue. */
+export const QUEUE_CHANGED_MESSAGE = { type: 'queue-changed' } as const;
 
 type PresenceListener = (present: boolean) => void;
 
@@ -66,6 +73,27 @@ export const observePanelConnections = (): void => {
     notify();
     port.onDisconnect.addListener(() => handleDisconnect(port));
   });
+};
+
+/**
+ * Tell every open panel that the queue moved.
+ *
+ * Deliberately carries no state. A payload would have to be built per panel and could arrive out of
+ * order behind a decision the background has already applied, which is how a panel ends up showing
+ * a resolved request as actionable. A bare notification cannot go stale — the panel re-reads, and
+ * the background answers with what is true now.
+ *
+ * A panel that has gone without its disconnect having been processed yet will throw here; that is
+ * expected and not worth logging, since `onDisconnect` cleans it up immediately afterwards.
+ */
+export const notifyPanelsOfQueueChange = (): void => {
+  for (const port of panels) {
+    try {
+      port.postMessage(QUEUE_CHANGED_MESSAGE);
+    } catch {
+      /* the port is closing; onDisconnect removes it */
+    }
+  }
 };
 
 export const __resetPanelPresenceForTests = (): void => {
