@@ -200,4 +200,66 @@ describe('useVault', () => {
       expect(testState.pushMock).not.toHaveBeenCalled();
     });
   });
+
+  /**
+   * The panel owns a view for every vault state it can be in, so no vault action may navigate it.
+   *
+   * Unlocking used to push to `dashboard`, which put the full-tab dashboard inside a 360px panel —
+   * the failure users actually saw, and a break of S6, where unlocking with a request waiting should
+   * present that request (#116).
+   */
+  describe('inside the panel', () => {
+    beforeEach(() => {
+      testState.route.name = 'sidebar';
+    });
+
+    it('does not navigate after unlocking', async () => {
+      testState.vaultStore.unlock.mockResolvedValue({ success: true });
+      const wrapper = mount(TestHarness);
+      const vm = wrapper.vm as unknown as HarnessVm;
+      vm.password = 'a-password';
+
+      await vm.handleUnlock();
+
+      expect(testState.vaultStore.unlock).toHaveBeenCalled();
+      expect(testState.pushMock).not.toHaveBeenCalled();
+    });
+
+    it('does not navigate after unlocking even when a redirect is queued', async () => {
+      // A redirect query belongs to the full-tab login flow and must not drag the panel with it.
+      testState.route.query = { redirect: '/settings' };
+      testState.vaultStore.unlock.mockResolvedValue({ success: true });
+      const wrapper = mount(TestHarness);
+      const vm = wrapper.vm as unknown as HarnessVm;
+      vm.password = 'a-password';
+
+      await vm.handleUnlock();
+
+      expect(testState.pushMock).not.toHaveBeenCalled();
+    });
+
+    it('does not navigate after creating a vault', async () => {
+      testState.vaultStore.create.mockResolvedValue({ success: true });
+      const wrapper = mount(TestHarness);
+      const vm = wrapper.vm as unknown as HarnessVm;
+      vm.password = 'a-password';
+      vm.confirmPassword = 'a-password';
+
+      await vm.handleCreate();
+
+      expect(testState.pushMock).not.toHaveBeenCalled();
+    });
+
+    it('still reports a failed unlock rather than swallowing it', async () => {
+      testState.vaultStore.unlock.mockResolvedValue({ success: false, error: 'Wrong password' });
+      const wrapper = mount(TestHarness);
+      const vm = wrapper.vm as unknown as HarnessVm;
+      vm.password = 'wrong';
+
+      await vm.handleUnlock();
+
+      expect(vm.loginError).toBeTruthy();
+      expect(testState.pushMock).not.toHaveBeenCalled();
+    });
+  });
 });

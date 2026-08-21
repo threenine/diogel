@@ -46,6 +46,18 @@ export function useVault() {
     return loginContext === 'extension' ? 'home' : 'dashboard';
   }
 
+  /**
+   * Whether this is running inside the sidebar panel.
+   *
+   * The panel owns a view for every vault state it can be in — setup, unlock, idle, a request — and
+   * renders them itself. Navigating away from `/sidebar` for any of them puts a full-tab management
+   * surface inside a 360px column, which the approved surface map forbids and which is what a user
+   * actually sees: unlocking in the panel used to land them on the dashboard (#116).
+   */
+  function isPanelRoute(): boolean {
+    return route.name === 'sidebar' || route.path === '/sidebar';
+  }
+
   function getCurrentLoginContext(): LoginContext {
     const routeName = route.name;
     if (typeof routeName === 'string' && dashboardRouteNames.has(routeName)) {
@@ -66,6 +78,8 @@ export function useVault() {
     loading.value = false;
     if (result.success) {
       $q.notify({ type: 'positive', message: 'Vault created successfully' });
+      if (isPanelRoute()) return;
+
       await router.push({ name: getPostLoginRouteName() });
     } else {
       loginError.value = formatErrorForUser(result.error, result.errorCode as ErrorCode);
@@ -82,6 +96,10 @@ export function useVault() {
     const result = await vaultStore.unlock(password.value);
     loading.value = false;
     if (result.success) {
+      // The panel re-renders itself from vault state: unlocking reveals the idle view, or the
+      // request that was waiting (S6). There is nowhere to navigate to.
+      if (isPanelRoute()) return;
+
       const redirect = route.query.redirect as string;
       if (redirect) {
         await router.push({ path: redirect, query: route.query });
@@ -100,12 +118,9 @@ export function useVault() {
   async function handleLock() {
     await vaultStore.lock();
 
-    // The panel renders its own unlock view for a locked vault, the same way it already reacts to a
-    // background auto-lock. Routing to the dashboard login page would pull a full-tab surface into
-    // the 360px panel, which the sidebar surface map forbids.
-    if (route.name === 'sidebar') {
-      return;
-    }
+    // Same rule as unlocking: the panel shows its own unlock view for a locked vault, exactly as it
+    // already does when the background auto-locks.
+    if (isPanelRoute()) return;
 
     void router.push({
       name: 'login',
