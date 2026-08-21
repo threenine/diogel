@@ -113,17 +113,26 @@ const pendingLabel = computed(() =>
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 12px 16px;
+  /* Trimmed from 12px: the header was 67px tall before any request content appeared (#188). */
+  padding: 8px 12px;
   background: var(--header-bg);
   border-bottom: 1px solid var(--header-border);
   flex-shrink: 0;
 }
 
+/*
+ * The brand gives way first.
+ *
+ * It is decoration; the account switcher beside it names the identity new sites will bind to. When
+ * the header runs short of room the ornamental element should yield, not the functional one (#188).
+ */
 .sidebar-brand {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  flex: 0 1 auto;
+  overflow: hidden;
 }
 
 .sidebar-brand__name {
@@ -131,14 +140,29 @@ const pendingLabel = computed(() =>
   font-size: 1rem;
   color: var(--text-color);
   letter-spacing: -0.0125em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Below this the wordmark is dropped entirely; the logo still identifies the panel. */
+@media (max-width: 360px) {
+  .sidebar-brand__name {
+    display: none;
+  }
 }
 
 /* Actions keep their width so the brand is what gives way when the panel is narrow. */
+/*
+ * Allowed to shrink now, but only after the brand has: the switcher's own minimum holds the alias
+ * legible, so shrinking here reduces slack rather than squeezing the identity.
+ */
 .sidebar-header__actions {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 /* Theme-aware: a dark pill on light chrome, an amber pill on dark chrome (#153). */
