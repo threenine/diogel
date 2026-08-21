@@ -77,13 +77,34 @@ does not name its own cause:
    line, so the fixture starts geckodriver itself rather than letting selenium start one.
 
 Firefox coverage is deliberately thinner than Chromium's. Chromium is where `side_panel` and the MV3
-service worker live, so it carries the deeper suite; Firefox asserts parity on the panel facts that
-NFR-17 says must be equivalent.
+service worker live, so it carries the deeper suite; Firefox asserts parity on the facts NFR-17 says
+must be equivalent — the panel shell, and the vault lifecycle including unlocking **from inside the
+panel**, which is the path #147 and #181 both regressed.
+
+## Fail-closed paths
+
+`fail-closed.spec.ts` covers expiry, a decision on stale state, and interruption by a worker
+restart. Two techniques there are worth knowing before changing it:
+
+- **Expiry is reached by ageing the stored record, not by waiting.** The floor on
+  `REQUEST_EXPIRY_MINUTES` is one minute, and a suite that waits a minute per case stops being run.
+  Only `expiresAt` is moved; `state` is left alone so the real `applyExpiry` is still what changes
+  it. The test asserts it aged exactly one record, so it cannot pass having aged nothing.
+- **The service worker is stopped over CDP.** Playwright has no API for it; the route is
+  `ServiceWorker.enable` then `ServiceWorker.stopAllWorkers`, and any runtime message revives the
+  worker afterwards. The test writes a canary into `chrome.storage.session` first, because "the
+  queue is empty after the restart" only means reconciliation ran if session storage survived —
+  otherwise the record would be gone because the browser dropped it, and the test would prove
+  nothing. Session storage does survive; the canary keeps that honest.
+
+What these assert is not that the queue record reaches a particular state — the unit suite covers
+that — but that **the page never receives a signature** it should not have.
 
 ## Known gaps
 
 - The real side panel is never opened, in either browser — see above. The manifest keys are asserted
   instead (`side_panel` on Chromium, `sidebar_action` on Firefox); that the toolbar reveals the panel
   is manual.
-- Firefox has no vault-lifecycle coverage yet. The Chromium suite creates, locks and unlocks a vault;
-  the Firefox project asserts panel parity only.
+- The approval path itself is Chromium-only. Firefox covers the panel shell and the vault
+  lifecycle; driving a page request through the provider there needs content-script injection the
+  WebDriver fixture does not yet do.
