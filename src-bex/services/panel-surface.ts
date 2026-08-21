@@ -26,6 +26,14 @@ export interface PanelSurface {
   configureToolbarBehaviour(): Promise<void>;
   /** Reveal the panel. Only valid inside a user-gesture handler. */
   openFromUserGesture(windowId?: number): Promise<void>;
+  /**
+   * Whether the browser itself says a panel is open in this window.
+   *
+   * `undefined` where the browser cannot answer, which is every Chromium build — it exposes no
+   * equivalent of Firefox's `sidebarAction.isOpen`. Callers must treat `undefined` as "no opinion"
+   * and never as "closed" (#113).
+   */
+  isOpenAccordingToBrowser(windowId?: number): Promise<boolean | undefined>;
 }
 
 interface ChromiumPanelApi {
@@ -36,6 +44,7 @@ interface ChromiumPanelApi {
 interface FirefoxPanelApi {
   open(): Promise<void>;
   toggle(): Promise<void>;
+  isOpen?(details: { windowId?: number }): Promise<boolean>;
 }
 
 const getChromiumPanelApi = (): ChromiumPanelApi | undefined => {
@@ -55,6 +64,10 @@ const createChromiumPanelSurface = (api: ChromiumPanelApi): PanelSurface => ({
   async configureToolbarBehaviour(): Promise<void> {
     await api.setPanelBehavior({ openPanelOnActionClick: true });
   },
+  isOpenAccordingToBrowser(): Promise<boolean | undefined> {
+    // Chromium has no equivalent. Answering `false` here would be a guess presented as a fact.
+    return Promise.resolve(undefined);
+  },
   async openFromUserGesture(windowId?: number): Promise<void> {
     if (windowId === undefined) return;
     await api.open({ windowId });
@@ -67,6 +80,19 @@ const createFirefoxPanelSurface = (api: FirefoxPanelApi): PanelSurface => ({
     // Firefox reveals the sidebar from the `sidebar_action` manifest key.
     return Promise.resolve();
   },
+  async isOpenAccordingToBrowser(windowId?: number): Promise<boolean | undefined> {
+    if (typeof api.isOpen !== 'function') return undefined;
+
+    try {
+      return await api.isOpen(windowId === undefined ? {} : { windowId });
+    } catch (error: unknown) {
+      // An unavailable answer is not a negative one; the port remains the source of truth.
+      logService.log(LogLevel.DEBUG, '[Panel] Firefox could not report panel state', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
+  },
   async openFromUserGesture(): Promise<void> {
     await api.toggle();
   },
@@ -74,6 +100,9 @@ const createFirefoxPanelSurface = (api: FirefoxPanelApi): PanelSurface => ({
 
 const createUnsupportedPanelSurface = (): PanelSurface => ({
   kind: 'unsupported',
+  isOpenAccordingToBrowser(): Promise<boolean | undefined> {
+    return Promise.resolve(undefined);
+  },
   configureToolbarBehaviour(): Promise<void> {
     return Promise.resolve();
   },

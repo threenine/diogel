@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const { requeuePresented } = vi.hoisted(() => ({ requeuePresented: vi.fn(async () => undefined) }));
 
 vi.mock('app/src-bex/services/request-queue', () => ({ requeuePresented }));
+vi.mock('app/src-bex/services/panel-surface', () => ({ resolvePanelSurface: vi.fn() }));
 vi.mock('src/services/log-service', () => ({
   LogLevel: { ERROR: 'error' },
   logService: { log: vi.fn() },
@@ -16,7 +17,9 @@ import {
   observePanelConnections,
   notifyPanelsOfQueueChange,
   onPanelPresenceChange,
+  reconcilePanelPresence,
 } from 'app/src-bex/services/panel-presence';
+import { resolvePanelSurface } from 'app/src-bex/services/panel-surface';
 
 type Connect = (port: chrome.runtime.Port) => void;
 
@@ -182,5 +185,71 @@ describe('telling panels the queue moved', () => {
     } as unknown as Partial<chrome.runtime.Port>);
 
     expect(() => notifyPanelsOfQueueChange()).not.toThrow();
+  });
+});
+
+/**
+ * Cross-checking the port against the browser (#113).
+ *
+ * The port is the source of truth because it is the only mechanism both browsers support. Firefox
+ * can additionally say whether a panel is open; Chromium cannot. This catches a panel that went away
+ * without its `onDisconnect` firing, which would otherwise leave a request presented to nobody.
+ */
+describe('reconciling presence with the browser', () => {
+  const isOpenAccordingToBrowser = vi.fn();
+
+  const withSurface = (): void => {
+    vi.mocked(resolvePanelSurface).mockReturnValue({
+      kind: 'firefox',
+      isOpenAccordingToBrowser,
+      configureToolbarBehaviour: vi.fn(),
+      openFromUserGesture: vi.fn(),
+    } as unknown as ReturnType<typeof resolvePanelSurface>);
+  };
+
+  beforeEach(() => {
+    withSurface();
+  });
+
+  it('drops ports the browser says are not there', async () => {
+    const connect = startObserving();
+    openPort(connect);
+    isOpenAccordingToBrowser.mockResolvedValue(false);
+
+    await reconcilePanelPresence(1);
+
+    expect(isPanelPresent()).toBe(false);
+    // The normal teardown path runs, so whatever was presented goes back to the queue.
+    expect(requeuePresented).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves presence alone when the browser says the panel is open', async () => {
+    const connect = startObserving();
+    openPort(connect);
+    isOpenAccordingToBrowser.mockResolvedValue(true);
+
+    await reconcilePanelPresence(1);
+
+    expect(isPanelPresent()).toBe(true);
+    expect(requeuePresented).not.toHaveBeenCalled();
+  });
+
+  it('treats no answer as no opinion, never as closed', async () => {
+    const connect = startObserving();
+    openPort(connect);
+    // Chromium abstains. Acting on that would tear down a live panel on the browser where most
+    // people run this.
+    isOpenAccordingToBrowser.mockResolvedValue(undefined);
+
+    await reconcilePanelPresence(1);
+
+    expect(isPanelPresent()).toBe(true);
+    expect(requeuePresented).not.toHaveBeenCalled();
+  });
+
+  it('does not ask the browser when no port is held', async () => {
+    await reconcilePanelPresence(1);
+
+    expect(isOpenAccordingToBrowser).not.toHaveBeenCalled();
   });
 });

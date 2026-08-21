@@ -34,7 +34,11 @@ import {
   requeuePresented,
   submitDecision,
 } from './services/request-queue';
-import { notifyPanelsOfQueueChange, observePanelConnections } from './services/panel-presence';
+import {
+  notifyPanelsOfQueueChange,
+  observePanelConnections,
+  reconcilePanelPresence,
+} from './services/panel-presence';
 import { refreshAttention } from './services/attention-badge';
 import { resolveSigningAccount } from './services/signing-account';
 import {
@@ -463,8 +467,11 @@ onPageOriginChange((_tabId, record) => {
 });
 
 // A closed window takes its tabs with it; ports usually report that first, but not always.
-chrome.windows?.onRemoved?.addListener(() => {
+chrome.windows?.onRemoved?.addListener((windowId) => {
   void refreshAttention();
+  // Firefox can say whether a panel is still open in a window; Chromium cannot and abstains. This
+  // catches a panel that went away without its port disconnecting (#113).
+  void reconcilePanelPresence(windowId);
 });
 
 // Chromium reveals the panel through `openPanelOnActionClick`, so `action.onClicked` never
