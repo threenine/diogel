@@ -327,3 +327,102 @@ describe('permission grants', () => {
     });
   });
 });
+
+/**
+ * Origin normalisation (#116).
+ *
+ * The binding store normalised origins and the grant store matched raw strings, so the two keyed
+ * the same site differently. That inconsistency is what the acceptance criterion rules out: storage,
+ * UI, and enforcement have to agree on what "the same site" is.
+ */
+describe('origin normalisation', () => {
+  const grantFor = (origin: string): Promise<void> =>
+    grantPermission(origin, ALICE, 'sign_event', 1, 'always');
+
+  it('stores the canonical origin, not the string the caller passed', async () => {
+    await grantFor('https://Example.COM:443/some/path?q=1');
+
+    const [record] = await getGrantedPermissions();
+    expect(record?.origin).toBe('https://example.com');
+  });
+
+  it('honours a grant when the same site arrives spelled differently', async () => {
+    await grantFor(ORIGIN);
+
+    const result = await checkPermission(
+      'https://EXAMPLE.com/login',
+      ALICE,
+      'sign_event',
+      1,
+    );
+
+    expect(result.granted).toBe(true);
+  });
+
+  it('does not let two spellings of one site become two grants', async () => {
+    await grantFor('https://example.com');
+    await grantFor('https://Example.com:443');
+
+    expect(await getGrantedPermissions()).toHaveLength(1);
+  });
+
+  it('revokes a grant given under a different spelling', async () => {
+    await grantFor('https://Example.com');
+
+    await revokePermission(ORIGIN, ALICE, 'sign_event', 1);
+
+    expect(await getGrantedPermissions()).toHaveLength(0);
+  });
+
+  it('re-keys stored grants onto the canonical origin on load', async () => {
+    seed([
+      {
+        origin: 'https://Example.com/path',
+        accountPubkey: ALICE,
+        requestType: 'sign_event',
+        eventKind: 1,
+        granted: true,
+        timestamp: Date.now(),
+      },
+    ]);
+
+    // A grant left under its raw spelling is invisible to `disconnectSite`, which normalises before
+    // filtering: the user disconnects the site and the grant quietly survives.
+    const [record] = await getGrantedPermissions();
+    expect(record?.origin).toBe('https://example.com');
+    expect(stored[0]?.origin).toBe('https://example.com');
+  });
+
+  it('refuses to grant for a non-web origin', async () => {
+    await expect(grantPermission('file:///etc/passwd', ALICE, 'sign_event', 1, 'always')).rejects.toThrow(
+      /web origin/,
+    );
+  });
+
+  it('never reports a grant for a non-web origin', async () => {
+    seed([
+      {
+        origin: 'chrome-extension://abc',
+        accountPubkey: ALICE,
+        requestType: 'sign_event',
+        eventKind: 1,
+        granted: true,
+        timestamp: Date.now(),
+      },
+    ]);
+
+    expect(await checkPermission('chrome-extension://abc', ALICE, 'sign_event', 1)).toEqual({
+      granted: false,
+    });
+    expect(await getGrantedPermissions()).toHaveLength(0);
+  });
+
+  it('still separates genuinely different sites', async () => {
+    await grantFor('https://example.com');
+
+    expect((await checkPermission('https://evil.example.com', ALICE, 'sign_event', 1)).granted).toBe(
+      false,
+    );
+    expect((await checkPermission('http://example.com', ALICE, 'sign_event', 1)).granted).toBe(false);
+  });
+});

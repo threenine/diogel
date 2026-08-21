@@ -11,10 +11,16 @@
  * The account is part of the key because a grant belongs to the identity the user was looking at
  * when they gave it. Without it, connecting a second account to a site inherited the first
  * account's permissions (#116).
+ *
+ * Origins are normalised on the way in and on the way out. The binding store already did this and
+ * the grant store did not, so the two keyed the same site differently — and `disconnectSite`
+ * normalises before filtering grants, which meant a grant stored under an unnormalised origin would
+ * have survived the user disconnecting that site.
  */
 
 import { PERMISSIONS_KEY, storageService } from 'src/services/storage-service';
 import { LogLevel, logService } from 'src/services/log-service';
+import { normalizeOrigin } from '../services/origin';
 import type { PermissionEventKind, PermissionGrant } from '../types/background';
 
 const SIGN_EVENT = 'sign_event';
@@ -55,12 +61,21 @@ const migrateGrants = (
   let discarded = 0;
 
   for (const grant of stored) {
-    if (isMigrated(grant)) {
-      grants.push(grant);
+    if (!isMigrated(grant)) {
+      discarded += 1;
       continue;
     }
 
-    discarded += 1;
+    // Records written before the store normalised are re-keyed onto the canonical origin, so they
+    // match the bindings and so `disconnectSite` can find them. One that names no web origin is
+    // discarded on the same reasoning as an unattributable one: it cannot be honoured safely.
+    const origin = normalizeOrigin(grant.origin);
+    if (!origin) {
+      discarded += 1;
+      continue;
+    }
+
+    grants.push(origin === grant.origin ? grant : { ...grant, origin });
   }
 
   return { grants, discarded };
@@ -76,9 +91,12 @@ async function loadPermissions(): Promise<PermissionGrant[]> {
     [];
   const { grants, discarded } = migrateGrants(stored);
 
-  if (discarded > 0 || grants.length !== stored.length) {
-    logService.log(LogLevel.WARN, '[Permissions] Discarded grants that name no account', {
+  const rekeyed = grants.some((grant, index) => grant !== stored[index]);
+
+  if (discarded > 0 || rekeyed || grants.length !== stored.length) {
+    logService.log(LogLevel.WARN, '[Permissions] Rewrote stored grants on load', {
       discarded,
+      rekeyed,
     });
     permissionCache = grants;
     await storageService.set(PERMISSIONS_KEY, grants);
@@ -110,7 +128,7 @@ const sameScope = (
   grant.eventKind === eventKind;
 
 export async function checkPermission(
-  origin: string,
+  rawOrigin: string,
   accountPubkey: string,
   requestType: string,
   eventKind: PermissionEventKind,
@@ -118,6 +136,10 @@ export async function checkPermission(
   // No account means nothing to check against. Matching "any account" here would reintroduce the
   // inheritance this dimension removes.
   if (!accountPubkey) return { granted: false };
+
+  // An origin we will not store a grant for is an origin we will not honour one for either.
+  const origin = normalizeOrigin(rawOrigin);
+  if (!origin) return { granted: false };
 
   const permissions = await loadPermissions();
   const now = Date.now();
@@ -144,7 +166,7 @@ export async function checkPermission(
 }
 
 export async function grantPermission(
-  origin: string,
+  rawOrigin: string,
   accountPubkey: string,
   requestType: string,
   // Deliberately narrower than PermissionEventKind: a wildcard must be asked for explicitly on a
@@ -158,6 +180,11 @@ export async function grantPermission(
 
   if (!accountPubkey) {
     throw new Error('A permission grant must name the account it was given to');
+  }
+
+  const origin = normalizeOrigin(rawOrigin);
+  if (!origin) {
+    throw new Error(`A permission grant must name a web origin, not ${JSON.stringify(rawOrigin)}`);
   }
 
   const permissions = await loadPermissions();
@@ -179,11 +206,12 @@ export async function grantPermission(
 }
 
 export async function revokePermission(
-  origin: string,
+  rawOrigin: string,
   accountPubkey: string,
   requestType: string,
   eventKind: PermissionEventKind,
 ): Promise<void> {
+  const origin = normalizeOrigin(rawOrigin) ?? rawOrigin;
   const permissions = await loadPermissions();
   await savePermissions(
     permissions.filter((grant) => !sameScope(grant, origin, accountPubkey, requestType, eventKind)),
@@ -191,7 +219,10 @@ export async function revokePermission(
 }
 
 /** Every grant for one origin, whichever account holds it. For the Connected Sites view. */
-export async function getGrantsForOrigin(origin: string): Promise<PermissionGrant[]> {
+export async function getGrantsForOrigin(rawOrigin: string): Promise<PermissionGrant[]> {
+  const origin = normalizeOrigin(rawOrigin);
+  if (!origin) return [];
+
   const permissions = await loadPermissions();
   return permissions.filter((grant) => grant.origin === origin);
 }
