@@ -26,15 +26,21 @@ const findRoute = (path: string): RouteRecordRaw => {
 };
 
 /**
- * Resolves a lazy route component to the name the SFC compiler derives from its filename.
+ * Resolves a lazy route component to the name it declares, falling back to the one the SFC
+ * compiler derives from its filename.
  *
- * Undefined rather than throwing for a component that carries no name: not every SFC in the
- * router does, and an unnamed one is by definition not the layout this file is looking for.
+ * The declared name is checked first, and the order matters. `__name` is the filename, so while
+ * the layouts sit at `layouts/{surface}/Layout.vue` it reads `Layout` for every one of them and
+ * this guard cannot tell a dashboard layout from a sidebar one. `defineOptions({ name })` is what
+ * makes them distinguishable, so an explicit name has to win over a derived one.
+ *
+ * Undefined rather than throwing for a component that carries neither: not every SFC in the
+ * router declares a name, and an unnamed one is by definition not the layout this file looks for.
  */
 const resolveComponentName = async (component: unknown): Promise<string | undefined> => {
   if (typeof component !== 'function') return undefined;
   const loaded = (await component()) as { default: Record<string, unknown> };
-  const name = loaded.default.__name ?? loaded.default.name;
+  const name = loaded.default.name ?? loaded.default.__name;
   return typeof name === 'string' ? name : undefined;
 };
 

@@ -9,6 +9,8 @@ import { useApprovalQueue } from 'src/composables/useApprovalQueue';
 import { useVault } from 'src/composables/useVault';
 import useVaultStore from 'src/stores/vault-store';
 
+defineOptions({ name: 'SidebarLayout' });
+
 const { t } = useI18n();
 const vaultStore = useVaultStore();
 const { handleLock } = useVault();

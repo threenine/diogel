@@ -38,7 +38,7 @@ vi.mock('src/composables/useApprovalQueue', () => ({
 }));
 
 const mountLayout = async () => {
-  const SidebarLayout = (await import('src/layouts/SidebarLayout.vue')).default;
+  const SidebarLayout = (await import('src/layouts/sidebar/Layout.vue')).default;
 
   return mount(SidebarLayout, {
     global: {

@@ -13,6 +13,8 @@
 
 <script lang="ts" setup>
 import ExtensionWindowHeader from 'components/ExtensionWindowHeader.vue';
+
+defineOptions({ name: 'ExtensionLayout' });
 </script>
 
 <style scoped>
