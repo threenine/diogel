@@ -34,7 +34,7 @@ vi.mock('src/composables/useApprovalQueue', () => ({
 }));
 
 const mountPage = async () => {
-  const SidebarHome = (await import('src/pages/SidebarHome.vue')).default;
+  const SidebarHome = (await import('src/pages/sidebar/SidebarHome.vue')).default;
   return mount(SidebarHome, {
     global: {
       stubs: {

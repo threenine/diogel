@@ -21,8 +21,8 @@
 <script lang="ts" setup>
 import { computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import useAccountStore from '../stores/account-store';
-import ProfileView from '../components/ProfileView.vue';
+import useAccountStore from 'src/stores/account-store';
+import ProfileView from 'components/ProfileView.vue';
 
 const accountStore = useAccountStore();
 const router = useRouter();

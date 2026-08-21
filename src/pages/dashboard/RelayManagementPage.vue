@@ -1,8 +1,8 @@
 <script lang="ts" setup>
 import { computed, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import useAccountStore from '../stores/account-store';
-import RelayEditor from '../components/RelayEditor.vue';
+import useAccountStore from 'src/stores/account-store';
+import RelayEditor from 'components/RelayEditor.vue';
 
 const { t } = useI18n();
 const accountStore = useAccountStore();

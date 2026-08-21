@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
-import KeyManagementPage from 'src/pages/KeyManagementPage.vue';
+import KeyManagementPage from 'src/pages/dashboard/KeyManagementPage.vue';
 import type { StoredKey } from 'src/types';
 
 const getKeysMock = vi.fn(() => undefined);

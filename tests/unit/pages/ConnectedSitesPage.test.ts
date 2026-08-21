@@ -25,7 +25,7 @@ vi.mock('quasar', () => ({
   useQuasar: () => ({ notify: mocks.notify, dialog: mocks.dialog }),
 }));
 
-import ConnectedSitesPage from 'src/pages/ConnectedSitesPage.vue';
+import ConnectedSitesPage from 'src/pages/dashboard/ConnectedSitesPage.vue';
 
 const ALICE = 'a'.repeat(64);
 

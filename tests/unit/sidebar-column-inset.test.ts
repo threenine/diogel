@@ -22,7 +22,7 @@ const COLUMN_COMPONENTS = [
   { file: 'components/sidebar/PendingRequestList.vue', root: 'pending-list' },
 ] as const;
 
-const PAGE = { file: 'pages/SidebarHome.vue', root: 'sidebar-home' } as const;
+const PAGE = { file: 'pages/sidebar/SidebarHome.vue', root: 'sidebar-home' } as const;
 
 const read = (file: string): string => readFileSync(resolve(SOURCE_ROOT, file), 'utf8');
 

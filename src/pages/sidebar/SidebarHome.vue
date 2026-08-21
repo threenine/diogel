@@ -2,14 +2,14 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import useAccountStore from '../stores/account-store';
-import ProfileView from '../components/ProfileView.vue';
-import CurrentRequest from '../components/sidebar/CurrentRequest.vue';
-import PendingRequestList from '../components/sidebar/PendingRequestList.vue';
-import SidebarUnlock from '../components/sidebar/SidebarUnlock.vue';
-import { useActiveTab } from '../composables/useActiveTab';
-import { useApprovalQueue } from '../composables/useApprovalQueue';
-import useVaultStore from '../stores/vault-store';
+import useAccountStore from 'src/stores/account-store';
+import ProfileView from 'components/ProfileView.vue';
+import CurrentRequest from 'components/sidebar/CurrentRequest.vue';
+import PendingRequestList from 'components/sidebar/PendingRequestList.vue';
+import SidebarUnlock from 'components/sidebar/SidebarUnlock.vue';
+import { useActiveTab } from 'src/composables/useActiveTab';
+import { useApprovalQueue } from 'src/composables/useApprovalQueue';
+import useVaultStore from 'src/stores/vault-store';
 import type { ApprovalDuration } from 'app/src-bex/types/background';
 
 defineOptions({ name: 'SidebarHome' });

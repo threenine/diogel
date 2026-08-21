@@ -8,7 +8,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'sidebar',
-        component: () => import('pages/SidebarHome.vue'),
+        component: () => import('pages/sidebar/SidebarHome.vue'),
       },
     ],
   },
@@ -25,7 +25,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'login',
-        component: () => import('pages/VaultLogin.vue'),
+        component: () => import('pages/extension/VaultLogin.vue'),
       },
     ],
   },
@@ -36,7 +36,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'dashboard',
-        component: () => import('pages/DashboardPage.vue'),
+        component: () => import('pages/dashboard/DashboardPage.vue'),
       },
     ],
   },
@@ -47,7 +47,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'settings',
-        component: () => import('pages/ExtensionSettings.vue'),
+        component: () => import('pages/dashboard/ExtensionSettings.vue'),
       },
     ],
   },
@@ -58,7 +58,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'profile',
-        component: () => import('pages/ProfilePage.vue'),
+        component: () => import('pages/dashboard/ProfilePage.vue'),
       },
     ],
   },
@@ -69,7 +69,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'relays',
-        component: () => import('pages/RelayManagementPage.vue'),
+        component: () => import('pages/dashboard/RelayManagementPage.vue'),
       },
     ],
   },
@@ -80,7 +80,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'contacts',
-        component: () => import('pages/ContactListPage.vue'),
+        component: () => import('pages/dashboard/ContactListPage.vue'),
       },
     ],
   },
@@ -91,7 +91,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'wallet-connections',
-        component: () => import('pages/WalletConnectionsPage.vue'),
+        component: () => import('pages/dashboard/WalletConnectionsPage.vue'),
       },
     ],
   },
@@ -102,23 +102,23 @@ const routes: RouteRecordRaw[] = [
       {
         path: 'import',
         name: 'import-key',
-        component: () => import('pages/ImportKeyPage.vue'),
+        component: () => import('pages/dashboard/ImportKeyPage.vue'),
       },
       {
         path: 'new',
         name: 'add-new-key',
-        component: () => import('pages/AddNewKeyPage.vue'),
+        component: () => import('pages/dashboard/AddNewKeyPage.vue'),
       },
       {
         path: ':alias',
         name: 'view-key',
-        component: () => import('pages/ViewKeyPage.vue'),
+        component: () => import('pages/dashboard/ViewKeyPage.vue'),
         props: true,
       },
       {
         path: '',
         name: 'keys',
-        component: () => import('pages/KeyManagementPage.vue'),
+        component: () => import('pages/dashboard/KeyManagementPage.vue'),
       },
     ],
   },
@@ -129,7 +129,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'connected-sites',
-        component: () => import('pages/ConnectedSitesPage.vue'),
+        component: () => import('pages/dashboard/ConnectedSitesPage.vue'),
       },
     ],
   },
@@ -140,7 +140,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'event-history',
-        component: () => import('pages/ViewLogs.vue'),
+        component: () => import('pages/dashboard/ViewLogs.vue'),
       },
     ],
   },
@@ -171,7 +171,7 @@ const routes: RouteRecordRaw[] = [
       {
         path: '',
         name: 'home',
-        component: () => import('pages/IndexPage.vue'),
+        component: () => import('pages/extension/IndexPage.vue'),
       },
     ],
   },
@@ -179,7 +179,7 @@ const routes: RouteRecordRaw[] = [
   // but you can also remove it
   {
     path: '/:catchAll(.*)*',
-    component: () => import('pages/ErrorNotFound.vue'),
+    component: () => import('pages/extension/ErrorNotFound.vue'),
   },
 ];
 

@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import VaultLogin from 'src/pages/VaultLogin.vue';
+import VaultLogin from 'src/pages/extension/VaultLogin.vue';
 
 const testState = vi.hoisted(() => ({
   notifyMock: vi.fn(),
