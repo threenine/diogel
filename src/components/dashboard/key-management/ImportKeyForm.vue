@@ -7,7 +7,7 @@ import * as nip19 from 'nostr-tools/nip19';
 import { getPublicKey } from 'nostr-tools';
 import { bytesToHex } from '@noble/hashes/utils';
 
-import ViewStoredKey from 'src/components/ViewStoredKey/Index.vue';
+import ViewStoredKey from 'components/dashboard/ViewStoredKey.vue';
 import useAccountStore from 'src/stores/account-store';
 import type { Account, StoredKey } from 'src/types';
 

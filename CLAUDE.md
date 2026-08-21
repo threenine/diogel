@@ -108,6 +108,14 @@ provider-side call in `nostr-provider.js`.
 - Import shared code by alias, not by a relative path: `components/`, `src/stores/`,
   `src/services/`, `src/composables/`. A page that reaches out with `../` breaks the next
   time it moves between surface directories.
+- Components in `src/components/` follow the same surface split, one convention throughout:
+  `sidebar/`, `dashboard/` (with `dashboard/key-management/` for that feature group),
+  `extension/`, and `shared/` for the three components more than one surface reaches
+  (`DiogelLogo`, `AccountDropdown`, `ProfileView`). No component sits at the top level.
+  A component used by a second surface moves to `shared/` rather than being imported across
+  surface directories.
+- Import components by alias — `components/<surface>/<Name>.vue` — never by a relative path.
+  Tests live in `tests/`, not beside the component.
 - Boot files (`src/boot/i18n`, `src/boot/axios`) are auto-registered by Quasar; don't
   import them directly elsewhere. Centralize HTTP via `src/boot/axios`.
 - i18n messages live under `src/i18n/en-US`; the unplugin only picks up files under

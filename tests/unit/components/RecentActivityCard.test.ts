@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import type { DashboardSummary } from 'src/types';
-import RecentActivityCard from 'src/components/dashboard/RecentActivityCard.vue';
+import RecentActivityCard from 'components/dashboard/RecentActivityCard.vue';
 
 const { getDashboardSummaryMock, dateFormatterMock } = vi.hoisted(() => ({
   getDashboardSummaryMock: vi.fn(),

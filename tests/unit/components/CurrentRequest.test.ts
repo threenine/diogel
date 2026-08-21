@@ -9,7 +9,7 @@ vi.mock('vue-i18n', () => ({
   }),
 }));
 
-import CurrentRequest from 'src/components/sidebar/CurrentRequest.vue';
+import CurrentRequest from 'components/sidebar/CurrentRequest.vue';
 
 const request = (over: Partial<ApprovalRequestRecord> = {}): ApprovalRequestRecord =>
   ({

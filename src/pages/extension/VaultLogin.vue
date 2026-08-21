@@ -82,7 +82,7 @@ import { computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useQuasar } from 'quasar';
 import { useVault } from 'src/composables/useVault';
-import DiogelLogo from 'components/DiogelLogo/Index.vue';
+import DiogelLogo from 'components/shared/DiogelLogo.vue';
 
 const {
   vaultStore,

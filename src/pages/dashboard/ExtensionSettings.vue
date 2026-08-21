@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue';
-import ThemeSwitch from 'components/ThemeSwitch/Index.vue';
+import ThemeSwitch from 'components/dashboard/ThemeSwitch.vue';
 import useSettingsStore from 'src/stores/settings-store';
 import { useI18n } from 'vue-i18n';
 import { useQuasar } from 'quasar';

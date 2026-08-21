@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils';
 import type { RouteRecordRaw } from 'vue-router';
 
 import routes from 'src/router/routes';
-import SidebarFooterLinks from 'src/components/sidebar/SidebarFooterLinks.vue';
+import SidebarFooterLinks from 'components/sidebar/SidebarFooterLinks.vue';
 
 /**
  * Guards the sidebar surface boundary.

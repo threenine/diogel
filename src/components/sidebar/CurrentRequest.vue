@@ -2,10 +2,10 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import RequestOriginHeader from './RequestOriginHeader.vue';
-import RequestPreview from './RequestPreview.vue';
-import RequestRiskWarning from './RequestRiskWarning.vue';
-import RequestDecisionBar from './RequestDecisionBar.vue';
+import RequestOriginHeader from 'components/sidebar/RequestOriginHeader.vue';
+import RequestPreview from 'components/sidebar/RequestPreview.vue';
+import RequestRiskWarning from 'components/sidebar/RequestRiskWarning.vue';
+import RequestDecisionBar from 'components/sidebar/RequestDecisionBar.vue';
 import {
   classifyRequest,
   getEventKindLabel,

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 
-import KeyManagementTable from 'src/components/key-management/KeyManagementTable.vue';
+import KeyManagementTable from 'components/dashboard/key-management/KeyManagementTable.vue';
 import type { StoredKey } from 'src/types';
 
 const notifyMock = vi.fn();

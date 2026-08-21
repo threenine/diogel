@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mount, flushPromises } from '@vue/test-utils';
-import RelayBrowserModal from 'src/components/RelayBrowserModal.vue';
+import RelayBrowserModal from 'components/dashboard/RelayBrowserModal.vue';
 import { listRelayCatalog, refreshRelayCatalog, getRelayDiscoveryStatus } from 'src/services/relay-service';
 import type { RelayDiscoveryState, RelayCatalogEntry } from 'src/types/relay';
 
