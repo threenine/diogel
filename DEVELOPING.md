@@ -104,13 +104,23 @@ actually stands, so a genuine regression fails and ordinary noise does not:
 
 | | Floor | Actual (2026-08-21) |
 |---|---|---|
-| Statements | 74% | 74.26% |
-| Branches | 60% | 61.10% |
-| Functions | 70% | 70.45% |
-| Lines | 74% | 74.74% |
+| Statements | 58% | 58.84% |
+| Branches | 50% | 50.94% |
+| Functions | 50% | 50.73% |
+| Lines | 59% | 59.12% |
 
 **The target is 75%** across the board. The floors are raised toward it as coverage rises, and are
 never lowered: if a change cannot meet the current floor, the answer is a test, not a smaller number.
+
+**Every source file is measured, not only the ones a test imports.** `coverage.include` is set for
+that reason. Without it, 35 of 157 source files — 5,935 lines — were absent from the denominator
+rather than counted as uncovered, which both flattered the figure by roughly fifteen points and
+inverted the incentive: removing the last test that imported a file made coverage go up. Earlier
+figures in this repository, including the baseline recorded on #124, were measured that way and read
+about fifteen points higher than the truth.
+
+Message catalogues (`src/i18n`), Quasar boot files and declaration files are excluded as data rather
+than logic.
 
 The layers that decide authority — `src/services`, `src/composables`, `src/utils`,
 `src-bex/handlers`, `src-bex/services` — are already past 75% and are held there by their own
@@ -119,9 +129,13 @@ layer pulled the average around. Expect a per-directory threshold to fail a pull
 it did not touch: adding an uncovered file to a well-covered directory is exactly what it is for.
 
 Branches are the furthest from target and matter most. In a signing extension the untested branch is
-the one that fails open. The largest single gap is `src-bex/background.ts`, where approvals,
-permissions, the queue, the badge and the page registry are wired together — it is the least covered
-file in the security path.
+the one that fails open.
+
+`src-bex/background.ts` is not covered at all, and is not even measured: the coverage provider
+reports `Failed to parse ... background.ts. Excluding it from coverage.` because no test imports it,
+so it is read from disk rather than through the Vite transform. At 862 lines it is the largest file
+in the extension and it wires together approvals, permissions, the queue, the badge and the page
+registry. It does not appear in any figure above, in either direction.
 
 The Vue component layer has no threshold. #123 deliberately left component structure alone, and a
 floor there would measure work nobody has agreed to do.

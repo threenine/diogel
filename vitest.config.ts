@@ -14,12 +14,27 @@ export default defineConfig({
     exclude: ['node_modules/**', 'dist/**', 'tests/e2e/**'],
     coverage: {
       reporter: ['text', 'json', 'html'],
+      /**
+       * Measure every source file, not only the ones a test happens to import.
+       *
+       * Without this, 35 of 157 source files — 5,935 lines including `src-bex/background.ts` and
+       * `App.vue` — were absent from the denominator rather than counted as uncovered. That
+       * flatters the figure and inverts the incentive: removing the last test that imports a file
+       * makes coverage go up (#143).
+       */
+      include: ['src/**/*.{ts,vue}', 'src-bex/**/*.ts'],
       exclude: [
         'node_modules/',
         'tests/',
         // Declaration files. `error-codes.d.ts` and `bridge.ts` carry lookup tables that are data,
         // not logic; counting them makes the number less honest rather than more (#143).
         '**/*.d.ts',
+        // Message catalogues are data. 600-plus lines of translation strings would swamp the
+        // figure without saying anything about whether the code is tested.
+        'src/i18n/**',
+        // Quasar boot files are framework wiring the app cannot run without; there is no branch
+        // in them to get wrong.
+        'src/boot/**',
       ],
       /**
        * A ratchet, not an achievement (#143).
@@ -28,29 +43,33 @@ export default defineConfig({
        * fails and ordinary noise does not. They are raised as coverage rises and never lowered: if a
        * change cannot meet the current floor, the answer is a test, not a smaller number.
        *
+       * These are far lower than the figures quoted before `include` was set, and the earlier ones
+       * were wrong rather than these being a retreat: 35 of 157 source files were absent from the
+       * denominator, so the report described only the files a test happened to import.
+       *
        * Branches are the lowest and matter most here. In a signing extension the untested branch is
        * the one that fails open, and closing that gap is test-writing work rather than a threshold
        * decision — see the follow-up on #143.
        *
-       * Measured on 2026-08-21 at 787 tests: statements 74.29, branches 60.90, functions 70.50,
-       * lines 74.79.
+       * Measured on 2026-08-21 at 787 tests: statements 58.84, branches 50.94, functions 50.73,
+       * lines 59.12.
        */
       thresholds: {
-        statements: 74,
-        branches: 60,
-        functions: 70,
-        lines: 74,
+        statements: 58,
+        branches: 50,
+        functions: 50,
+        lines: 59,
 
         /**
          * The layers that decide authority are already past the 75% target, so they are held there
          * by directory. Without this the global floor would let them slide while the component
          * layer pulls the average around.
          */
-        'src/services/**': { statements: 75, branches: 70, functions: 75, lines: 75 },
-        'src/composables/**': { statements: 75, branches: 70, functions: 75, lines: 75 },
-        'src/utils/**': { statements: 75, branches: 70, functions: 75, lines: 75 },
-        'src-bex/handlers/**': { statements: 75, branches: 60, functions: 75, lines: 75 },
-        'src-bex/services/**': { statements: 75, branches: 70, functions: 75, lines: 75 },
+        'src/services/**': { statements: 80, branches: 70, functions: 85, lines: 80 },
+        'src/composables/**': { statements: 85, branches: 70, functions: 80, lines: 85 },
+        'src/utils/**': { statements: 95, branches: 80, functions: 95, lines: 95 },
+        'src-bex/handlers/**': { statements: 80, branches: 58, functions: 88, lines: 82 },
+        'src-bex/services/**': { statements: 82, branches: 68, functions: 78, lines: 84 },
       },
     },
   },
