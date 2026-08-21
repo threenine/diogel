@@ -98,8 +98,12 @@ provider-side call in `nostr-provider.js`.
   `SidebarLayout` (`/sidebar`), `LoginLayout` (`/login`), `DashboardLayout`
   (`/dashboard`, `/settings`, `/profile`, `/relays`, key management), `ExtensionLayout`,
   `BlankLayout`.
-- Pages in `src/pages/` correspond to these routes (e.g. `SidebarHome.vue`,
-  `VaultLogin.vue`, `KeyManagementPage.vue`, `DashboardPage.vue`).
+- Pages in `src/pages/` are grouped by the surface they belong to, and every page sits in
+  exactly one of them: `pages/sidebar/` (the panel), `pages/dashboard/` (the full-tab
+  management surfaces), and `pages/extension/` (the entry point, vault login, and 404).
+- Import shared code by alias, not by a relative path: `components/`, `src/stores/`,
+  `src/services/`, `src/composables/`. A page that reaches out with `../` breaks the next
+  time it moves between surface directories.
 - Boot files (`src/boot/i18n`, `src/boot/axios`) are auto-registered by Quasar; don't
   import them directly elsewhere. Centralize HTTP via `src/boot/axios`.
 - i18n messages live under `src/i18n/en-US`; the unplugin only picks up files under

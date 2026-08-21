@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick, reactive } from 'vue';
 
-import ProfilePage from 'src/pages/ProfilePage.vue';
+import ProfilePage from 'src/pages/dashboard/ProfilePage.vue';
 import type { StoredKey } from 'src/types';
 
 const getKeysMock = vi.fn(() => Promise.resolve());
