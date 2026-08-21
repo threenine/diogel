@@ -94,10 +94,14 @@ provider-side call in `nostr-provider.js`.
 
 ### UI structure
 
-- Routes: `src/router/routes.ts`. Layouts in `src/layouts/` map to extension surfaces:
-  `SidebarLayout` (`/sidebar`), `LoginLayout` (`/login`), `DashboardLayout`
-  (`/dashboard`, `/settings`, `/profile`, `/relays`, key management), `ExtensionLayout`,
-  `BlankLayout`.
+- Routes: `src/router/routes.ts`. Layouts in `src/layouts/` are grouped by surface, matching
+  `src/pages/`: `layouts/sidebar/Layout.vue` (`/sidebar`), `layouts/dashboard/Layout.vue`
+  (`/dashboard`, `/settings`, `/profile`, `/relays`, key management),
+  `layouts/extension/Layout.vue` (`/`), and `layouts/extension/LoginLayout.vue` (`/login`).
+- Every layout declares `defineOptions({ name })`. Three of them are called `Layout.vue`, so
+  the compiler-derived `__name` no longer tells them apart, and
+  `tests/unit/sidebar-surface-boundary.test.ts` relies on the declared name to keep a
+  dashboard layout out of the panel. A new layout without one is invisible to that guard.
 - Pages in `src/pages/` are grouped by the surface they belong to, and every page sits in
   exactly one of them: `pages/sidebar/` (the panel), `pages/dashboard/` (the full-tab
   management surfaces), and `pages/extension/` (the entry point, vault login, and 404).

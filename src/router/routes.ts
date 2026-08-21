@@ -3,7 +3,7 @@ import type { RouteRecordRaw } from 'vue-router';
 const routes: RouteRecordRaw[] = [
   {
     path: '/sidebar',
-    component: () => import('layouts/SidebarLayout.vue'),
+    component: () => import('layouts/sidebar/Layout.vue'),
     children: [
       {
         path: '',
@@ -20,7 +20,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/login',
-    component: () => import('layouts/LoginLayout.vue'),
+    component: () => import('layouts/extension/LoginLayout.vue'),
     children: [
       {
         path: '',
@@ -31,7 +31,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/dashboard',
-    component: () => import('layouts/DashboardLayout.vue'),
+    component: () => import('layouts/dashboard/Layout.vue'),
     children: [
       {
         path: '',
@@ -42,7 +42,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/settings',
-    component: () => import('layouts/DashboardLayout.vue'),
+    component: () => import('layouts/dashboard/Layout.vue'),
     children: [
       {
         path: '',
@@ -53,7 +53,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/profile',
-    component: () => import('layouts/DashboardLayout.vue'),
+    component: () => import('layouts/dashboard/Layout.vue'),
     children: [
       {
         path: '',
@@ -64,7 +64,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/relays',
-    component: () => import('layouts/DashboardLayout.vue'),
+    component: () => import('layouts/dashboard/Layout.vue'),
     children: [
       {
         path: '',
@@ -75,7 +75,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/contacts',
-    component: () => import('layouts/DashboardLayout.vue'),
+    component: () => import('layouts/dashboard/Layout.vue'),
     children: [
       {
         path: '',
@@ -86,7 +86,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/wallet-connections',
-    component: () => import('layouts/DashboardLayout.vue'),
+    component: () => import('layouts/dashboard/Layout.vue'),
     children: [
       {
         path: '',
@@ -97,7 +97,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/keys',
-    component: () => import('layouts/DashboardLayout.vue'),
+    component: () => import('layouts/dashboard/Layout.vue'),
     children: [
       {
         path: 'import',
@@ -124,7 +124,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/connected-sites',
-    component: () => import('layouts/DashboardLayout.vue'),
+    component: () => import('layouts/dashboard/Layout.vue'),
     children: [
       {
         path: '',
@@ -135,7 +135,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/event-history',
-    component: () => import('layouts/DashboardLayout.vue'),
+    component: () => import('layouts/dashboard/Layout.vue'),
     children: [
       {
         path: '',
@@ -166,7 +166,7 @@ const routes: RouteRecordRaw[] = [
   },
   {
     path: '/',
-    component: () => import('layouts/ExtensionLayout.vue'),
+    component: () => import('layouts/extension/Layout.vue'),
     children: [
       {
         path: '',
