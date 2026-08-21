@@ -595,7 +595,6 @@ export default {
       ariaLabel: 'Porwr management surfaces',
       dashboard: 'Dashboard',
       keys: 'Keys',
-      eventHistory: 'History',
       settings: 'Settings',
     },
     setup: {
