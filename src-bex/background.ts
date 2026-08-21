@@ -27,7 +27,6 @@ import {
   listPendingRequests,
   markPresented,
   pruneResolvedRequests,
-  interruptRequestsForOrigin,
   onQueueChange,
   reconcileInterruptedRequests,
   requeuePresented,
@@ -42,15 +41,18 @@ import { refreshAttention } from './services/attention-badge';
 import { requestApproval, trimApprovalContentDescription } from './services/approval-flow';
 import type { ApprovalRequestDetails } from './services/approval-flow';
 import { originHostname } from './services/origin';
+import { decideRouting, type RawMessage } from './services/message-routing';
+import { reconcileAbandonedRequests } from './services/page-reconciliation';
 import {
   getPageOrigin,
-  listPageOrigins,
   observePageConnections,
   onPageOriginChange,
   restorePageOrigins,
 } from './services/page-origin-registry';
 import type { ApprovalDuration } from './types/background';
 import type {
+  BridgeAction,
+  BridgeRequestMap,
   BridgeResponsePayload,
   VaultData,
   GetPublicKeyRequest,
@@ -437,24 +439,10 @@ onQueueChange(() => {
  * until no tab holds the origin at all before interrupting anything (D7).
  */
 onPageOriginChange((_tabId, record) => {
+  // Only a page going away can strand a request; one arriving cannot.
   if (record) return;
 
-  const goneOrigins = new Set<string>();
-  for (const [, remaining] of listPageOrigins()) goneOrigins.add(remaining.origin);
-
-  void (async () => {
-    const origins = new Set<string>();
-    for (const request of (await listPendingRequests()) ?? []) origins.add(request.origin);
-
-    for (const origin of origins) {
-      if (goneOrigins.has(origin)) continue;
-      await interruptRequestsForOrigin(origin);
-    }
-  })().catch((error: unknown) => {
-    logService.log(LogLevel.ERROR, '[Pages] Failed to reconcile requests for a closed page', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-  });
+  void reconcileAbandonedRequests();
 });
 
 // A closed window takes its tabs with it; ports usually report that first, but not always.
@@ -483,33 +471,22 @@ chrome.action?.onClicked?.addListener((tab) => {
 // permission checks. This raw listener has no reliable origin of its own, so
 // these actions must carry a non-empty `payload.origin` rather than falling
 // back to '' (which could otherwise match a permission record with no origin).
-const ORIGIN_SCOPED_ACTIONS = new Set([
-  'nostr.getPublicKey',
-  'nostr.signEvent',
-  'nostr.getRelays',
-  'nostr.nip04.encrypt',
-  'nostr.nip04.decrypt',
-  'nostr.nip44.encrypt',
-  'nostr.nip44.decrypt',
-  'nip57.getCapabilities',
-  'nip57.sendZap',
-  'webln.enable',
-  'webln.getInfo',
-  'webln.sendPayment',
-]);
-
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  const payload = (message.payload || {}) as { origin?: unknown };
+  const decision = decideRouting(message as RawMessage);
 
-  if (ORIGIN_SCOPED_ACTIONS.has(message.type) && !payload.origin) {
-    sendResponse({
-      success: false,
-      error: 'Missing origin for origin-scoped action',
-    });
+  if (!decision.dispatch) {
+    sendResponse({ success: false, error: decision.error });
     return true;
   }
 
-  void dispatchMessage(message.type, message.payload || {}, typeof payload.origin === 'string' ? payload.origin : '')
+  // The untyped boundary. A raw runtime message is whatever the sender put on the wire, so the
+  // payload is asserted into the dispatcher's shape here and nowhere deeper — the dispatcher's
+  // switch is what actually decides whether the action is one we serve.
+  void dispatchMessage(
+    decision.type as BridgeAction,
+    decision.payload as BridgeRequestMap[BridgeAction],
+    decision.origin,
+  )
     .then((response) => {
       if (response !== null) {
         sendResponse(response);

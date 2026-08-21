@@ -51,14 +51,16 @@ export default defineConfig({
        * the one that fails open, and closing that gap is test-writing work rather than a threshold
        * decision — see the follow-up on #143.
        *
-       * Measured on 2026-08-21 at 787 tests: statements 58.84, branches 50.94, functions 50.73,
-       * lines 59.12.
+       * Raised 2026-08-21 after #173 extracted the approval flow, the routing decision and the
+       * page reconciliation out of `background.ts`, where nothing could reach them.
+       *
+       * Measured at 846 tests: statements 59.77, branches 52.05, functions 51.39, lines 60.02.
        */
       thresholds: {
-        statements: 58,
-        branches: 50,
-        functions: 50,
-        lines: 59,
+        statements: 59,
+        branches: 52,
+        functions: 51,
+        lines: 60,
 
         /**
          * The layers that decide authority are already past the 75% target, so they are held there
@@ -69,7 +71,7 @@ export default defineConfig({
         'src/composables/**': { statements: 85, branches: 70, functions: 80, lines: 85 },
         'src/utils/**': { statements: 95, branches: 80, functions: 95, lines: 95 },
         'src-bex/handlers/**': { statements: 80, branches: 58, functions: 88, lines: 82 },
-        'src-bex/services/**': { statements: 82, branches: 68, functions: 78, lines: 84 },
+        'src-bex/services/**': { statements: 86, branches: 73, functions: 81, lines: 87 },
       },
     },
   },
