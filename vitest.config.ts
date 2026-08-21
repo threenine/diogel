@@ -52,15 +52,16 @@ export default defineConfig({
        * decision — see the follow-up on #143.
        *
        * Raised 2026-08-21 after #173 extracted the approval flow, the routing decision and the
-       * page reconciliation out of `background.ts`, where nothing could reach them.
+       * page reconciliation out of `background.ts`, where nothing could reach them, and then
+       * covered the dispatcher's switch by execution rather than by source scan.
        *
-       * Measured at 846 tests: statements 59.77, branches 52.05, functions 51.39, lines 60.02.
+       * Measured at 1,001 tests: statements 62.56, branches 54.44, functions 53.35, lines 62.84.
        */
       thresholds: {
-        statements: 59,
-        branches: 52,
-        functions: 51,
-        lines: 60,
+        statements: 62,
+        branches: 54,
+        functions: 53,
+        lines: 62,
 
         /**
          * The layers that decide authority are already past the 75% target, so they are held there
@@ -72,6 +73,17 @@ export default defineConfig({
         'src/utils/**': { statements: 95, branches: 80, functions: 95, lines: 95 },
         'src-bex/handlers/**': { statements: 80, branches: 58, functions: 88, lines: 82 },
         'src-bex/services/**': { statements: 86, branches: 73, functions: 81, lines: 87 },
+
+        /**
+         * `src-bex` itself is the routing layer: `dispatcher.ts` plus the modules pulled out of
+         * `background.ts`. It sat at 41% while nothing executed the switch, and the floor is held
+         * here so it cannot drift back once a case stops being exercised.
+         *
+         * `background.ts` remains excluded from measurement by the provider — it registers
+         * listeners and calls `initialize()` on import, so no test can load it. That is why the
+         * logic worth covering was moved out rather than mocked in place (#173).
+         */
+        'src-bex/*.ts': { statements: 70, branches: 57, functions: 75, lines: 71 },
       },
     },
   },
