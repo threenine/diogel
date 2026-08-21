@@ -16,7 +16,6 @@ function openInTab(path: string): void {
 const links = [
   { id: 'dashboard', icon: 'dashboard', labelKey: 'sidebar.links.dashboard', path: '/dashboard' },
   { id: 'keys', icon: 'key', labelKey: 'sidebar.links.keys', path: '/keys' },
-  { id: 'event-history', icon: 'history', labelKey: 'sidebar.links.eventHistory', path: '/event-history' },
   { id: 'settings', icon: 'settings', labelKey: 'sidebar.links.settings', path: '/settings' },
 ] as const;
 </script>
