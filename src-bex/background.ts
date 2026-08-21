@@ -21,7 +21,6 @@ import {
 } from './services/auto-lock';
 import { initializePanelSurface, resolvePanelSurface } from './services/panel-surface';
 import {
-  enqueueRequest,
   getCurrentRequest,
   getPendingCount,
   getRequestContent,
@@ -40,7 +39,9 @@ import {
   reconcilePanelPresence,
 } from './services/panel-presence';
 import { refreshAttention } from './services/attention-badge';
-import { resolveSigningAccount } from './services/signing-account';
+import { requestApproval, trimApprovalContentDescription } from './services/approval-flow';
+import type { ApprovalRequestDetails } from './services/approval-flow';
+import { originHostname } from './services/origin';
 import {
   getPageOrigin,
   listPageOrigins,
@@ -48,7 +49,7 @@ import {
   onPageOriginChange,
   restorePageOrigins,
 } from './services/page-origin-registry';
-import type { ApprovalDuration, UnsignedEvent } from './types/background';
+import type { ApprovalDuration } from './types/background';
 import type {
   BridgeResponsePayload,
   VaultData,
@@ -67,8 +68,6 @@ import {
   restoreVaultState,
 } from './handlers/vault-handler';
 import {
-  checkPermission,
-  grantPermission,
 } from './handlers/permission-handler';
 import {
   handleGetPublicKey,
@@ -256,14 +255,6 @@ if (typeof self !== 'undefined') {
 // Auto-lock activity is deliberately not reset by site-initiated requests (ADR D15). A page
 // making periodic requests must not hold the vault unlocked past the user's configured
 // interval; only interaction with a Porwr surface counts as activity.
-const getHostname = (origin: string): string => {
-  try {
-    return new URL(origin).hostname;
-  } catch {
-    return origin;
-  }
-};
-
 bridge.on('nostr.requests.list', () => {
   return listPendingRequests() as unknown as BridgeResponsePayload<'nostr.requests.list'>;
 });
@@ -533,110 +524,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;
 });
 
-interface ApprovalRequestDetails {
-  requestType: string;
-  contentDescription?: string;
-  allowRemember?: boolean;
-  skipPermissionCheck?: boolean;
-  /** Full unsigned event, for `sign_event`. Held in memory only, never persisted (D6). */
-  event?: UnsignedEvent;
-  /** Counterparty for encryption and decryption requests. Never the plaintext. */
-  counterpartyPubkey?: string;
-}
-
-const trimApprovalContentDescription = (content?: string): string | undefined => {
-  const normalized = content?.replace(/\s+/g, ' ').trim();
-  if (!normalized) return undefined;
-  return normalized.length > 240 ? `${normalized.slice(0, 237)}...` : normalized;
-};
-
-/**
- * `-1` at these call sites means "this request carries no event kind", never "any kind". The grant
- * store no longer conflates the two, so it is translated to null on the way in (#136).
- */
-const toPermissionKind = (eventKind: number): number | null => (eventKind < 0 ? null : eventKind);
-
-async function requestApproval(
-  origin: string,
-  eventKind: number,
-  details: ApprovalRequestDetails,
-): Promise<boolean> {
-  const permissionKind = toPermissionKind(eventKind);
-
-  // The account that will act for this site, which is the one a grant belongs to. Resolved before
-  // the permission check so a grant given to one identity cannot answer for another (#116).
-  const resolved = await resolveSigningAccount(origin);
-  const actingAccount = 'account' in resolved ? resolved.account : null;
-
-  if (!details.skipPermissionCheck && actingAccount) {
-    const permission = await checkPermission(
-      origin,
-      actingAccount.id,
-      details.requestType,
-      permissionKind,
-    );
-    if (permission.granted) return true;
-  }
-
-  const { record, decision } = await enqueueRequest({
-    origin,
-    requestType: details.requestType,
-    eventKind,
-    accountAlias: actingAccount?.alias ?? null,
-    // The identity the user is deciding for, shown on the approval and recorded on the grant.
-    accountPubkey: actingAccount?.id ?? null,
-  }, {
-    // Reviewable detail stays in worker memory for the life of the request.
-    ...(details.contentDescription !== undefined
-      ? { contentDescription: details.contentDescription }
-      : {}),
-    ...(details.event !== undefined ? { event: details.event } : {}),
-    ...(details.counterpartyPubkey !== undefined
-      ? { counterpartyPubkey: details.counterpartyPubkey }
-      : {}),
-    allowRemember: details.allowRemember !== false,
-  });
-
-  // A locked vault no longer opens its own window: the panel presents the unlock view with the
-  // waiting request, and unlocking still requires an explicit decision afterwards (ADR D14).
-  const outcome = await decision;
-
-  const approved = outcome.approved;
-  const durationLabel: ApprovalDuration = outcome.duration;
-
-  if (
-    approved &&
-    durationLabel !== 'once' &&
-    details.allowRemember !== false &&
-    !details.skipPermissionCheck
-  ) {
-    try {
-      await grantPermission(
-        origin,
-        record.accountPubkey ?? '',
-        details.requestType,
-        permissionKind,
-        durationLabel,
-      );
-    } catch (error: unknown) {
-      logService.log(LogLevel.ERROR, '[BEX] Failed to grant permission', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  // Logged on the terminal transition rather than when the site asked, so a rejection is not
-  // recorded as an approval.
-  void logService.logApproval(
-    eventKind === -1 ? details.requestType : eventKind,
-    getHostname(origin),
-    record.accountAlias,
-    approved ? 'approved' : 'rejected',
-  );
-
-  return approved;
-}
-
 bridge.on('nostr.getPublicKey', ({ payload: { origin } }) => (
   (async () => {
     const result = await handleGetPublicKey({}, origin);
@@ -647,7 +534,7 @@ bridge.on('nostr.getPublicKey', ({ payload: { origin } }) => (
       );
     }
     const activeStoredKey = await getActiveStoredKey();
-    void logService.logApproval('get_public_key', getHostname(origin), activeStoredKey?.alias);
+    void logService.logApproval('get_public_key', originHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin, -1, { requestType: 'get_public_key' });
     if (!approved) {
       throw new BackgroundBridgeError('PERMISSION_DENIED', 'User rejected the request');
@@ -659,7 +546,7 @@ bridge.on('nostr.getPublicKey', ({ payload: { origin } }) => (
 bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => (
   (async () => {
     const activeStoredKey = await getActiveStoredKey();
-    void logService.logApproval(event.kind, getHostname(origin), activeStoredKey?.alias);
+    void logService.logApproval(event.kind, originHostname(origin), activeStoredKey?.alias);
     const contentDescription = trimApprovalContentDescription(event.content);
     const approvalDetails: ApprovalRequestDetails = contentDescription
       ? { requestType: 'sign_event', contentDescription, event }
@@ -690,7 +577,7 @@ bridge.on('nostr.signEvent', ({ payload: { event, origin } }) => (
 bridge.on('nostr.getRelays', ({ payload: { origin } }) => (
   (async () => {
     const activeStoredKey = await getActiveStoredKey();
-    void logService.logApproval('get_relays', getHostname(origin), activeStoredKey?.alias);
+    void logService.logApproval('get_relays', originHostname(origin), activeStoredKey?.alias);
     const approved = await requestApproval(origin, -1, { requestType: 'get_relays' });
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
@@ -704,7 +591,7 @@ bridge.on('nostr.getRelays', ({ payload: { origin } }) => (
 bridge.on('nostr.nip04.encrypt', ({ payload }) => (
   (async () => {
     const activeStoredKey = await getActiveStoredKey();
-    void logService.logApproval('nip04_encrypt', getHostname(payload.origin), activeStoredKey?.alias);
+    void logService.logApproval('nip04_encrypt', originHostname(payload.origin), activeStoredKey?.alias);
     const approved = await requestApproval(payload.origin, -1, { requestType: 'nip04_encrypt', counterpartyPubkey: payload.pubkey });
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
@@ -718,7 +605,7 @@ bridge.on('nostr.nip04.encrypt', ({ payload }) => (
 bridge.on('nostr.nip04.decrypt', ({ payload }) => (
   (async () => {
     const activeStoredKey = await getActiveStoredKey();
-    void logService.logApproval('nip04_decrypt', getHostname(payload.origin), activeStoredKey?.alias);
+    void logService.logApproval('nip04_decrypt', originHostname(payload.origin), activeStoredKey?.alias);
     const approved = await requestApproval(payload.origin, -1, { requestType: 'nip04_decrypt', counterpartyPubkey: payload.pubkey });
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
@@ -732,7 +619,7 @@ bridge.on('nostr.nip04.decrypt', ({ payload }) => (
 bridge.on('nostr.nip44.encrypt', ({ payload }) => (
   (async () => {
     const activeStoredKey = await getActiveStoredKey();
-    void logService.logApproval('nip44_encrypt', getHostname(payload.origin), activeStoredKey?.alias);
+    void logService.logApproval('nip44_encrypt', originHostname(payload.origin), activeStoredKey?.alias);
     const approved = await requestApproval(payload.origin, -1, { requestType: 'nip44_encrypt', counterpartyPubkey: payload.pubkey });
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
@@ -746,7 +633,7 @@ bridge.on('nostr.nip44.encrypt', ({ payload }) => (
 bridge.on('nostr.nip44.decrypt', ({ payload }) => (
   (async () => {
     const activeStoredKey = await getActiveStoredKey();
-    void logService.logApproval('nip44_decrypt', getHostname(payload.origin), activeStoredKey?.alias);
+    void logService.logApproval('nip44_decrypt', originHostname(payload.origin), activeStoredKey?.alias);
     const approved = await requestApproval(payload.origin, -1, { requestType: 'nip44_decrypt', counterpartyPubkey: payload.pubkey });
     if (!approved) {
       const unlockedStatus = await handleVaultIsUnlocked({}, '');
