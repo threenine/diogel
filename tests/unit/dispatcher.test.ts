@@ -6,6 +6,7 @@ import { handleBlossomUpload } from 'app/src-bex/handlers/blossom-handler';
 import { handleNip44Encrypt, handleNip44Decrypt } from 'app/src-bex/handlers/nip44';
 import { handleNip04Encrypt, handleNip04Decrypt } from 'app/src-bex/handlers/nip04';
 import { handleGetPublicKey, handleSignEvent } from 'app/src-bex/handlers/nip07';
+import { getPageOrigin } from 'app/src-bex/services/page-origin-registry';
 import type { RelayCatalogEntry, RelayDiscoveryState } from 'src/types/relay';
 import { createBridgeRequest } from 'src/types/bridge';
 import type { VaultData } from 'src/types/bridge';
@@ -47,6 +48,10 @@ vi.mock('app/src-bex/handlers/nip04', () => ({
 vi.mock('app/src-bex/handlers/nip44', () => ({
   handleNip44Encrypt: vi.fn(),
   handleNip44Decrypt: vi.fn(),
+}));
+
+vi.mock('app/src-bex/services/page-origin-registry', () => ({
+  getPageOrigin: vi.fn(),
 }));
 
 vi.mock('app/src-bex/handlers/relay-browser-handler', () => ({
@@ -139,9 +144,9 @@ describe('Dispatcher', () => {
     ).toBeLessThan(autoLockMocks.startAutoLockTimer.mock.invocationCallOrder[0]!);
   });
 
-  it('should return null for unknown message type', async () => {
+  it('should return undefined for unknown message type', async () => {
     const result = await dispatchMessage('unknown.action' as never, { id: 'test', action: 'unknown.action' } as never);
-    expect(result).toBeNull();
+    expect(result).toBeUndefined();
   });
 
   it('should route blossom.upload to handler and return success response', async () => {
@@ -288,11 +293,26 @@ describe('Dispatcher', () => {
       ).rejects.toThrow('Vault is locked');
     });
 
-    it('returns null for an action it does not serve', async () => {
+    it('returns undefined for an action it does not serve', async () => {
       // An unknown action falls through the switch. That is where "we do not serve that" belongs,
       // and it must not throw — the caller gets no response rather than an error page.
+      //
+      // `undefined` rather than `null`, and the difference is load-bearing: the raw message
+      // listener stays silent for `undefined` and answers `null`. While both were `null` the
+      // listener could not tell them apart, so it stayed silent for both, and a panel asking for
+      // an empty queue waited on a reply that never came (#195).
       await expect(
         dispatchMessage('not.an.action' as 'ping', {} as never, ORIGIN),
+      ).resolves.toBeUndefined();
+    });
+
+    it('answers null for an action it serves whose answer is null', async () => {
+      // The other half of the distinction. `pages.originForTab` has no origin for an unknown tab,
+      // and that is an answer the caller is entitled to receive.
+      vi.mocked(getPageOrigin).mockReturnValue(undefined);
+
+      await expect(
+        dispatchMessage('pages.originForTab', { tabId: 999 } as never, ORIGIN),
       ).resolves.toBeNull();
     });
   });

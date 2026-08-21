@@ -516,7 +516,17 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     decision.origin,
   )
     .then((response) => {
-      if (response !== null) {
+      /*
+       * `undefined` means the dispatcher serves no such action, and staying silent is right —
+       * the behaviour this listener has had since it replaced a chain of `message.type ===`
+       * branches that simply fell through.
+       *
+       * `null` is an answer. The queue is empty, the tab has no known origin, the request carries
+       * no content. Withholding those left the caller holding a promise that never settled: the
+       * panel kept showing a request the user had already approved, because the read that would
+       * have cleared it never came back (#195).
+       */
+      if (response !== undefined) {
         sendResponse(response);
       }
     })

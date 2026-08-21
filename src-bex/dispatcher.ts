@@ -73,7 +73,7 @@ export async function dispatchMessage<K extends BridgeAction>(
   type: K,
   payload: BridgeRequestMap[K],
   origin: string = '',
-): Promise<BridgeResponsePayload<K> | null> {
+): Promise<BridgeResponsePayload<K> | null | undefined> {
   switch (type) {
     case 'ping':
       return 'pong' as BridgeResponsePayload<K>;
@@ -472,7 +472,15 @@ export async function dispatchMessage<K extends BridgeAction>(
       }
     }
 
+    /**
+     * Not an answer of `null` — no answer at all.
+     *
+     * These are different things and conflating them cost the panel its idle view. Several actions
+     * legitimately answer `null`: the queue is empty, the tab has no known origin, the request
+     * carries no content. `undefined` is reserved for "this router serves no such action", which is
+     * the only case where the listener should stay silent (#195).
+     */
     default:
-      return null;
+      return undefined;
   }
 }
