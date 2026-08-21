@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures/extension';
-import { createVault, lockVault } from './fixtures/vault';
+import { createVault, lockVault, VAULT_PASSWORD } from './fixtures/vault';
 
 /**
  * Answers the question that could not be asked before this harness existed: what does the panel
@@ -64,5 +64,43 @@ test.describe('the panel with no vault', () => {
     const page = await openPage('/sidebar');
 
     await expect(page.locator('.sidebar-setup')).toBeVisible();
+  });
+});
+
+/**
+ * The panel must never navigate itself to a dashboard surface (#116).
+ *
+ * Unlocking in the panel used to push to `dashboard`, so the full-tab dashboard rendered inside a
+ * 360px column. Asserted end to end because it is a router behaviour in a real extension page, and
+ * because it is the failure a user actually sees.
+ */
+test.describe('the panel keeps itself', () => {
+  test('stays on the panel after unlocking, and shows the panel again', async ({ openPage }) => {
+    const page = await openPage('/login');
+    await createVault(page);
+    await lockVault(page);
+
+    await page.goto(page.url().replace(/#.*$/, '#/sidebar'));
+    await page.locator('.sidebar-unlock').waitFor({ state: 'visible' });
+
+    await page.getByLabel('Password', { exact: true }).fill(VAULT_PASSWORD);
+    await page.getByRole('button', { name: 'Unlock', exact: true }).click();
+
+    // The panel re-renders from vault state rather than navigating anywhere.
+    await expect(page.locator('.sidebar-root')).toBeVisible();
+    await expect(page.locator('.sidebar-unlock')).toHaveCount(0);
+    expect(page.url()).toContain('#/sidebar');
+  });
+
+  test('never renders a dashboard surface inside the panel', async ({ openPage }) => {
+    const page = await openPage('/login');
+    await createVault(page);
+    await page.goto(page.url().replace(/#.*$/, '#/sidebar'));
+    await page.locator('.sidebar-root').waitFor({ state: 'visible' });
+
+    // The dashboard's own chrome. Any of it here means a full-tab surface reached the panel.
+    await expect(page.locator('.dashboard-page-shell')).toHaveCount(0);
+    await expect(page.locator('.dashboard-topbar')).toHaveCount(0);
+    await expect(page.locator('.main-navigation')).toHaveCount(0);
   });
 });
