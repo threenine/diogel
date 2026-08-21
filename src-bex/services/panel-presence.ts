@@ -16,6 +16,7 @@
  */
 
 import { LogLevel, logService } from 'src/services/log-service';
+import { resolvePanelSurface } from './panel-surface';
 import { requeuePresented } from './request-queue';
 
 export const PANEL_PORT_NAME = 'porwr-panel';
@@ -93,6 +94,41 @@ export const notifyPanelsOfQueueChange = (): void => {
     } catch {
       /* the port is closing; onDisconnect removes it */
     }
+  }
+};
+
+/**
+ * Reconcile the port's view of presence against the browser's, where the browser has one.
+ *
+ * The port is the source of truth: it is the only mechanism both browsers support, and it is what
+ * `requeuePresented` and the badge already follow. This does not replace it — it catches the one
+ * case the port cannot see, a panel that went away without its `onDisconnect` firing, which leaves a
+ * request `presented` to nobody.
+ *
+ * Firefox answers through `sidebarAction.isOpen`; Chromium has no equivalent and returns undefined.
+ * Undefined means "no opinion" and is never treated as "closed" — acting on a guess would tear down
+ * a live panel's presence on the browser where most people run this (#113).
+ */
+export const reconcilePanelPresence = async (windowId?: number): Promise<void> => {
+  if (!isPanelPresent()) return;
+
+  const surface = resolvePanelSurface();
+  const browserSaysOpen = await surface.isOpenAccordingToBrowser(windowId);
+  if (browserSaysOpen !== false) return;
+
+  logService.log(LogLevel.WARN, '[Panel] Browser reports no panel while a port is still held', {
+    ports: panels.size,
+  });
+
+  // Drop the stale ports and let the normal path run: presence changes, and the last one going
+  // requeues whatever was presented. Nothing here decides a request.
+  for (const port of [...panels]) {
+    try {
+      port.disconnect();
+    } catch {
+      /* already gone */
+    }
+    handleDisconnect(port);
   }
 };
 
