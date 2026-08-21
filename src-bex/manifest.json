@@ -1,7 +1,4 @@
 {
-  "name": "Diogel",
-  "description": "Privacy focused nostr account & signer extension",
-  "version": "0.0.1.0",
   "all": {
     "manifest_version": 3,
     "icons": {
