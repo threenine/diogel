@@ -14,6 +14,16 @@ export const SITE_BINDINGS_KEY = 'nostr:site-bindings' as const;
 export const VAULT_UNLOCKED = 'vault:unlocked' as const;
 export const FALLBACK_RELAYS = 'nostr:fallback-relays' as const;
 
+/**
+ * Bumped whenever a profile is published, so any surface showing that profile can re-read it.
+ *
+ * A storage write rather than a message: the panel, the extension index page and the dashboard are
+ * separate page contexts, and `chrome.storage.onChanged` reaches all of them. The panel port cannot
+ * — it is one connection per panel and the background counts them for presence, so a second
+ * consumer opening one would make a single panel look like two (#113).
+ */
+export const PROFILE_UPDATED_KEY = 'profile:updated' as const;
+
 export type StorageArea = 'local' | 'session' | 'sync';
 
 export interface StorageService {

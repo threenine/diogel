@@ -2,8 +2,23 @@ import { finalizeEvent, getPublicKey, SimplePool } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
 import type { NostrProfile } from '../types';
 import useSettingsStore from '../stores/settings-store';
+import { PROFILE_UPDATED_KEY, storageService } from './storage-service';
 
 const pool = new SimplePool();
+
+/**
+ * Tell every surface showing this profile that it has changed.
+ *
+ * Called after the event is published rather than before: a surface that re-reads on the strength
+ * of a publish that then failed would show something that is not on any relay.
+ *
+ * Exported because saving a profile happens in two places — here, and the avatar/banner path in
+ * `ProfileImage`, which publishes its own event. Consolidating those is #200's business; until then
+ * both signal, because changing an avatar is changing a profile.
+ */
+export const notifyProfileChanged = async (pubkey: string): Promise<void> => {
+  await storageService.set(PROFILE_UPDATED_KEY, { pubkey, at: Date.now() });
+};
 
 export const profileService = {
   async fetchProfile(pubkey: string): Promise<NostrProfile | null> {
@@ -56,5 +71,6 @@ export const profileService = {
     const relays = await settingsStore.getFallbackRelays();
 
     await Promise.any(pool.publish(relays, signedEvent));
+    await notifyProfileChanged(pk);
   },
 };

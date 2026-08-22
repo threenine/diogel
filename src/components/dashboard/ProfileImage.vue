@@ -6,6 +6,7 @@ import type { NostrProfile, StoredKey } from 'src/types';
 import { finalizeEvent, getPublicKey, SimplePool } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
 import useSettingsStore from 'src/stores/settings-store';
+import { notifyProfileChanged } from 'src/services/profile-service';
 import BannerEditor from 'components/dashboard/BannerEditor.vue';
 import AvatarEditor from 'components/dashboard/AvatarEditor.vue';
 
@@ -112,6 +113,11 @@ async function saveProfile(field: 'picture' | 'banner', url: string) {
 
     const signedEvent = finalizeEvent(eventTemplate, sk);
     await Promise.any(pool.publish(fallbackRelays.value, signedEvent));
+
+    // This path publishes its own event rather than going through `profileService`, so it has to
+    // signal for itself. Changing an avatar is changing a profile, and a panel that missed it
+    // would show the old picture until it was reopened (#201).
+    await notifyProfileChanged(pk);
 
     $q.notify({
       type: 'positive',

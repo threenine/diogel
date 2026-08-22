@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPublicKey } from 'nostr-tools';
 import { hexToBytes } from '@noble/hashes/utils';
+import { storageService } from 'src/services/storage-service';
 
 const { poolGetMock, poolPublishMock, fallbackRelays } = vi.hoisted(() => ({
   poolGetMock: vi.fn(),
   poolPublishMock: vi.fn(),
   fallbackRelays: ['wss://relay.damus.io'] as string[],
+}));
+
+vi.mock('src/services/storage-service', () => ({
+  PROFILE_UPDATED_KEY: 'profile:updated',
+  storageService: { set: vi.fn(() => Promise.resolve()) },
 }));
 
 vi.mock('src/stores/settings-store', () => ({
@@ -94,5 +100,63 @@ describe('profileService.saveProfile', () => {
 
     const { profileService } = await import('src/services/profile-service');
     await expect(profileService.saveProfile(privkey, { name: 'New Name' })).rejects.toThrow();
+  });
+});
+
+/**
+ * The cross-surface signal (#201).
+ *
+ * The panel and the dashboard editor are separate page contexts. Before this, saving a profile in
+ * a tab left an open panel showing the old one until it was reopened, and the dashboard's own
+ * preview was the only thing that ever reflected an edit.
+ */
+describe('the profile-changed signal', () => {
+  const privkey = 'aa'.repeat(32);
+  const pubkey = getPublicKey(hexToBytes(privkey));
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    poolGetMock.mockResolvedValue(null);
+  });
+
+  it('records the change after a successful publish, not before', async () => {
+    const order: string[] = [];
+    vi.mocked(storageService.set).mockImplementation(() => {
+      order.push('signal');
+      return Promise.resolve();
+    });
+    poolPublishMock.mockImplementation(() => {
+      order.push('publish');
+      return [Promise.resolve('relay-ack')];
+    });
+
+    const { profileService } = await import('src/services/profile-service');
+    await profileService.saveProfile(privkey, { name: 'alice' });
+
+    // Signalling first would tell every surface to re-read on the strength of a publish that had
+    // not happened yet, and might still fail.
+    expect(order).toEqual(['publish', 'signal']);
+  });
+
+  it('names the account whose profile changed', async () => {
+    poolPublishMock.mockReturnValue([Promise.resolve('relay-ack')]);
+
+    const { profileService } = await import('src/services/profile-service');
+    await profileService.saveProfile(privkey, { name: 'alice' });
+
+    expect(storageService.set).toHaveBeenCalledWith(
+      'profile:updated',
+      expect.objectContaining({ pubkey }),
+    );
+  });
+
+  it('does not signal when every relay publish fails', async () => {
+    poolPublishMock.mockReturnValue([Promise.reject(new Error('relay rejected'))]);
+
+    const { profileService } = await import('src/services/profile-service');
+    await expect(profileService.saveProfile(privkey, { name: 'alice' })).rejects.toThrow();
+
+    // A surface that re-read here would show what is on the relays, which is not what was saved.
+    expect(storageService.set).not.toHaveBeenCalled();
   });
 });
