@@ -4,19 +4,18 @@ import { useI18n } from 'vue-i18n';
 
 import { useVault } from 'src/composables/useVault';
 
-defineOptions({ name: 'SidebarCreateVault' });
-
-const emit = defineEmits<{ (event: 'back'): void }>();
+defineOptions({ name: 'SidebarSetup' });
 
 const { t } = useI18n();
 const { password, confirmPassword, loading, loginError, handleCreate } = useVault();
 
 /**
- * S18, the vault creation form in the panel.
+ * S17: no vault yet. Explains what Porwr is and creates the vault, in one screen.
  *
- * Creation used to open a full tab, which the specification required until 2026-08-22 and which
- * made a browser window appear in the middle of first-run onboarding. It is two password fields; it
- * fits the column.
+ * Creation used to open a full tab, which the specification required until 2026-08-22 and which put
+ * a browser window in the middle of first-run onboarding. It briefly became a second panel screen
+ * behind a "Create vault" button, which traded the tab for a click in the flow that was reported as
+ * clunky in the first place. It is two password fields; it fits the column, so it is simply here.
  *
  * There is no navigation here and there must not be. `handleCreate` returns early on a panel route,
  * so the panel re-renders from vault state once the vault exists and lands on S16, the prompt to
@@ -33,13 +32,15 @@ const submittable = computed(
 </script>
 
 <template>
-  <section class="sidebar-create" :aria-label="t('sidebar.createVault.ariaLabel')">
-    <h2 class="sidebar-create__title">{{ t('sidebar.createVault.title') }}</h2>
-    <p class="sidebar-create__body">{{ t('sidebar.createVault.body') }}</p>
+  <section class="sidebar-setup" :aria-label="t('sidebar.setup.ariaLabel')">
+    <q-icon class="sidebar-setup__icon" color="grey-5" name="lock_open" size="2.5em" />
+    <h2 class="sidebar-setup__title">{{ t('sidebar.setup.title') }}</h2>
+    <p class="sidebar-setup__body">{{ t('sidebar.setup.body') }}</p>
+    <p class="sidebar-setup__warning">{{ t('sidebar.createVault.warning') }}</p>
 
     <q-input
       v-model="password"
-      class="sidebar-create__field"
+      class="sidebar-setup__field"
       dense
       filled
       :error="tooShort"
@@ -49,7 +50,7 @@ const submittable = computed(
     />
     <q-input
       v-model="confirmPassword"
-      class="sidebar-create__field"
+      class="sidebar-setup__field"
       dense
       filled
       :error="mismatched"
@@ -59,21 +60,13 @@ const submittable = computed(
       @keyup.enter="submittable && handleCreate()"
     />
 
-    <div v-if="loginError" class="sidebar-create__error">{{ loginError }}</div>
+    <div v-if="loginError" class="sidebar-setup__error">{{ loginError }}</div>
 
-    <div class="sidebar-create__actions">
-      <q-btn
-        flat
-        no-caps
-        class="sidebar-create__back"
-        :label="t('sidebar.createVault.back')"
-        :disable="loading"
-        @click="emit('back')"
-      />
+    <div class="sidebar-setup__actions">
       <q-btn
         no-caps
         class="diogel-btn-primary"
-        :label="t('sidebar.createVault.action')"
+        :label="t('sidebar.setup.action')"
         :disable="!submittable"
         :loading="loading"
         @click="handleCreate"
@@ -83,42 +76,42 @@ const submittable = computed(
 </template>
 
 <style scoped>
-.sidebar-create {
+.sidebar-setup {
   display: flex;
   flex-direction: column;
   gap: 12px;
   padding: 16px 12px;
 }
 
-.sidebar-create__title {
+.sidebar-setup__title {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
 }
 
-.sidebar-create__body {
+.sidebar-setup__body {
   margin: 0;
   font-size: 0.85rem;
   opacity: 0.75;
 }
 
-.sidebar-create__field {
+.sidebar-setup__field {
   width: 100%;
 }
 
-.sidebar-create__error {
+.sidebar-setup__error {
   font-size: 0.85rem;
   color: var(--q-negative);
 }
 
-.sidebar-create__actions {
+.sidebar-setup__actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
 }
 
 /* NFR-7: a target small enough to miss is a target that fails the requirement. */
-.sidebar-create__actions .q-btn {
+.sidebar-setup__actions .q-btn {
   min-height: 36px;
 }
 </style>

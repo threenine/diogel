@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
 
 /**
- * S18, the vault creation form in the panel (#198).
+ * S17, the setup screen that creates the vault (#198).
  *
  * What is worth covering here is the gate on the submit button. `handleCreate` returns silently
  * when the password is short or the two do not match, so a form that let either through would look
@@ -25,10 +25,10 @@ vi.mock('src/composables/useVault', () => ({
   useVault: () => holder.vault,
 }));
 
-import SidebarCreateVault from 'components/sidebar/SidebarCreateVault.vue';
+import SidebarSetup from 'components/sidebar/SidebarSetup.vue';
 
 const mountForm = () =>
-  mount(SidebarCreateVault, {
+  mount(SidebarSetup, {
     global: {
       stubs: {
         'q-input': { props: ['modelValue', 'error'], template: '<input :data-error="error" />' },
@@ -45,8 +45,7 @@ const mountForm = () =>
     },
   });
 
-const submitButton = (wrapper: ReturnType<typeof mountForm>) =>
-  wrapper.findAll('button').at(-1);
+const submitButton = (wrapper: ReturnType<typeof mountForm>) => wrapper.find('button');
 
 let state: {
   password: ReturnType<typeof ref<string>>;
@@ -68,23 +67,23 @@ beforeEach(() => {
   holder.vault = state;
 });
 
-describe('SidebarCreateVault', () => {
+describe('SidebarSetup', () => {
   it('refuses to submit an empty form', () => {
-    expect(submitButton(mountForm())?.attributes('disabled')).toBeDefined();
+    expect(submitButton(mountForm()).attributes('disabled')).toBeDefined();
   });
 
   it('refuses a password under eight characters', () => {
     state.password.value = 'short';
     state.confirmPassword.value = 'short';
 
-    expect(submitButton(mountForm())?.attributes('disabled')).toBeDefined();
+    expect(submitButton(mountForm()).attributes('disabled')).toBeDefined();
   });
 
   it('refuses two passwords that do not match', () => {
     state.password.value = 'longenough1';
     state.confirmPassword.value = 'longenough2';
 
-    expect(submitButton(mountForm())?.attributes('disabled')).toBeDefined();
+    expect(submitButton(mountForm()).attributes('disabled')).toBeDefined();
   });
 
   it('allows a long enough password that matches', async () => {
@@ -92,9 +91,9 @@ describe('SidebarCreateVault', () => {
     state.confirmPassword.value = 'longenough1';
 
     const wrapper = mountForm();
-    expect(submitButton(wrapper)?.attributes('disabled')).toBeUndefined();
+    expect(submitButton(wrapper).attributes('disabled')).toBeUndefined();
 
-    await submitButton(wrapper)?.trigger('click');
+    await submitButton(wrapper).trigger('click');
     expect(state.handleCreate).toHaveBeenCalledTimes(1);
   });
 
@@ -103,15 +102,12 @@ describe('SidebarCreateVault', () => {
     state.confirmPassword.value = 'longenough1';
     state.loading.value = true;
 
-    expect(submitButton(mountForm())?.attributes('disabled')).toBeDefined();
+    expect(submitButton(mountForm()).attributes('disabled')).toBeDefined();
   });
 
-  it('emits back rather than navigating', async () => {
-    const wrapper = mountForm();
-
-    await wrapper.findAll('button').at(0)?.trigger('click');
-
-    // The panel is one route rendering from state; going back is a state change, never a route.
-    expect(wrapper.emitted('back')).toHaveLength(1);
+  it('offers exactly one action, so there is nowhere to go but forward', () => {
+    // The screen it replaced had a Back button to a prompt that no longer exists. A second control
+    // here would be a route out of the one thing the user is here to do.
+    expect(mountForm().findAll('button')).toHaveLength(1);
   });
 });

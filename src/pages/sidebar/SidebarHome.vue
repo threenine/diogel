@@ -6,7 +6,7 @@ import useAccountStore from 'src/stores/account-store';
 import ProfileView from 'components/shared/ProfileView.vue';
 import CurrentRequest from 'components/sidebar/CurrentRequest.vue';
 import PendingRequestList from 'components/sidebar/PendingRequestList.vue';
-import SidebarCreateVault from 'components/sidebar/SidebarCreateVault.vue';
+import SidebarSetup from 'components/sidebar/SidebarSetup.vue';
 import SidebarUnlock from 'components/sidebar/SidebarUnlock.vue';
 import { useActiveTab } from 'src/composables/useActiveTab';
 import { useApprovalQueue } from 'src/composables/useApprovalQueue';
@@ -34,18 +34,7 @@ const busy = ref(false);
  * says nothing about there being no vault at all. Without this distinction the panel fell through
  * to its unlock view and offered to unlock nothing (#158).
  */
-/**
- * S18: the creation form, reached from S17's prompt.
- *
- * Local rather than routed. The panel is one route rendering from state, and creation is a step
- * within the no-vault state rather than a place to navigate to — routing there would be the panel
- * being replaced by a surface, which the contract forbids.
- */
-const creating = ref(false);
-
-const showSetup = computed(() => !vaultStore.vaultExists && !creating.value);
-
-const showCreate = computed(() => !vaultStore.vaultExists && creating.value);
+const showSetup = computed(() => !vaultStore.vaultExists);
 
 const showUnlock = computed(() => vaultStore.vaultExists && !vaultStore.isUnlocked);
 
@@ -88,20 +77,12 @@ onMounted(async () => {
 <template>
   <q-page class="sidebar-home">
     <!-- Nothing else is reachable without a vault, so this precedes even the unlock view (#158). -->
-    <section v-if="showSetup" class="sidebar-setup">
-      <q-icon color="grey-5" name="lock_open" size="3em" />
-      <h2 class="sidebar-setup__title">{{ t('sidebar.setup.title') }}</h2>
-      <p class="sidebar-setup__body">{{ t('sidebar.setup.body') }}</p>
-      <q-btn
-        no-caps
-        class="diogel-btn-primary"
-        :label="t('sidebar.setup.action')"
-        @click="creating = true"
-      />
-    </section>
-
-    <!-- S18. Creation happens here rather than in a tab, amended in the specification 2026-08-22. -->
-    <SidebarCreateVault v-else-if="showCreate" @back="creating = false" />
+    <!--
+      S17. One screen: what Porwr is, and the form that creates the vault. It was briefly two,
+      behind a "Create vault" button, which traded a browser tab for a click in the flow that was
+      reported as clunky to begin with (#198).
+    -->
+    <SidebarSetup v-if="showSetup" />
 
     <!-- Unlock takes precedence over everything else, and names any waiting request (S5, S15). -->
     <SidebarUnlock

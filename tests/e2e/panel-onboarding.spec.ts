@@ -5,8 +5,9 @@ import { VAULT_PASSWORD, createVault } from './fixtures/vault';
  * First-run onboarding in the panel (#198).
  *
  * Creation used to open a full browser tab, which the specification required until 2026-08-22.
- * A tab appearing mid-onboarding was the clunkiest moment in the product, and §8 was amended to
- * host creation in the panel as S18.
+ * A tab appearing mid-onboarding was the clunkiest moment in the product, so §8 was amended to
+ * host creation in the panel — first as a second screen behind a button, then folded into S17
+ * itself, because a click is not much better than a tab in a flow reported as clunky.
  *
  * These run end to end because both halves are things a unit test cannot see: whether a real
  * extension page stays on the panel through a vault transition — the exact shape of the #147 and
@@ -18,15 +19,12 @@ const FOOTER = '.sidebar-footer';
 test.describe('creating a vault from the panel', () => {
   test('creates it in the panel, without opening a tab', async ({ openPage, context }) => {
     const panel = await openPage('/sidebar');
+
+    // The form is the setup screen, not somewhere the setup screen leads.
     await expect(panel.locator('.sidebar-setup')).toBeVisible();
+    await expect(panel.getByLabel('Password', { exact: true })).toBeVisible();
 
     const tabsBefore = context.pages().length;
-    await panel.getByRole('button', { name: 'Create vault', exact: true }).click();
-
-    // S18 renders in the panel itself. A new tab here is the behaviour the amendment removed.
-    await expect(panel.locator('.sidebar-create')).toBeVisible();
-    expect(context.pages()).toHaveLength(tabsBefore);
-
     await panel.getByLabel('Password', { exact: true }).fill(VAULT_PASSWORD);
     await panel.getByLabel('Confirm password', { exact: true }).fill(VAULT_PASSWORD);
     await panel.getByRole('button', { name: 'Create vault', exact: true }).click();
@@ -35,23 +33,22 @@ test.describe('creating a vault from the panel', () => {
     await expect(panel.locator('.sidebar-home__empty')).toBeVisible({ timeout: 20_000 });
     expect(panel.url()).toContain('#/sidebar');
     await expect(panel.locator('.dashboard-layout, .vault-card')).toHaveCount(0);
+
+    // No new tab opened at any point.
+    expect(context.pages()).toHaveLength(tabsBefore);
   });
 
-  test('can go back from the form to the setup prompt', async ({ openPage }) => {
+  test('offers no way out of setup but forward', async ({ openPage }) => {
     const panel = await openPage('/sidebar');
 
-    await panel.getByRole('button', { name: 'Create vault', exact: true }).click();
-    await expect(panel.locator('.sidebar-create')).toBeVisible();
-
-    await panel.getByRole('button', { name: 'Back', exact: true }).click();
-
+    // The screen this replaced had a Back button to a prompt that no longer exists, and the
+    // footer is hidden here, so the form is the only thing to act on.
     await expect(panel.locator('.sidebar-setup')).toBeVisible();
-    await expect(panel.locator('.sidebar-create')).toHaveCount(0);
+    await expect(panel.locator('.sidebar-setup button')).toHaveCount(1);
   });
 
   test('refuses a password that is too short or does not match', async ({ openPage }) => {
     const panel = await openPage('/sidebar');
-    await panel.getByRole('button', { name: 'Create vault', exact: true }).click();
 
     const submit = panel.getByRole('button', { name: 'Create vault', exact: true });
 
@@ -80,18 +77,11 @@ test.describe('creating a vault from the panel', () => {
  * wrong, so on its own it would pass for the wrong reason.
  */
 test.describe('the footer appears only when the vault is unlocked', () => {
-  test('hidden on the setup view', async ({ openPage }) => {
+  test('hidden on the setup view, where the vault is created', async ({ openPage }) => {
     const panel = await openPage('/sidebar');
 
     await expect(panel.locator('.sidebar-setup')).toBeVisible();
-    await expect(panel.locator(FOOTER)).toHaveCount(0);
-  });
-
-  test('hidden on the creation form', async ({ openPage }) => {
-    const panel = await openPage('/sidebar');
-    await panel.getByRole('button', { name: 'Create vault', exact: true }).click();
-
-    await expect(panel.locator('.sidebar-create')).toBeVisible();
+    await expect(panel.getByLabel('Password', { exact: true })).toBeVisible();
     await expect(panel.locator(FOOTER)).toHaveCount(0);
   });
 

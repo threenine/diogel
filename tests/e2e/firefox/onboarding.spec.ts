@@ -16,15 +16,13 @@ test.describe('onboarding in Firefox', () => {
     await openExtensionPage('/sidebar');
     await driver.wait(until.elementLocated({ css: '.sidebar-setup' }), 30_000, 'no setup view');
 
-    await (await driver.findElement({ css: '.sidebar-setup .q-btn' })).click();
-    await driver.wait(until.elementLocated({ css: '.sidebar-create' }), 30_000, 'no creation form');
-
-    const fields = await driver.findElements({ css: '.sidebar-create input[type="password"]' });
+    // The form is the setup screen, not somewhere it leads.
+    const fields = await driver.findElements({ css: '.sidebar-setup input[type="password"]' });
     expect(fields).toHaveLength(2);
     await fields[0]?.sendKeys(VAULT_PASSWORD);
     await fields[1]?.sendKeys(VAULT_PASSWORD);
 
-    await (await driver.findElement({ css: '.sidebar-create__actions .q-btn:last-child' })).click();
+    await (await driver.findElement({ css: '.sidebar-setup__actions .q-btn' })).click();
 
     // S16: the vault exists and holds no keys. Reached without leaving the panel.
     await driver.wait(
@@ -43,16 +41,13 @@ test.describe('onboarding in Firefox', () => {
 
     // Asserted alongside the state that is on screen: an absent footer proves nothing on its own,
     // since a blank page would satisfy it just as well.
+    const fields = await driver.findElements({ css: '.sidebar-setup input[type="password"]' });
+    expect(fields).toHaveLength(2);
     expect(await driver.findElements({ css: '.sidebar-footer' })).toHaveLength(0);
 
-    await (await driver.findElement({ css: '.sidebar-setup .q-btn' })).click();
-    await driver.wait(until.elementLocated({ css: '.sidebar-create' }), 30_000, 'no creation form');
-    expect(await driver.findElements({ css: '.sidebar-footer' })).toHaveLength(0);
-
-    const fields = await driver.findElements({ css: '.sidebar-create input[type="password"]' });
     await fields[0]?.sendKeys(VAULT_PASSWORD);
     await fields[1]?.sendKeys(VAULT_PASSWORD);
-    await (await driver.findElement({ css: '.sidebar-create__actions .q-btn:last-child' })).click();
+    await (await driver.findElement({ css: '.sidebar-setup__actions .q-btn' })).click();
 
     await driver.wait(
       until.elementLocated({ css: '.sidebar-footer' }),
