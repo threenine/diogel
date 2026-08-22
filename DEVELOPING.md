@@ -7,15 +7,41 @@ How to get a change in front of your eyes, and what the tooling does not do for 
 Use the pinned version:
 
 ```bash
-nvm use          # v24.14.0, from .nvmrc
+nvm use          # v24.19.0, from .nvmrc
 ```
 
-`@quasar/app-vite` 2.6.1 accepts Node `^22 || ^24 || ^26 || ^28 || ^30`.
+That is the whole answer, and the rest of this section is only for when something has gone wrong
+anyway.
 
-`package.json` currently declares `^20 || ^22 || ^24 || ^25 || ^26 || ^28`, which is wrong in both
-directions: **Node 20 and Node 25 satisfy the project's own engine check but are rejected by the
-build toolchain.** If you install on either, `npm install` succeeds and every build fails. Use the
-`.nvmrc` version and the question does not arise.
+**The real floor is Node 22.22.0**, and it is not written down anywhere you would look.
+`@quasar/app-vite` 2.6.1 declares `engines.node` as `^22 || ^24 || ^26 || ^28 || ^30` but checks for
+`22.22.0 or superior` at runtime, so matching its published range is not enough.
+
+`package.json` declares `^22.22 || ^24 || ^26 || ^28` to match what will actually build. It used to
+say `^22`, which admitted every 22.x below 22.22 — versions npm therefore had no reason to warn
+about, even though the toolchain refuses them.
+
+On a version below the floor, `npm install` fails at `postinstall`, where `quasar prepare` hits the
+same check the builds do:
+
+```
+ INCOMPATIBLE NODE VERSION
+ @quasar/app-vite requires Node 22.22.0 or superior
+```
+
+`.npmrc` sets `engine-strict=true`, so a Node below the floor is refused at install time rather
+than at the first build.
+
+The trade-off is worth knowing before it surprises you: strict mode applies to **every dependency's**
+`engines`, not only ours. A transitive package raising its floor past `.nvmrc` fails the install
+outright, here and in CI, with no change of ours involved. While the pin was 24.14.0,
+`mute-stream@4.0.0` requiring `^24.15.0` was already enough to do it.
+
+If an install starts failing with `EBADENGINE` for a package nobody touched, that is what happened.
+Raise `.nvmrc`, do not remove the flag — and check Quasar still supports the newer Node first, since
+it enforces a floor at runtime that its own `engines` field does not declare (#203).
+
+CI never had this problem: every workflow uses `node-version-file: '.nvmrc'`.
 
 ## Building
 
