@@ -18,7 +18,7 @@
     "postinstall": "quasar prepare",
     "build:chrome": "quasar build -m bex -T chrome",
     "build:firefox": "quasar build -m bex -T firefox",
-    "icons:bex": "icongenie generate -m bex -i public/images/light/diogel.png",
+    "icons:bex": "npx --yes @quasar/icongenie generate -m bex -i public/images/light/diogel.png",
     "test:e2e": "npm run build:chrome && playwright test --project=chromium",
     "test:e2e:only": "playwright test",
     "test:e2e:firefox": "npm run build:firefox && playwright test --project=firefox",
@@ -50,7 +50,6 @@
     "@pinia/testing": "^1.0.3",
     "@playwright/test": "^1.62.1",
     "@quasar/app-vite": "^2.4.1",
-    "@quasar/icongenie": "^2.5.4",
     "@types/crypto-js": "^4.2.2",
     "@types/file-saver": "^2.0.7",
     "@types/node": "^25.3.0",
@@ -73,11 +72,6 @@
     "vitest": "^4.0.15",
     "vue-eslint-parser": "^10.4.0",
     "vue-tsc": "^3.2.4"
-  },
-  "overrides": {
-    "@quasar/icongenie": {
-      "read-chunk": "4.0.0"
-    }
   },
   "engines": {
     "node": "^22.22 || ^24 || ^26 || ^28"
