@@ -62,6 +62,34 @@ Quote the `--omit=dev` figure when the total is questioned, and check what a "39
 headline actually contains before reacting to it: when this was last examined, 25 of 39 came from a
 single devDependency that ran perhaps once a year (threenine/diogel#204).
 
+## Install scripts
+
+`package.json` carries an `allowScripts` block. npm runs a dependency's install script only if it
+is listed there, so a package newly gaining one fails the install rather than running quietly.
+
+| Entry | Script | Why |
+|---|---|---|
+| `esbuild@0.27.7` | `postinstall: node install.js` | Fetches the platform binary. The build does not run without it. |
+| `geckodriver@6.1.1` | `postinstall: node ./dist/install.js` | Fetches the Firefox WebDriver binary the Firefox end-to-end project drives. |
+| `@parcel/watcher` | `install: node scripts/build-from-source.js` | **Denied.** Compiles native code at install time, and nothing here loads it. |
+
+The two approvals are **pinned to a version**, so an upgrade needs approving again rather than
+inheriting trust from the version that was reviewed. Expect `npm ci` to fail after bumping esbuild
+or geckodriver; that is the mechanism working. Re-approve with:
+
+```bash
+npm approve-scripts --allow-scripts-pin <pkg>
+```
+
+`@parcel/watcher` is denied rather than approved because it arrives through `sass`, and `sass` is
+here only as an optional peer dependency of Vite that npm installs speculatively. The SCSS is
+compiled by `sass-embedded`, a declared dependency of `@quasar/app-vite`. Verified: removing
+`node_modules/sass` leaves both builds and all unit tests passing (threenine/diogel#207).
+
+Do not reach for `--omit=optional` to drop it — rolldown and lightningcss ship their native
+bindings as optional dependencies, so the build fails on a missing binding long before it reaches
+sass.
+
 ## Building
 
 ```bash

@@ -74,5 +74,10 @@
   },
   "engines": {
     "node": "^22.22 || ^24 || ^26 || ^28"
+  },
+  "allowScripts": {
+    "esbuild@0.27.7": true,
+    "geckodriver@6.1.1": true,
+    "@parcel/watcher": false
   }
 }
