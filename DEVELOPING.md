@@ -7,7 +7,7 @@ How to get a change in front of your eyes, and what the tooling does not do for 
 Use the pinned version:
 
 ```bash
-nvm use          # v24.14.0, from .nvmrc
+nvm use          # v24.19.0, from .nvmrc
 ```
 
 That is the whole answer, and the rest of this section is only for when something has gone wrong
@@ -30,8 +30,11 @@ same check the builds do:
 ```
 
 `engine-strict` is deliberately **not** set. It applies to every dependency's `engines`, not only
-ours, and `mute-stream@4.0.0` already requires `^24.15.0` while `.nvmrc` pins 24.14.0 — turning it
-on stops this project installing on its own pinned Node (#203).
+ours, so any transitive package tightening its range becomes a blocking install failure here and in
+CI. While the pin was 24.14.0, `mute-stream@4.0.0` requiring `^24.15.0` was enough to stop this
+project installing on its own pinned Node. The pin is higher now and strict mode would pass, but the
+objection stands: it hands control of whether this project installs to the strictest `engines` field
+anywhere in the dependency tree (#203).
 
 CI never had this problem: every workflow uses `node-version-file: '.nvmrc'`.
 
