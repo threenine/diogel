@@ -1,8 +1,10 @@
 <script lang="ts" setup>
-import { onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import type { NostrProfile, StoredKey } from 'src/types';
 import { profileService } from 'src/services/profile-service';
+import { PROFILE_UPDATED_KEY, storageService } from 'src/services/storage-service';
+import { formatBirthday, normalizeWebsiteUrl } from 'src/utils/profile-format';
 
 defineOptions({ name: 'ProfileView' });
 
@@ -30,6 +32,24 @@ const profile = ref<NostrProfile>({
 
 const loading = ref(false);
 
+const birthdayText = computed(() => formatBirthday(profile.value.birthday));
+
+/**
+ * Whether anything beyond the name and picture has been published.
+ *
+ * Said explicitly rather than left as an empty gap: a panel that simply shows nothing cannot be
+ * told apart from one that has not finished loading.
+ */
+const hasDetails = computed(() =>
+  Boolean(
+    profile.value.website ||
+      profile.value.nip05 ||
+      profile.value.lud16 ||
+      profile.value.bot ||
+      birthdayText.value,
+  ),
+);
+
 async function fetchProfile() {
   if (!props.storedKey.id) return;
 
@@ -56,8 +76,33 @@ async function fetchProfile() {
   loading.value = false;
 }
 
+/**
+ * Re-read when the profile is published from another surface.
+ *
+ * The dashboard's editor is a different page context, so nothing in this one hears about a save.
+ * Before this, editing a profile in a tab left the panel showing the old one until it was reopened,
+ * and the dashboard's own preview was the only thing that ever reflected an edit (#201).
+ *
+ * Storage rather than the panel port: this component also renders on the extension index page, and
+ * the port is one connection per panel that the background counts for presence — opening one here
+ * would make a single panel look like two (#113).
+ */
+const onStorageChanged = (changes: Record<string, chrome.storage.StorageChange>): void => {
+  const updated = changes[PROFILE_UPDATED_KEY]?.newValue as { pubkey?: string } | undefined;
+  if (!updated) return;
+  // Another account's profile changing is not this card's business.
+  if (updated.pubkey !== props.storedKey.id) return;
+
+  void fetchProfile();
+};
+
 onMounted(() => {
   void fetchProfile();
+  storageService.onChanged(onStorageChanged);
+});
+
+onUnmounted(() => {
+  storageService.removeOnChanged(onStorageChanged);
 });
 
 watch(
@@ -111,10 +156,47 @@ watch(
             {{ profile.about }}
           </div>
 
-          <div v-if="profile.website" class="q-mt-xs">
-            <a :href="profile.website" target="_blank" class="website-link">
-              {{ profile.website }}
-            </a>
+          <!--
+            The detail rows the dashboard preview carried and this did not (#201). Each is a
+            separate row rather than a wrapped line: at the 320px floor a joined list wraps into
+            something unreadable, and these are values a user checks rather than reads.
+          -->
+          <div class="profile-detail q-mt-sm">
+            <div v-if="profile.website" class="profile-detail__row">
+              <q-icon name="language" size="16px" />
+              <a
+                :href="normalizeWebsiteUrl(profile.website)"
+                class="website-link profile-detail__value"
+                rel="noopener noreferrer"
+                target="_blank"
+              >
+                {{ profile.website }}
+              </a>
+            </div>
+
+            <div v-if="profile.nip05" class="profile-detail__row">
+              <q-icon name="badge" size="16px" />
+              <span class="profile-detail__value">{{ profile.nip05 }}</span>
+            </div>
+
+            <div v-if="profile.lud16" class="profile-detail__row">
+              <q-icon name="bolt" size="16px" />
+              <span class="profile-detail__value">{{ profile.lud16 }}</span>
+            </div>
+
+            <div v-if="profile.bot" class="profile-detail__row">
+              <q-icon name="smart_toy" size="16px" />
+              <span class="profile-detail__value">{{ t('profile.previewBot') }}</span>
+            </div>
+
+            <div v-if="birthdayText" class="profile-detail__row">
+              <q-icon name="cake" size="16px" />
+              <span class="profile-detail__value">{{ birthdayText }}</span>
+            </div>
+
+            <div v-if="!hasDetails" class="profile-detail__empty">
+              {{ t('profile.previewNoDetails') }}
+            </div>
           </div>
         </div>
       </q-card-section>
@@ -134,6 +216,37 @@ watch(
 </template>
 
 <style scoped lang="scss">
+.profile-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-detail__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 0.8rem;
+}
+
+/*
+ * The panel floor is 320px and these values are user-supplied: a NIP-05 identifier or a Lightning
+ * address can be long enough to push the column wider than the panel, which NFR-11 forbids.
+ * `min-width: 0` above is what lets this actually take effect inside a flex row.
+ */
+.profile-detail__value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-detail__empty {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
 .profile-wrapper {
   padding: 16px;
 }
