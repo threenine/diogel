@@ -85,7 +85,7 @@ describe('useVault', () => {
       expect(testState.vaultStore.create).not.toHaveBeenCalled();
     });
 
-    it('creates the vault and navigates to dashboard by default on success', async () => {
+    it('creates the vault and goes to key management on success', async () => {
       testState.vaultStore.create.mockResolvedValue({ success: true });
       const wrapper = mount(TestHarness);
       const vm = wrapper.vm as unknown as HarnessVm;
@@ -95,11 +95,15 @@ describe('useVault', () => {
       await vm.handleCreate();
 
       expect(testState.notifyMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'positive' }));
-      expect(testState.pushMock).toHaveBeenCalledWith({ name: 'dashboard' });
+      // A vault that has just been created holds no keys, and a dashboard with no keys has nothing
+      // to show (#198).
+      expect(testState.pushMock).toHaveBeenCalledWith({ name: 'keys' });
       expect(vm.loading).toBe(false);
     });
 
-    it('navigates to home when created from the extension login context', async () => {
+    it('goes to key management regardless of the login context', async () => {
+      // The login context still decides where *unlocking* lands. Creation does not consult it:
+      // whichever surface the user came from, a brand-new vault has no keys to show there (#198).
       testState.route.query = { loginContext: 'extension' };
       testState.vaultStore.create.mockResolvedValue({ success: true });
       const wrapper = mount(TestHarness);
@@ -109,7 +113,7 @@ describe('useVault', () => {
 
       await vm.handleCreate();
 
-      expect(testState.pushMock).toHaveBeenCalledWith({ name: 'home' });
+      expect(testState.pushMock).toHaveBeenCalledWith({ name: 'keys' });
     });
 
     it('surfaces a formatted error and notifies on failure', async () => {

@@ -91,7 +91,17 @@ const pendingLabel = computed(() =>
       <router-view />
     </q-page-container>
 
-    <SidebarFooterLinks />
+    <!--
+      Shown only when the vault is unlocked (specification §3, amended 2026-08-22).
+
+      Every destination behind it needs an unlocked vault to be useful, so offering them earlier
+      advertises navigation that leads nowhere — and on the setup and creation views it implies the
+      user may go elsewhere when the one thing to do is in front of them. The same reasoning covers
+      the unlock views, S2, S5 and S15.
+
+      Accepted consequence: while locked, the panel offers no route to a management surface.
+    -->
+    <SidebarFooterLinks v-if="vaultStore.isUnlocked" />
   </q-layout>
 </template>
 

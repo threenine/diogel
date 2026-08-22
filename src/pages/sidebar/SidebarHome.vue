@@ -6,6 +6,7 @@ import useAccountStore from 'src/stores/account-store';
 import ProfileView from 'components/shared/ProfileView.vue';
 import CurrentRequest from 'components/sidebar/CurrentRequest.vue';
 import PendingRequestList from 'components/sidebar/PendingRequestList.vue';
+import SidebarCreateVault from 'components/sidebar/SidebarCreateVault.vue';
 import SidebarUnlock from 'components/sidebar/SidebarUnlock.vue';
 import { useActiveTab } from 'src/composables/useActiveTab';
 import { useApprovalQueue } from 'src/composables/useApprovalQueue';
@@ -33,7 +34,18 @@ const busy = ref(false);
  * says nothing about there being no vault at all. Without this distinction the panel fell through
  * to its unlock view and offered to unlock nothing (#158).
  */
-const showSetup = computed(() => !vaultStore.vaultExists);
+/**
+ * S18: the creation form, reached from S17's prompt.
+ *
+ * Local rather than routed. The panel is one route rendering from state, and creation is a step
+ * within the no-vault state rather than a place to navigate to — routing there would be the panel
+ * being replaced by a surface, which the contract forbids.
+ */
+const creating = ref(false);
+
+const showSetup = computed(() => !vaultStore.vaultExists && !creating.value);
+
+const showCreate = computed(() => !vaultStore.vaultExists && creating.value);
 
 const showUnlock = computed(() => vaultStore.vaultExists && !vaultStore.isUnlocked);
 
@@ -84,9 +96,12 @@ onMounted(async () => {
         no-caps
         class="diogel-btn-primary"
         :label="t('sidebar.setup.action')"
-        @click="openInTab('/login')"
+        @click="creating = true"
       />
     </section>
+
+    <!-- S18. Creation happens here rather than in a tab, amended in the specification 2026-08-22. -->
+    <SidebarCreateVault v-else-if="showCreate" @back="creating = false" />
 
     <!-- Unlock takes precedence over everything else, and names any waiting request (S5, S15). -->
     <SidebarUnlock
