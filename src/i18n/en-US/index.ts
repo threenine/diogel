@@ -598,9 +598,17 @@ export default {
       settings: 'Settings',
     },
     setup: {
+      ariaLabel: 'Set up Porwr',
       title: 'Set up Porwr',
       body: 'Create your encrypted vault to start signing Nostr events from this panel.',
       action: 'Create vault',
+    },
+    createVault: {
+      warning: 'This password encrypts your keys. Porwr cannot recover it for you.',
+      password: 'Password',
+      confirmPassword: 'Confirm password',
+      minimum: 'Minimum 8 characters',
+      mismatch: 'Passwords must match',
     },
     accountSwitcher: {
       ariaLabel: 'Signing identity for new sites',

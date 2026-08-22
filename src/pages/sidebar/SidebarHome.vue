@@ -6,6 +6,7 @@ import useAccountStore from 'src/stores/account-store';
 import ProfileView from 'components/shared/ProfileView.vue';
 import CurrentRequest from 'components/sidebar/CurrentRequest.vue';
 import PendingRequestList from 'components/sidebar/PendingRequestList.vue';
+import SidebarSetup from 'components/sidebar/SidebarSetup.vue';
 import SidebarUnlock from 'components/sidebar/SidebarUnlock.vue';
 import { useActiveTab } from 'src/composables/useActiveTab';
 import { useApprovalQueue } from 'src/composables/useApprovalQueue';
@@ -76,17 +77,12 @@ onMounted(async () => {
 <template>
   <q-page class="sidebar-home">
     <!-- Nothing else is reachable without a vault, so this precedes even the unlock view (#158). -->
-    <section v-if="showSetup" class="sidebar-setup">
-      <q-icon color="grey-5" name="lock_open" size="3em" />
-      <h2 class="sidebar-setup__title">{{ t('sidebar.setup.title') }}</h2>
-      <p class="sidebar-setup__body">{{ t('sidebar.setup.body') }}</p>
-      <q-btn
-        no-caps
-        class="diogel-btn-primary"
-        :label="t('sidebar.setup.action')"
-        @click="openInTab('/login')"
-      />
-    </section>
+    <!--
+      S17. One screen: what Porwr is, and the form that creates the vault. It was briefly two,
+      behind a "Create vault" button, which traded a browser tab for a click in the flow that was
+      reported as clunky to begin with (#198).
+    -->
+    <SidebarSetup v-if="showSetup" />
 
     <!-- Unlock takes precedence over everything else, and names any waiting request (S5, S15). -->
     <SidebarUnlock

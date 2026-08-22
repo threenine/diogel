@@ -80,7 +80,15 @@ export function useVault() {
       $q.notify({ type: 'positive', message: 'Vault created successfully' });
       if (isPanelRoute()) return;
 
-      await router.push({ name: getPostLoginRouteName() });
+      /*
+       * Key management, not the dashboard.
+       *
+       * A vault that has just been created holds no keys, and a dashboard with no keys has nothing
+       * to show — it left the user to work out their own next step at the one moment they have
+       * least context. Creation is unconditional here because a new vault always has zero keys;
+       * `handleUnlock` still uses the login context, since an existing vault usually has some.
+       */
+      await router.push({ name: 'keys' });
     } else {
       loginError.value = formatErrorForUser(result.error, result.errorCode as ErrorCode);
       $q.notify({

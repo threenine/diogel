@@ -63,6 +63,8 @@ test.describe('the panel with no vault', () => {
   test('prompts to set Porwr up instead', async ({ openPage }) => {
     const page = await openPage('/sidebar');
 
+    // S17. What the prompt leads to — the creation form, in the panel rather than a tab — is
+    // covered in `panel-onboarding.spec.ts` (#198).
     await expect(page.locator('.sidebar-setup')).toBeVisible();
   });
 });
