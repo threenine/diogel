@@ -43,6 +43,25 @@ it enforces a floor at runtime that its own `engines` field does not declare (#2
 
 CI never had this problem: every workflow uses `node-version-file: '.nvmrc'`.
 
+## Security advisories
+
+`npm audit` reports the whole dependency tree, most of which is build tooling that never reaches a
+user. **The figure worth watching is `npm audit --omit=dev`**, which is what ships.
+
+At the time of writing that is **zero**, and the full report is two low advisories.
+
+Both are `esbuild` reached through `@quasar/app-vite` 2.6.1, and both describe arbitrary file reads
+**by the development server on Windows**. They are left in place deliberately:
+
+- resolving them needs `@quasar/app-vite` 3.x, a major upgrade of the entire build toolchain, which
+  is not a security patch and should not be smuggled in as one
+- the dev server is not part of this project's workflow anyway — `quasar dev -m bex` emits a 0-byte
+  `www/index.html` and gives no working panel (see below), so the panel is always run from a build
+
+Quote the `--omit=dev` figure when the total is questioned, and check what a "39 vulnerabilities"
+headline actually contains before reacting to it: when this was last examined, 25 of 39 came from a
+single devDependency that ran perhaps once a year (threenine/diogel#204).
+
 ## Building
 
 ```bash
