@@ -18,7 +18,6 @@
     "postinstall": "quasar prepare",
     "build:chrome": "quasar build -m bex -T chrome",
     "build:firefox": "quasar build -m bex -T firefox",
-    "icons:bex": "npx --yes @quasar/icongenie generate -m bex -i public/images/light/diogel.png",
     "test:e2e": "npm run build:chrome && playwright test --project=chromium",
     "test:e2e:only": "playwright test",
     "test:e2e:firefox": "npm run build:firefox && playwright test --project=firefox",
