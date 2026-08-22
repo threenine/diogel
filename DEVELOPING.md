@@ -29,12 +29,17 @@ same check the builds do:
  @quasar/app-vite requires Node 22.22.0 or superior
 ```
 
-`engine-strict` is deliberately **not** set. It applies to every dependency's `engines`, not only
-ours, so any transitive package tightening its range becomes a blocking install failure here and in
-CI. While the pin was 24.14.0, `mute-stream@4.0.0` requiring `^24.15.0` was enough to stop this
-project installing on its own pinned Node. The pin is higher now and strict mode would pass, but the
-objection stands: it hands control of whether this project installs to the strictest `engines` field
-anywhere in the dependency tree (#203).
+`.npmrc` sets `engine-strict=true`, so a Node below the floor is refused at install time rather
+than at the first build.
+
+The trade-off is worth knowing before it surprises you: strict mode applies to **every dependency's**
+`engines`, not only ours. A transitive package raising its floor past `.nvmrc` fails the install
+outright, here and in CI, with no change of ours involved. While the pin was 24.14.0,
+`mute-stream@4.0.0` requiring `^24.15.0` was already enough to do it.
+
+If an install starts failing with `EBADENGINE` for a package nobody touched, that is what happened.
+Raise `.nvmrc`, do not remove the flag — and check Quasar still supports the newer Node first, since
+it enforces a floor at runtime that its own `engines` field does not declare (#203).
 
 CI never had this problem: every workflow uses `node-version-file: '.nvmrc'`.
 
